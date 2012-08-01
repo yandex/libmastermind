@@ -23,7 +23,9 @@ set( REQUIRED_LIBRARIES
 		boost_thread 
 		boost_system )
  
-set( CMAKE_CXX_FLAGS "-O0 -Wall -pedantic -std=c++0x" )
+set( CMAKE_CXX_FLAGS "-O0 -Wall -pedantic" )
+
+INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/include)
  
 add_library( ${LIB} SHARED ${SOURCES} )
 target_link_libraries( ${LIB} ${REQUIRED_LIBRARIES} )
@@ -40,6 +42,12 @@ install( TARGETS ${LIB}
     RUNTIME DESTINATION bin COMPONENT runtime
     LIBRARY DESTINATION lib COMPONENT runtime
     ARCHIVE DESTINATION lib COMPONENT developement)
+
+INSTALL(
+    DIRECTORY
+        include/
+    DESTINATION include
+    COMPONENT development)
 
 set (TESTS_SOURCES
 	tests/test.cpp)
