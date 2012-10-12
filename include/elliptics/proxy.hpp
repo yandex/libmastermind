@@ -18,15 +18,16 @@
 #ifndef _ELLIPTICS_FASTCGI_HPP_INCLUDED_
 #define _ELLIPTICS_FASTCGI_HPP_INCLUDED_
 
+#cmakedefine HAVE_METABASE 1
+
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
 
-#ifdef HAVE_METABALANCER
-#include <zmq.hpp>
-#include <msgpack.hpp>
-#endif /* HAVE_METABALANCER */
+#ifdef HAVE_METABASE
+#include <cocaine/dealer/dealer.hpp>
+#endif /* HAVE_METABASE */
 
 #include <boost/shared_ptr.hpp>
 #include <boost/tokenizer.hpp>
@@ -45,20 +46,20 @@ enum metabase_type {
 	PROXY_META_MANDATORY
 };
 
-#ifdef HAVE_METABALANCER
+#ifdef HAVE_METABASE
 struct MetabaseRequest {
 	int		groups_num;
 	uint64_t	stamp;
 	std::vector<uint8_t> id;
-	MSGPACK_DEFINE(groups_num, stamp, id);
+	MSGPACK_DEFINE(groups_num, stamp, id)
 };
 
 struct MetabaseResponse {
 	std::vector<int> groups;
 	uint64_t	stamp;
-	MSGPACK_DEFINE(groups, stamp);
+	MSGPACK_DEFINE(groups, stamp)
 };
-#endif /* HAVE_METABALANCER */
+#endif /* HAVE_METABASE */
 
 
 class ID {
@@ -73,10 +74,12 @@ public:
 	int group() const;
 private:
 	struct dnet_id id_;
+	bool empty_;
 };
 
 class Key {
 public:
+	Key();
 	Key(std::string filename, int column=0);
 	Key(ID &id);
 
@@ -128,6 +131,7 @@ BOOST_PARAMETER_NAME(ioflags)
 BOOST_PARAMETER_NAME(size)
 BOOST_PARAMETER_NAME(offset)
 BOOST_PARAMETER_NAME(latest)
+BOOST_PARAMETER_NAME(count)
 BOOST_PARAMETER_NAME(embeds)
 BOOST_PARAMETER_NAME(embeded)
 BOOST_PARAMETER_NAME(replication_count)
@@ -180,8 +184,12 @@ public:
 		int                    chunk_size;
 		bool                   eblob_style_path;
 
+#ifdef HAVE_METABASE
 		std::string            metabase_write_addr;
 		std::string            metabase_read_addr;
+
+		std::string            cocaine_config;
+#endif /* HAVE_METABASE */
 	};
 
 
@@ -277,6 +285,21 @@ public:
 	{
 		return range_get_impl(from, to, cflags, ioflags, limit_start, limit_num, groups, key);
 	}
+
+#ifdef HAVE_METABASE
+	BOOST_PARAMETER_MEMBER_FUNCTION(
+		(std::vector<int>), get_metabalancer_groups, tag,
+		(optional
+			(count, (uint64_t), 0)
+			(size, (uint64_t), 0)
+			(key, (Key), Key())
+		)
+	)
+	{
+		return get_metabalancer_groups_impl(count, size, key);
+	}
+#endif /* HAVE_METABASE */
+
 private:
 	LookupResult lookup_impl(Key &key, std::vector<int> &groups);
 
@@ -295,8 +318,12 @@ private:
 
 	std::vector<LookupResult> parse_lookup(Key &key, std::string &l);
 	std::vector<int> getGroups(Key &key, const std::vector<int> &groups, int count = 0) const;
+
+#ifdef HAVE_METABASE
 	void uploadMetaInfo(const std::vector<int> &groups, const Key &key) const;
 	std::vector<int> getMetaInfo(const Key &key) const;
+	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, Key &key);
+#endif /* HAVE_METABASE */
 
 /*
 	void range(fastcgi::Request *request);
@@ -312,9 +339,6 @@ private:
 
 	static size_t paramsNum(Tokenizer &tok);
 
-#ifdef HAVE_METABASE
-	std::vector<int> getMetabaseGroups(fastcgi::Request *request, size_t count, struct dnet_id &id);
-#endif * HAVE_METABASE *
 
 private:
 	std::vector<std::string>                    remotes_;
@@ -333,16 +357,16 @@ private:
 	int                                         chunk_size_;
 	bool                                        eblob_style_path_;
 
-#ifdef HAVE_METABALANCER
-	std::auto_ptr<zmq::context_t>               metabase_context_;
-	std::auto_ptr<zmq::socket_t>                metabase_socket_;
+#ifdef HAVE_METABASE
+	std::auto_ptr<cocaine::dealer::dealer_t>    cocaine_dealer_;
+	cocaine::dealer::message_policy_t           cocaine_default_policy_;
 	int                                         metabase_timeout_;
 	int                                         metabase_usage_;
 	uint64_t                                    metabase_current_stamp_;
-#endif /* HAVE_METABALANCER */
 
 	std::string                                 metabase_write_addr_;
 	std::string                                 metabase_read_addr_;
+#endif /* HAVE_METABASE */
 };
 
 } // namespace elliptics

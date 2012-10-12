@@ -54,13 +54,14 @@ EllipticsProxy::config::config() :
 				eblob_style_path(true)
 { }
 
-ID::ID()
+ID::ID() : empty_(true)
 {
 	std::memset(&id_, 0, sizeof(id_));
 }
 
 ID::ID(struct dnet_id &id) :
-	id_(id)
+	id_(id),
+	empty_(false)
 { }
 
 std::string ID::str() const
@@ -77,6 +78,11 @@ std::string ID::dump(unsigned int len) const
 struct dnet_id ID::dnet_id() const {
 	return id_;
 }
+
+Key::Key() :
+	byId_(true),
+	id_(ID())
+{ }
 
 Key::Key(std::string filename, int column) :
 	byId_(false),
