@@ -1219,9 +1219,11 @@ EllipticsProxy::getGroups(Key &key, const std::vector<int> &groups, int count) c
 			}
 		}
 #endif /* HAVE_METABASE */
-		std::vector<int>::iterator git = lgroups.begin();
-		++git;
-		std::random_shuffle(git, lgroups.end());
+		if (lgroups.size() > 1) {
+			std::vector<int>::iterator git = lgroups.begin();
+			++git;
+			std::random_shuffle(git, lgroups.end());
+		}
 	}
 
 	if (count != 0 && count < (int)(lgroups.size())) {
