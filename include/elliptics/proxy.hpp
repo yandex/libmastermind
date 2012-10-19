@@ -18,7 +18,7 @@
 #ifndef _ELLIPTICS_FASTCGI_HPP_INCLUDED_
 #define _ELLIPTICS_FASTCGI_HPP_INCLUDED_
 
-#cmakedefine HAVE_METABASE 1
+#define HAVE_METABASE 1
 
 #include <map>
 #include <set>
