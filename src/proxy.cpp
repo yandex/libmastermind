@@ -140,6 +140,7 @@ EllipticsProxy::parse_lookup(Key &key, std::string &l)
 		result.hostname.assign(hbuf);
 
 		result.port = dnet_server_convert_port((struct sockaddr *)a->addr.addr, a->addr.addr_len);
+		result.group = cmd->id.group_id;
 
 		if (eblob_style_path_) {
 			result.path = std::string((char *)(info + 1));
