@@ -9,8 +9,7 @@ int main(int argc, char* argv[])
 	EllipticsProxy::config c;
 	c.groups.push_back(1);
 	c.groups.push_back(2);
-	c.log_mask = 8;
-	//c.log_mask = 31;
+	c.log_mask = 1;
 	c.cocaine_config = std::string("/home/toshik/cocaine/cocaine_config.json");
 
 	c.remotes.push_back(EllipticsProxy::remote("elisto19f.dev.yandex.net", 1025));
@@ -26,6 +25,12 @@ int main(int argc, char* argv[])
 
 	std::cout << "Got groups: " << std::endl;
 	for (std::vector<int>::const_iterator it = lg.begin(); it != lg.end(); it++)
+		std::cout << *it << " ";
+	std::cout << std::endl;
+
+	GroupInfoResponse gi = proxy.get_metabalancer_group_info(1);
+	std::cout << "Got info from mastermind: status: " << gi.status << ", " << gi.nodes.size() << "groups: ";
+	for (std::vector<int>::const_iterator it = gi.couples.begin(); it != gi.couples.end(); it++)
 		std::cout << *it << " ";
 	std::cout << std::endl;
 

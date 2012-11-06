@@ -59,8 +59,24 @@ struct MetabaseResponse {
 	uint64_t	stamp;
 	MSGPACK_DEFINE(groups, stamp)
 };
-#endif /* HAVE_METABASE */
 
+enum group_info_status {
+	GROUP_INFO_STATUS_OK,
+	GROUP_INFO_STATUS_BAD,
+	GROUP_INFO_STATUS_COUPLED
+};
+
+struct GroupInfoRequest {
+	int group;
+	MSGPACK_DEFINE(group)
+};
+
+struct GroupInfoResponse {
+	std::vector<std::string> nodes;
+	std::vector<int> couples;
+	int status;
+};
+#endif /* HAVE_METABASE */
 
 class ID {
 public:
@@ -298,6 +314,10 @@ public:
 	{
 		return get_metabalancer_groups_impl(count, size, key);
 	}
+
+	GroupInfoResponse get_metabalancer_group_info(int group) {
+		return get_metabalancer_group_info_impl(group);
+	}
 #endif /* HAVE_METABASE */
 
 private:
@@ -323,6 +343,7 @@ private:
 	void uploadMetaInfo(const std::vector<int> &groups, const Key &key) const;
 	std::vector<int> getMetaInfo(const Key &key) const;
 	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, Key &key);
+	GroupInfoResponse get_metabalancer_group_info_impl(int group);
 #endif /* HAVE_METABASE */
 
 /*

@@ -30,11 +30,50 @@
 
 #include <elliptics/proxy.hpp>
 #include <cocaine/dealer/utils/error.hpp>
+#include <msgpack.hpp>
 
 #include "boost_threaded.hpp"
 #include "curl_wrapper.hpp"
 
 using namespace ioremap::elliptics;
+
+#ifdef HAVE_METABASE
+namespace msgpack {
+    inline elliptics::GroupInfoResponse& operator >> (object o, elliptics::GroupInfoResponse& v) {
+        if (o.type != type::MAP) { 
+            throw type_error();
+        }
+
+        msgpack::object_kv* p = o.via.map.ptr;
+        msgpack::object_kv* const pend = o.via.map.ptr + o.via.map.size;
+
+        for (; p < pend; ++p) {
+            std::string key;
+
+            p->key.convert(&key);
+
+std::cout << "trace " << key << std::endl;
+//            if (!key.compare("nodes")) {
+//                p->val.convert(&(v.nodes));
+//            }
+            if (!key.compare("couples")) {
+                p->val.convert(&(v.couples));
+            }
+            else if (!key.compare("status")) {
+		std::string status;
+                p->val.convert(&status);
+		if (!status.compare("bad")) {
+			v.status = elliptics::GROUP_INFO_STATUS_BAD;
+		} else if (!status.compare("coupled")) {
+			v.status = elliptics::GROUP_INFO_STATUS_COUPLED;
+		}
+            }
+        }
+
+        return v;
+    }
+}
+#endif /* HAVE_METABASE */
 
 namespace elliptics {
 
@@ -1327,7 +1366,7 @@ std::vector<int> EllipticsProxy::get_metabalancer_groups_impl(uint64_t count, ui
 	req.id.assign(id.id, id.id+DNET_ID_SIZE);
 
 	try {
-		cocaine::dealer::message_path_t path("elliptics-balancer", "balance");
+		cocaine::dealer::message_path_t path("mastermind", "balance");
 
 		boost::shared_ptr<cocaine::dealer::response_t> future;
 		future = cocaine_dealer_->send_message(req, path, cocaine_default_policy_);
@@ -1359,6 +1398,54 @@ std::vector<int> EllipticsProxy::get_metabalancer_groups_impl(uint64_t count, ui
 		
 
 	return resp.groups;
+}
+
+GroupInfoResponse EllipticsProxy::get_metabalancer_group_info_impl(int group)
+{
+	if (!cocaine_dealer_.get()) {
+		throw std::runtime_error("Dealer is not initialized");
+	}
+
+
+	GroupInfoRequest req;
+	GroupInfoResponse resp;
+
+	req.group = group;
+
+	try {
+		cocaine::dealer::message_path_t path("mastermind", "get_group_info");
+
+		boost::shared_ptr<cocaine::dealer::response_t> future;
+		future = cocaine_dealer_->send_message(req.group, path, cocaine_default_policy_);
+
+		std::cout << "hello" << std::endl;
+		cocaine::dealer::data_container chunk;
+		future->get(&chunk);
+
+		msgpack::unpacked unpacked;
+		msgpack::unpack(&unpacked, static_cast<const char*>(chunk.data()), chunk.size());
+
+		unpacked.get().convert(&resp);
+
+	} catch (const msgpack::unpack_error &e) {
+		std::stringstream msg;
+		msg << "Error while unpacking message: " << e.what();
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	} catch (const cocaine::dealer::dealer_error &e) {
+		std::stringstream msg;
+		msg << "Cocaine dealer error: " << e.what();
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	} catch (const cocaine::dealer::internal_error &e) {
+		std::stringstream msg;
+		msg << "Cocaine internal error: " << e.what();
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+		
+
+	return resp;
 }
 #endif /* HAVE_METABASE */
 /*
