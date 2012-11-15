@@ -52,7 +52,6 @@ namespace msgpack {
 
             p->key.convert(&key);
 
-std::cout << "trace " << key << std::endl;
 //            if (!key.compare("nodes")) {
 //                p->val.convert(&(v.nodes));
 //            }
@@ -141,7 +140,6 @@ EllipticsProxy::EllipticsProxy(const EllipticsProxy::config &c) :
 	}
 #ifdef HAVE_METABASE
 	if (c.cocaine_config.size()) {
-		std::cout << "creating new dealer" << std::endl;
 		cocaine_dealer_.reset(new cocaine::dealer::dealer_t(c.cocaine_config));
 	}
 
@@ -432,7 +430,7 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 			std::stringstream msg;
 			msg << "Can't write data for key " << key.str() << " " << e.what();
 			elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
-			throw e;
+			throw;
 		}
 		catch (...) {
 			elliptics_log_->log(DNET_LOG_ERROR, "Can't write data for key: unknown");
@@ -539,7 +537,7 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 		std::stringstream msg;
 		msg << "Can't write data for key " << key.str() << " " << e.what();
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
-		throw e;
+		throw;
 	}
 	catch (...) {
 		std::stringstream msg;
@@ -602,7 +600,7 @@ std::vector<std::string> EllipticsProxy::range_get_impl(Key &from, Key &to, uint
 		std::stringstream msg;
 		msg << "READ_RANGE failed for key " << key.str() << " from:" << from.str() << " to:" << to.str() << " " << e.what();
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
-		throw e;
+		throw;
 	}
 	catch (...) {
 		std::stringstream msg;
@@ -1418,7 +1416,6 @@ GroupInfoResponse EllipticsProxy::get_metabalancer_group_info_impl(int group)
 		boost::shared_ptr<cocaine::dealer::response_t> future;
 		future = cocaine_dealer_->send_message(req.group, path, cocaine_default_policy_);
 
-		std::cout << "hello" << std::endl;
 		cocaine::dealer::data_container chunk;
 		future->get(&chunk);
 
