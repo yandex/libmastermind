@@ -14,3 +14,13 @@ Architecture: any
 Depends: ${shlibs:Depends}
 Description: Smart client for Elliptics storage
 
+Package: libelliptics-proxy-dbg
+Architecture: any
+Depends: libelliptics-proxy (= ${Source-Version})
+Description: Smart client for Elliptics storage (debug symbols)
+
+Package: libelliptics-proxy-dev
+Architecture: any
+Depends: libelliptics-proxy (= ${Source-Version})
+Description: Smart client for Elliptics storage (developer files)
+
