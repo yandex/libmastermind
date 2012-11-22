@@ -83,6 +83,9 @@ public:
 	ID();
 	ID(struct dnet_id &id);
 
+        bool operator==(const ID &id2) const;
+        bool operator<(const ID &id2) const;
+
 	std::string str() const;
 	std::string dump(unsigned int len = 6) const;
 	struct dnet_id dnet_id() const;
@@ -99,12 +102,17 @@ public:
 	Key(std::string filename, int column=0);
 	Key(ID &id);
 
+        bool operator==(const Key &key2) const;
+        bool operator<(const Key &key2) const;
+
 	bool byId() const;
 	const std::string filename() const;
 	const int column() const;
 	struct dnet_id dnet_id() const;
 	const ID id() const;
 	const std::string str() const;
+
+        void transform(ioremap::elliptics::session &sess);
 private:
 	bool byId_;
 	std::string filename_;
@@ -304,7 +312,7 @@ public:
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(std::vector<ReadResult>), bulk_read, tag,
+		(std::map<Key, ReadResult>), bulk_read, tag,
 		(required
 			(keys, (std::vector<Key>))
 		)
@@ -351,7 +359,7 @@ private:
 	std::vector<std::string> range_get_impl(Key &from, Key &to, uint64_t cflags, uint64_t ioflags,
 				uint64_t limit_start, uint64_t limit_num, const std::vector<int> &groups, Key &key);
 
-	std::vector<ReadResult> bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vector<int> &groups);
+	std::map<Key, ReadResult> bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vector<int> &groups);
 
 
 	std::vector<LookupResult> parse_lookup(Key &key, std::string &l);

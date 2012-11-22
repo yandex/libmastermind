@@ -642,10 +642,10 @@ void EllipticsProxy::remove_impl(Key &key, std::vector<int> &groups)
 	}
 }
 
-std::vector<ReadResult>
+std::map<Key, ReadResult>
 EllipticsProxy::bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vector<int> &groups)
 {
-	std::vector<ReadResult> ret;
+	std::map<Key, ReadResult> ret;
 
         if (!keys.size())
                 return ret;
@@ -661,20 +661,16 @@ EllipticsProxy::bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vec
                 std::vector<struct dnet_io_attr> ios;
                 ios.reserve(keys.size());
 
-                for (std::vector<Key>::const_iterator it = keys.begin(); it != keys.end(); it++) {
+                for (std::vector<Key>::iterator it = keys.begin(); it != keys.end(); it++) {
                         struct dnet_io_attr io;
                         memset(&io, 0, sizeof(io));
 
-                        if (it->byId()) {
-                                memcpy(io.id, it->id().dnet_id().id, sizeof(io.id));
-                        } else {
+                        if (!it->byId()) {
                         
-                                struct dnet_id id;
-
-                                elliptics_session.transform(it->filename(), id);
-                                memcpy(io.id, id.id, sizeof(io.id));
+                                it->transform(elliptics_session);
                         }
 
+                        memcpy(io.id, it->id().dnet_id().id, sizeof(io.id));
                         ios.push_back(io);
                 }
 
@@ -683,10 +679,20 @@ EllipticsProxy::bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vec
                 for (std::vector<std::string>::iterator it = result.begin();
                                                  it != result.end(); it++) {
 
-	                ReadResult tmp;
-                        tmp.data = *it;
+                        if (it->size() < DNET_ID_SIZE)
+                                throw std::runtime_error("Too small record came from bulk_read");
 
-                        ret.push_back(tmp);
+                        struct dnet_id id;
+
+                        memset(&id, 0, sizeof(id));
+                        memcpy(id.id, it->data(), DNET_ID_SIZE);
+
+                        ID ell_id(id);
+                        Key tmp_key(ell_id);
+	                ReadResult tmp;
+                        tmp.data.assign(it->data() + DNET_ID_SIZE, it->size() - DNET_ID_SIZE);
+
+                        ret.insert(std::make_pair(tmp_key, tmp));
                 }
 
 	}

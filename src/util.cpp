@@ -64,6 +64,20 @@ ID::ID(struct dnet_id &id) :
 	empty_(false)
 { }
 
+bool ID::operator==(const ID &id2) const
+{
+        int res = memcmp(id_.id, id2.id_.id, DNET_ID_SIZE);
+
+        return (res == 0) && id_.type == id2.id_.type;
+}
+
+bool ID::operator<(const ID &id2) const
+{
+        int res = memcmp(id_.id, id2.id_.id, DNET_ID_SIZE);
+
+        return (res < 0) && id_.type < id2.id_.type;
+}
+
 std::string ID::str() const
 {
 	return dump();
@@ -97,6 +111,35 @@ Key::Key(ID &id) :
 	column_ = id_.dnet_id().type;
 }
 
+bool Key::operator==(const Key &key2) const
+{
+        if (!byId_ && !key2.byId_)
+            return filename_ == key2.filename_;
+
+        if (byId_ && key2.byId_)
+            return id_ == key2.id_;
+
+        return false;
+}
+bool Key::operator<(const Key &key2) const
+{
+// IDs are always less than filenames
+        if (byId_) {
+            if (key2.byId_) {
+                return id_ < key2.id_;
+            } else {
+                return true;
+            }
+        } else {
+            if (!key2.byId_) {
+                return filename_ < key2.filename_;
+            } else {
+                return false;
+            }
+        }
+}
+
+
 bool Key::byId() const
 {
 	return byId_;
@@ -129,6 +172,16 @@ const std::string Key::str() const {
 	} else {
 		return filename_;
 	}
+}
+
+void Key::transform(ioremap::elliptics::session &sess)
+{
+        struct dnet_id id;
+        memset(&id, 0, sizeof(id));
+
+        sess.transform(filename_, id);
+
+        id_ = ID(id);
 }
 
 }
