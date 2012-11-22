@@ -135,6 +135,7 @@ public:
 };
 
 BOOST_PARAMETER_NAME(key)
+BOOST_PARAMETER_NAME(keys)
 BOOST_PARAMETER_NAME(data)
 
 BOOST_PARAMETER_NAME(from)
@@ -302,6 +303,20 @@ public:
 		return range_get_impl(from, to, cflags, ioflags, limit_start, limit_num, groups, key);
 	}
 
+	BOOST_PARAMETER_MEMBER_FUNCTION(
+		(std::vector<ReadResult>), bulk_read, tag,
+		(required
+			(keys, (std::vector<Key>))
+		)
+		(optional
+			(cflags, (uint64_t), 0)
+			(groups, (const std::vector<int>), std::vector<int>())
+		)
+	)
+	{
+		return bulk_read_impl(keys, cflags, groups);
+	}
+
 #ifdef HAVE_METABASE
 	BOOST_PARAMETER_MEMBER_FUNCTION(
 		(std::vector<int>), get_metabalancer_groups, tag,
@@ -335,6 +350,9 @@ private:
 
 	std::vector<std::string> range_get_impl(Key &from, Key &to, uint64_t cflags, uint64_t ioflags,
 				uint64_t limit_start, uint64_t limit_num, const std::vector<int> &groups, Key &key);
+
+	std::vector<ReadResult> bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vector<int> &groups);
+
 
 	std::vector<LookupResult> parse_lookup(Key &key, std::string &l);
 	std::vector<int> getGroups(Key &key, const std::vector<int> &groups, int count = 0) const;

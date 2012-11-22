@@ -264,7 +264,6 @@ EllipticsProxy::read_impl(Key &key, uint64_t offset, uint64_t size,
 				result = elliptics_session.read_data_wait(key.filename(), offset, size, cflags, ioflags, key.column());
 		}
 
-		uint64_t ts = 0;
 		if (embeded) {
 			size_t size = result.size();
 			size_t offset = 0;
@@ -287,18 +286,6 @@ EllipticsProxy::read_impl(Key &key, uint64_t offset, uint64_t size,
 					break;
 				}
 
-/*
-				if (e->type >= DNET_PROXY_EMBED_TIMESTAMP) {
-					boost::shared_ptr<embed> em(new embed());
-
-					em->type = e->type;
-					em->flags = e->flags;
-					em->data.assign((char *)e->data, e->size);
-
-					ret.embeds.push_back(em);
-				}
-*/
-
 				if (e->type == DNET_PROXY_EMBED_DATA) {
 					size = e->size;
 					break;
@@ -312,12 +299,6 @@ EllipticsProxy::read_impl(Key &key, uint64_t offset, uint64_t size,
 			ret.data = result;
 		}
 
-		elliptics_session.add_groups(groups_);
-
-		char ts_str[128];
-		time_t timestamp = (time_t)(ts);
-		struct tm tmp;
-		strftime(ts_str, sizeof (ts_str), "%a, %d %b %Y %T %Z", gmtime_r(&timestamp, &tmp));
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
@@ -659,6 +640,70 @@ void EllipticsProxy::remove_impl(Key &key, std::vector<int> &groups)
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
+}
+
+std::vector<ReadResult>
+EllipticsProxy::bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vector<int> &groups)
+{
+	std::vector<ReadResult> ret;
+
+        if (!keys.size())
+                return ret;
+
+	session elliptics_session(*elliptics_node_);
+	std::vector<int> lgroups = getGroups(keys[0], groups);
+
+	std::vector<std::string> result;
+
+	try {
+		elliptics_session.add_groups(lgroups);
+
+                std::vector<struct dnet_io_attr> ios;
+                ios.reserve(keys.size());
+
+                for (std::vector<Key>::const_iterator it = keys.begin(); it != keys.end(); it++) {
+                        struct dnet_io_attr io;
+                        memset(&io, 0, sizeof(io));
+
+                        if (it->byId()) {
+                                memcpy(io.id, it->id().dnet_id().id, sizeof(io.id));
+                        } else {
+                        
+                                struct dnet_id id;
+
+                                elliptics_session.transform(it->filename(), id);
+                                memcpy(io.id, id.id, sizeof(io.id));
+                        }
+
+                        ios.push_back(io);
+                }
+
+                result = elliptics_session.bulk_read(ios, cflags);
+
+                for (std::vector<std::string>::iterator it = result.begin();
+                                                 it != result.end(); it++) {
+
+	                ReadResult tmp;
+                        tmp.data = *it;
+
+                        ret.push_back(tmp);
+                }
+
+	}
+	catch (const std::exception &e) {
+		std::stringstream msg;
+		msg << "can not bulk get data " << e.what() << std::endl;
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+	catch (...) {
+		std::stringstream msg;
+		msg << "can not bulk get data" << std::endl;
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+
+	return ret;
 }
 
 /*

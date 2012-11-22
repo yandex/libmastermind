@@ -1,3 +1,9 @@
+libelliptics-proxy (0.0.5) unstable; urgency=low
+
+  * Added bulk_read
+
+ -- Anton Kortunov <toshik@yandex-team.ru>  Thu, 22 Nov 2012 16:23:46 +0400
+
 libelliptics-proxy (0.0.4) unstable; urgency=low
 
   * Throw original exception
