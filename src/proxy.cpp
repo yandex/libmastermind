@@ -683,17 +683,22 @@ EllipticsProxy::bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vec
                 for (std::vector<std::string>::iterator it = result.begin();
                                                  it != result.end(); it++) {
 
-                        if (it->size() < DNET_ID_SIZE)
+                        if (it->size() < DNET_ID_SIZE + 8)
                                 throw std::runtime_error("Too small record came from bulk_read");
 
                         struct dnet_id id;
+                        uint64_t *size;
 
                         memset(&id, 0, sizeof(id));
                         memcpy(id.id, it->data(), DNET_ID_SIZE);
+                        size = (uint64_t *)(it->data() + DNET_ID_SIZE);
+
+                        if (*size != (it->size() - DNET_ID_SIZE - 8))
+                                throw std::runtime_error("Too small record came from bulk_read");
 
                         ID ell_id(id);
 	                ReadResult tmp;
-                        tmp.data.assign(it->data() + DNET_ID_SIZE, it->size() - DNET_ID_SIZE);
+                        tmp.data.assign(it->data() + DNET_ID_SIZE + 8, *size);
 
                         ret.insert(std::make_pair(keys_transformed[ell_id], tmp));
                 }
