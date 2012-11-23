@@ -34,6 +34,29 @@ int main(int argc, char* argv[])
 		std::cout << *it << " ";
 	std::cout << std::endl;
 
+        struct dnet_id id;
+
+        memset(&id, 0, sizeof(id));
+        for (int i = 0; i < DNET_ID_SIZE; i++)
+            id.id[i] = i;
+
+        ID id1(id);
+        Key key1(id1);
+
+        memset(&id, 0, sizeof(id));
+        for (int i = 0; i < DNET_ID_SIZE; i++)
+            id.id[i] = i+16;
+
+        ID id2(id);
+        Key key2(id2);
+
+        std::cout << "ID1: " << id1.str() << " " << (id1 < id2) << " ID2: " << id2.str() << std::endl;
+        std::cout << "Key1: " << key1.str() << " " << (key1 < key2) << " Key2: " << key2.str() << std::endl;
+
+
+
+        
+
 	return 0;
 
 	std::vector<LookupResult>::const_iterator it;

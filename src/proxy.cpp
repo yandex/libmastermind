@@ -654,6 +654,7 @@ EllipticsProxy::bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vec
 	std::vector<int> lgroups = getGroups(keys[0], groups);
 
 	std::vector<std::string> result;
+	std::map<ID, Key> keys_transformed;
 
 	try {
 		elliptics_session.add_groups(lgroups);
@@ -665,13 +666,16 @@ EllipticsProxy::bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vec
                         struct dnet_io_attr io;
                         memset(&io, 0, sizeof(io));
 
-                        if (!it->byId()) {
+                        Key tmp(*it);
+                        if (!tmp.byId()) {
                         
-                                it->transform(elliptics_session);
+                                tmp.transform(elliptics_session);
                         }
 
-                        memcpy(io.id, it->id().dnet_id().id, sizeof(io.id));
+
+                        memcpy(io.id, tmp.id().dnet_id().id, sizeof(io.id));
                         ios.push_back(io);
+                        keys_transformed.insert(std::make_pair(tmp.id(), *it));
                 }
 
                 result = elliptics_session.bulk_read(ios, cflags);
@@ -688,11 +692,10 @@ EllipticsProxy::bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vec
                         memcpy(id.id, it->data(), DNET_ID_SIZE);
 
                         ID ell_id(id);
-                        Key tmp_key(ell_id);
 	                ReadResult tmp;
                         tmp.data.assign(it->data() + DNET_ID_SIZE, it->size() - DNET_ID_SIZE);
 
-                        ret.insert(std::make_pair(tmp_key, tmp));
+                        ret.insert(std::make_pair(keys_transformed[ell_id], tmp));
                 }
 
 	}

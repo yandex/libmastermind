@@ -74,8 +74,10 @@ bool ID::operator==(const ID &id2) const
 bool ID::operator<(const ID &id2) const
 {
         int res = memcmp(id_.id, id2.id_.id, DNET_ID_SIZE);
+        if (res == 0)
+            res = id_.type - id2.id_.type;
 
-        return (res < 0) && id_.type < id2.id_.type;
+        return (res < 0);
 }
 
 std::string ID::str() const
