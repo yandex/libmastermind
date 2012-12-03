@@ -325,6 +325,19 @@ public:
 		return bulk_read_impl(keys, cflags, groups);
 	}
 
+	BOOST_PARAMETER_MEMBER_FUNCTION(
+		(std::vector<EllipticsProxy::remote>), lookup_addr, tag,
+		(required
+			(key, (Key))
+		)
+		(optional
+			(groups, (const std::vector<int>), std::vector<int>())
+		)
+	)
+	{
+		return lookup_addr_impl(key, groups);
+	}
+
 #ifdef HAVE_METABASE
 	BOOST_PARAMETER_MEMBER_FUNCTION(
 		(std::vector<int>), get_metabalancer_groups, tag,
@@ -360,6 +373,8 @@ private:
 				uint64_t limit_start, uint64_t limit_num, const std::vector<int> &groups, Key &key);
 
 	std::map<Key, ReadResult> bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vector<int> &groups);
+
+        std::vector<EllipticsProxy::remote> lookup_addr_impl(Key &key, std::vector<int> &groups);
 
 
 	std::vector<LookupResult> parse_lookup(Key &key, std::string &l);

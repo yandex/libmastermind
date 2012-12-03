@@ -720,6 +720,36 @@ EllipticsProxy::bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vec
 	return ret;
 }
 
+std::vector<EllipticsProxy::remote> EllipticsProxy::lookup_addr_impl(Key &key, std::vector<int> &groups)
+{
+	session elliptics_session(*elliptics_node_);
+	std::vector<int> lgroups = getGroups(key, groups);
+
+    std::vector<EllipticsProxy::remote> addrs;
+
+    for (std::vector<int>::const_iterator it = groups.begin();
+            it != groups.end(); it++)
+    {
+        std::string ret;
+
+        if (key.byId()) {
+            struct dnet_id id = key.id().dnet_id();
+            id.group_id = *it;
+            ret = elliptics_session.lookup_addr(id);
+
+        } else {
+            ret = elliptics_session.lookup_addr(key.filename(), *it);
+        }
+
+        size_t pos = ret.find(':');
+        EllipticsProxy::remote addr(ret.substr(0, pos), boost::lexical_cast<int>(ret.substr(pos+1, std::string::npos)));
+
+        addrs.push_back(addr);
+    }
+
+    return addrs;
+}
+
 /*
 void
 EllipticsProxy::rangeDeleteHandler(fastcgi::Request *request) {
