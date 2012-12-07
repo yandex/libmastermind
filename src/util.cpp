@@ -138,7 +138,15 @@ bool Key::operator<(const Key &key2) const
             } else {
                 return false;
             }
-        }
+	}
+}
+
+elliptics::Key::operator ioremap::elliptics::key() const
+{
+	if (byId_)
+		return ioremap::elliptics::key(id_.dnet_id());
+	else
+		return ioremap::elliptics::key(filename_, column_);
 }
 
 

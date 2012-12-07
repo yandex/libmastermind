@@ -105,6 +105,8 @@ public:
         bool operator==(const Key &key2) const;
         bool operator<(const Key &key2) const;
 
+	operator ioremap::elliptics::key() const;
+
 	bool byId() const;
 	const std::string filename() const;
 	const int column() const;
@@ -407,7 +409,7 @@ private:
 	std::vector<int>                            groups_;
 */
 private:
-	boost::shared_ptr<ioremap::elliptics::log_file>  elliptics_log_;
+	boost::shared_ptr<ioremap::elliptics::file_logger>  elliptics_log_;
 	boost::shared_ptr<ioremap::elliptics::node>      elliptics_node_;
 	std::vector<int>                            groups_;
 
