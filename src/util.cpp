@@ -52,6 +52,9 @@ EllipticsProxy::config::config() :
 				replication_count(0),
 				chunk_size(0),
 				eblob_style_path(true)
+#ifdef HAVE_METABASE
+				,group_weights_refresh_period(60)
+#endif
 { }
 
 ID::ID() : empty_(true)

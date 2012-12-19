@@ -71,6 +71,26 @@ namespace msgpack {
 
         return v;
     }
+
+    inline elliptics::MetabaseGroupWeightsResponse& operator >> (
+            object o,
+            elliptics::MetabaseGroupWeightsResponse& v) {
+        if (o.type != type::MAP) {
+            throw type_error();
+        }
+
+        msgpack::object_kv* p = o.via.map.ptr;
+        msgpack::object_kv* const pend = o.via.map.ptr + o.via.map.size;
+
+        for (; p < pend; ++p) {
+            elliptics::MetabaseGroupWeightsResponse::SizedGroups sized_groups;
+            p->key.convert(&sized_groups.size);
+            p->val.convert(&sized_groups.weighted_groups);
+            v.info.push_back(sized_groups);
+        }
+
+        return v;
+    }
 }
 #endif /* HAVE_METABASE */
 
@@ -106,8 +126,11 @@ EllipticsProxy::EllipticsProxy(const EllipticsProxy::config &c) :
 				eblob_style_path_(c.eblob_style_path)
 #ifdef HAVE_METABASE
 				,cocaine_dealer_(NULL)
+				,metabase_usage_(PROXY_META_OPTIONAL)
 				,metabase_write_addr_(c.metabase_write_addr)
 				,metabase_read_addr_(c.metabase_read_addr)
+				,weight_cache_(get_group_weighs_cache())
+				,group_weights_update_period_(c.group_weights_refresh_period)
 #endif /* HAVE_METABASE */
 {
 	if (!c.remotes.size()) {
@@ -144,9 +167,17 @@ EllipticsProxy::EllipticsProxy(const EllipticsProxy::config &c) :
 	}
 
 	cocaine_default_policy_.timeout = c.wait_timeout;
-	
+	weight_cache_update_thread_ = boost::thread(boost::bind(&EllipticsProxy::collectGroupWeightsLoop, this));
 #endif /* HAVE_METABASE */
 }
+
+#ifdef HAVE_METABASE
+EllipticsProxy::~EllipticsProxy()
+{
+	weight_cache_update_thread_.interrupt();
+	weight_cache_update_thread_.join();
+}
+#endif /* HAVE_METABASE */
 
 std::vector<LookupResult>
 EllipticsProxy::parse_lookup(Key &key, std::string &l)
@@ -334,8 +365,8 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 #ifdef HAVE_METABASE
 	if (metabase_usage_ >= PROXY_META_OPTIONAL) {
 		try {
-			std::vector<int> mgroups = get_metabalancer_groups_impl(replication_count, size, key);
 			if (groups.size() != replication_count || metabase_usage_ == PROXY_META_MANDATORY) {
+				std::vector<int> mgroups = get_metabalancer_groups_impl(replication_count, size, key);
 				lgroups = mgroups;
 			}
 			use_metabase = 1;
@@ -511,9 +542,6 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 			uploadMetaInfo(lgroups, key);
 		}
 #endif /* HAVE_METABASE */
-
-		elliptics_session.set_groups(groups_);
-
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
@@ -1441,34 +1469,87 @@ EllipticsProxy::getMetaInfo(const Key &key) const {
 	}
 }
 
+void EllipticsProxy::collectGroupWeights()
+{
+    if (!cocaine_dealer_.get()) {
+        throw std::runtime_error("Dealer is not initialized");
+    }
+
+    MetabaseGroupWeightsRequest req;
+    MetabaseGroupWeightsResponse resp;
+
+    req.stamp = ++metabase_current_stamp_;
+
+    cocaine::dealer::message_path_t path("mastermind", "get_group_weights");
+
+    boost::shared_ptr<cocaine::dealer::response_t> future;
+    future = cocaine_dealer_->send_message(req, path, cocaine_default_policy_);
+
+    cocaine::dealer::data_container chunk;
+    future->get(&chunk);
+
+    msgpack::unpacked unpacked;
+    msgpack::unpack(&unpacked, static_cast<const char*>(chunk.data()), chunk.size());
+
+    unpacked.get().convert(&resp);
+
+    weight_cache_->update(resp);
+}
+
+void EllipticsProxy::collectGroupWeightsLoop()
+{
+    while(!boost::this_thread::interruption_requested()) {
+        int wait_seconds;
+        try {
+            wait_seconds = 1;
+            collectGroupWeights();
+            elliptics_log_->log(DNET_LOG_INFO, "Updated group weights");
+            wait_seconds = group_weights_update_period_;
+        } catch (const msgpack::unpack_error &e) {
+            std::stringstream msg;
+            msg << "Error while unpacking message: " << e.what();
+            elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+        } catch (const cocaine::dealer::dealer_error &e) {
+            std::stringstream msg;
+            msg << "Cocaine dealer error: " << e.what();
+            elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+        } catch (const cocaine::dealer::internal_error &e) {
+            std::stringstream msg;
+            msg << "Cocaine internal error: " << e.what();
+            elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+        } catch (const std::exception &e) {
+            std::stringstream msg;
+            msg << "Error while updating cache: " << e.what();
+            elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+        }
+        boost::this_thread::sleep(boost::posix_time::seconds(wait_seconds));
+    }
+
+}
+
 std::vector<int> EllipticsProxy::get_metabalancer_groups_impl(uint64_t count, uint64_t size, Key &key)
 {
-	if (!cocaine_dealer_.get()) {
-		throw std::runtime_error("Dealer is not initialized");
-	}
-
-	struct dnet_id id = key.id().dnet_id();
-
-	MetabaseRequest req;
-	MetabaseResponse resp;
-
-	req.groups_num = count;
-	req.stamp = ++metabase_current_stamp_;
-	req.id.assign(id.id, id.id+DNET_ID_SIZE);
 
 	try {
-		cocaine::dealer::message_path_t path("mastermind", "balance");
+	    std::vector<int> result = weight_cache_->choose(count);
 
-		boost::shared_ptr<cocaine::dealer::response_t> future;
-		future = cocaine_dealer_->send_message(req, path, cocaine_default_policy_);
+	    std::ostringstream msg;
 
-		cocaine::dealer::data_container chunk;
-		future->get(&chunk);
+	    msg << "Chosen group: [";
 
-		msgpack::unpacked unpacked;
-		msgpack::unpack(&unpacked, static_cast<const char*>(chunk.data()), chunk.size());
-
-		unpacked.get().convert(&resp);
+	    std::vector<int>::const_iterator e = result.end();
+	    for(
+	            std::vector<int>::const_iterator it = result.begin();
+	            it != e;
+	            ++it) {
+	        if(it != result.begin()) {
+	            msg << ", ";
+	        }
+	        msg << *it;
+	    }
+	    msg << "]\n";
+	    elliptics_log_->log(DNET_LOG_INFO, msg.str().c_str());
+	    return result;
 
 	} catch (const msgpack::unpack_error &e) {
 		std::stringstream msg;
@@ -1486,9 +1567,6 @@ std::vector<int> EllipticsProxy::get_metabalancer_groups_impl(uint64_t count, ui
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
-		
-
-	return resp.groups;
 }
 
 GroupInfoResponse EllipticsProxy::get_metabalancer_group_info_impl(int group)
