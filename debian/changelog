@@ -1,3 +1,9 @@
+libelliptics-proxy (0.0.11) unstable; urgency=low
+
+  * Fixed bad_alloc exception
+
+ -- Anton Kortunov <toshik@yandex-team.ru>  Wed, 19 Dec 2012 21:40:27 +0400
+
 libelliptics-proxy (0.0.10) unstable; urgency=low
 
   * Compilation fixes due to changed cpp binding

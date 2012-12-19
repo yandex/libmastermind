@@ -106,6 +106,7 @@ EllipticsProxy::EllipticsProxy(const EllipticsProxy::config &c) :
 				eblob_style_path_(c.eblob_style_path)
 #ifdef HAVE_METABASE
 				,cocaine_dealer_(NULL)
+				,metabase_usage_(PROXY_META_NONE)
 				,metabase_write_addr_(c.metabase_write_addr)
 				,metabase_read_addr_(c.metabase_read_addr)
 #endif /* HAVE_METABASE */
@@ -511,8 +512,6 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 			uploadMetaInfo(lgroups, key);
 		}
 #endif /* HAVE_METABASE */
-
-		elliptics_session.set_groups(groups_);
 
 	}
 	catch (const std::exception &e) {
