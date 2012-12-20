@@ -144,7 +144,7 @@ EllipticsProxy::EllipticsProxy(const EllipticsProxy::config &c) :
 		cocaine_dealer_.reset(new cocaine::dealer::dealer_t(c.cocaine_config));
 	}
 
-	cocaine_default_policy_.timeout = c.wait_timeout;
+	cocaine_default_policy_.deadline= c.wait_timeout;
 	
 #endif /* HAVE_METABASE */
 }
