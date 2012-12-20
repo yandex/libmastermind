@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
 	c.log_mask = 1;
 	c.cocaine_config = std::string("/home/toshik/cocaine/cocaine_config.json");
 
-	c.remotes.push_back(EllipticsProxy::remote("elisto19f.dev.yandex.net", 1025));
+	c.remotes.push_back(EllipticsProxy::remote("elisto22f.dev.yandex.net", 1025));
 
 	EllipticsProxy proxy(c);
 
@@ -21,17 +21,24 @@ int main(int argc, char* argv[])
 
 	std::string data("test3");
 
-	std::vector<int> lg = proxy.get_metabalancer_groups(3);
+	/*
+ 	std::vector<int> lg = proxy.get_metabalancer_groups(3);
 
 	std::cout << "Got groups: " << std::endl;
 	for (std::vector<int>::const_iterator it = lg.begin(); it != lg.end(); it++)
 		std::cout << *it << " ";
 	std::cout << std::endl;
+	*/
 
-	GroupInfoResponse gi = proxy.get_metabalancer_group_info(1);
-	std::cout << "Got info from mastermind: status: " << gi.status << ", " << gi.nodes.size() << "groups: ";
+	GroupInfoResponse gi = proxy.get_metabalancer_group_info(103);
+	std::cout << "Got info from mastermind: status: " << gi.status << ", " << gi.nodes.size() << " groups: ";
 	for (std::vector<int>::const_iterator it = gi.couples.begin(); it != gi.couples.end(); it++)
 		std::cout << *it << " ";
+	std::cout << std::endl;
+
+	std::vector<EllipticsProxy::remote> remotes = proxy.lookup_addr(k, gi.couples);
+	for (std::vector<EllipticsProxy::remote>::const_iterator it = remotes.begin(); it != remotes.end(); ++it)
+		std::cout << it->host << " ";
 	std::cout << std::endl;
 
         struct dnet_id id;

@@ -737,11 +737,10 @@ std::vector<EllipticsProxy::remote> EllipticsProxy::lookup_addr_impl(Key &key, s
 
         if (key.byId()) {
             struct dnet_id id = key.id().dnet_id();
-            id.group_id = *it;
-	    ret = elliptics_session.lookup_address(id);
+	    ret = elliptics_session.lookup_address(id, *it);
 
         } else {
-	    ret = elliptics_session.lookup_address(ioremap::elliptics::key(key.filename(), *it));
+	    ret = elliptics_session.lookup_address(key.filename(), *it);
         }
 
         size_t pos = ret.find(':');
