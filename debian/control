@@ -6,6 +6,8 @@ Build-Depends: debhelper (>= 5),
  elliptics-dev (>= 2.17),
  elliptics-client (>= 2.17),
  libcurl4-openssl-dev,
+ libcocaine-dealer-dev (=0.9.4),
+ libmsgpack-dev,
  cmake (>= 2.6)
 Standards-Version: 3.9.1
 
