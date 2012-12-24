@@ -31,6 +31,7 @@
 
 #include <boost/shared_ptr.hpp>
 #include <boost/tokenizer.hpp>
+#include <boost/thread.hpp>
 
 #define BOOST_PARAMETER_MAX_ARITY 10
 #include <boost/parameter.hpp>
@@ -47,6 +48,38 @@ enum metabase_type {
 };
 
 #ifdef HAVE_METABASE
+
+struct MetabaseGroupWeightsRequest {
+    uint64_t stamp;
+    MSGPACK_DEFINE(stamp)
+};
+
+struct MetabaseGroupWeightsResponse {
+    struct GroupWithWeight {
+        std::vector<int> group_ids;
+        uint64_t weight;
+        MSGPACK_DEFINE(group_ids, weight)
+    };
+    struct SizedGroups {
+        uint64_t size;
+        std::vector<GroupWithWeight> weighted_groups;
+        MSGPACK_DEFINE(size, weighted_groups)
+    };
+    std::vector<SizedGroups> info;
+    MSGPACK_DEFINE(info)
+};
+
+class group_weights_cache_interface {
+public:
+    virtual ~group_weights_cache_interface() {};
+
+    virtual bool update(MetabaseGroupWeightsResponse &resp) = 0;
+    virtual std::vector<int> choose(uint64_t count) = 0;
+    virtual bool initialized() = 0;
+};
+
+std::auto_ptr<group_weights_cache_interface> get_group_weighs_cache();
+
 struct MetabaseRequest {
 	int		groups_num;
 	uint64_t	stamp;
@@ -216,6 +249,7 @@ public:
 		std::string            metabase_read_addr;
 
 		std::string            cocaine_config;
+		int                    group_weights_refresh_period;
 #endif /* HAVE_METABASE */
 	};
 
@@ -226,7 +260,9 @@ private:
 
 public:
 	EllipticsProxy(const EllipticsProxy::config &c);
-	//virtual ~EllipticsProxy();
+#ifdef HAVE_METABASE
+	virtual ~EllipticsProxy();
+#endif //HAVE_METABASE
 
 public:
 	BOOST_PARAMETER_MEMBER_FUNCTION(
@@ -387,6 +423,8 @@ private:
 	std::vector<int> getMetaInfo(const Key &key) const;
 	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, Key &key);
 	GroupInfoResponse get_metabalancer_group_info_impl(int group);
+	bool collectGroupWeights();
+	void collectGroupWeightsLoop();
 #endif /* HAVE_METABASE */
 
 /*
@@ -430,6 +468,10 @@ private:
 
 	std::string                                 metabase_write_addr_;
 	std::string                                 metabase_read_addr_;
+
+	std::auto_ptr<group_weights_cache_interface> weight_cache_;
+	const int                                   group_weights_update_period_;
+	boost::thread                               weight_cache_update_thread_;
 #endif /* HAVE_METABASE */
 };
 
