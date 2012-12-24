@@ -47,7 +47,7 @@ public:
     virtual void update(MetabaseGroupWeightsResponse &resp);
     virtual std::vector<int> choose(uint64_t count);
 private:
-    boost::mutex mutex_;
+    boost::shared_mutex shared_mutex_;
     std::map<uint64_t, weighted_groups> map_;
 };
 
@@ -68,12 +68,12 @@ void group_weights_cache_impl::update(MetabaseGroupWeightsResponse &resp) {
         std::swap(local_map[it->size], groups);
 
     }
-    boost::lock_guard<boost::mutex> lock(mutex_);
+    boost::unique_lock<boost::shared_mutex> lock(shared_mutex_);
     map_.swap(local_map);
 }
 
 std::vector<int> group_weights_cache_impl::choose(uint64_t count) {
-    boost::lock_guard<boost::mutex> lock(mutex_);
+    boost::shared_lock<boost::shared_mutex> lock(shared_mutex_);
     return map_[count].get();
 }
 
