@@ -73,8 +73,9 @@ class group_weights_cache_interface {
 public:
     virtual ~group_weights_cache_interface() {};
 
-    virtual void update(MetabaseGroupWeightsResponse &resp) = 0;
+    virtual bool update(MetabaseGroupWeightsResponse &resp) = 0;
     virtual std::vector<int> choose(uint64_t count) = 0;
+    virtual bool initialized() = 0;
 };
 
 std::auto_ptr<group_weights_cache_interface> get_group_weighs_cache();
@@ -422,7 +423,7 @@ private:
 	std::vector<int> getMetaInfo(const Key &key) const;
 	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, Key &key);
 	GroupInfoResponse get_metabalancer_group_info_impl(int group);
-	void collectGroupWeights();
+	bool collectGroupWeights();
 	void collectGroupWeightsLoop();
 #endif /* HAVE_METABASE */
 

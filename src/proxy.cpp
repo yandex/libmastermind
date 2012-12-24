@@ -1469,7 +1469,7 @@ EllipticsProxy::getMetaInfo(const Key &key) const {
 	}
 }
 
-void EllipticsProxy::collectGroupWeights()
+bool EllipticsProxy::collectGroupWeights()
 {
     if (!cocaine_dealer_.get()) {
         throw std::runtime_error("Dealer is not initialized");
@@ -1493,18 +1493,15 @@ void EllipticsProxy::collectGroupWeights()
 
     unpacked.get().convert(&resp);
 
-    weight_cache_->update(resp);
+    return weight_cache_->update(resp);
 }
 
 void EllipticsProxy::collectGroupWeightsLoop()
 {
     while(!boost::this_thread::interruption_requested()) {
-        int wait_seconds;
         try {
-            wait_seconds = 1;
             collectGroupWeights();
             elliptics_log_->log(DNET_LOG_INFO, "Updated group weights");
-            wait_seconds = group_weights_update_period_;
         } catch (const msgpack::unpack_error &e) {
             std::stringstream msg;
             msg << "Error while unpacking message: " << e.what();
@@ -1522,15 +1519,17 @@ void EllipticsProxy::collectGroupWeightsLoop()
             msg << "Error while updating cache: " << e.what();
             elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
         }
-        boost::this_thread::sleep(boost::posix_time::seconds(wait_seconds));
+        boost::this_thread::sleep(boost::posix_time::seconds(group_weights_update_period_));
     }
 
 }
 
 std::vector<int> EllipticsProxy::get_metabalancer_groups_impl(uint64_t count, uint64_t size, Key &key)
 {
-
 	try {
+	    if(!weight_cache_->initialized() && !collectGroupWeights()) {
+	        return std::vector<int>();
+	    }
 	    std::vector<int> result = weight_cache_->choose(count);
 
 	    std::ostringstream msg;

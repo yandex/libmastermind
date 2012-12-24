@@ -44,8 +44,9 @@ const std::vector<int> &weighted_groups::get() const {
 class group_weights_cache_impl : public group_weights_cache_interface {
 public:
     virtual ~group_weights_cache_impl();
-    virtual void update(MetabaseGroupWeightsResponse &resp);
+    virtual bool update(MetabaseGroupWeightsResponse &resp);
     virtual std::vector<int> choose(uint64_t count);
+    virtual bool initialized();
 private:
     boost::shared_mutex shared_mutex_;
     std::map<uint64_t, weighted_groups> map_;
@@ -54,7 +55,7 @@ private:
 group_weights_cache_impl::~group_weights_cache_impl()
 {}
 
-void group_weights_cache_impl::update(MetabaseGroupWeightsResponse &resp) {
+bool group_weights_cache_impl::update(MetabaseGroupWeightsResponse &resp) {
     std::map<uint64_t, weighted_groups> local_map;
     typedef std::vector<MetabaseGroupWeightsResponse::SizedGroups>::const_iterator resp_iterator;
     resp_iterator e = resp.info.end();
@@ -66,15 +67,23 @@ void group_weights_cache_impl::update(MetabaseGroupWeightsResponse &resp) {
             groups.add(wg_it->group_ids, wg_it->weight);
         }
         std::swap(local_map[it->size], groups);
-
     }
     boost::unique_lock<boost::shared_mutex> lock(shared_mutex_);
-    map_.swap(local_map);
+    if(!local_map.empty()) {
+        map_.swap(local_map);
+        return true;
+    }
+    return false;
 }
 
 std::vector<int> group_weights_cache_impl::choose(uint64_t count) {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex_);
     return map_[count].get();
+}
+
+bool group_weights_cache_impl::initialized() {
+    boost::shared_lock<boost::shared_mutex> lock(shared_mutex_);
+    return !map_.empty();
 }
 
 std::auto_ptr<group_weights_cache_interface> get_group_weighs_cache() {
