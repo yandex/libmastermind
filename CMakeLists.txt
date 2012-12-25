@@ -3,8 +3,11 @@ cmake_minimum_required( VERSION 2.6 )
 set( LIB elliptics-proxy) 
 project( ${LIB} ) 
  
-set( MAJOR_VERSION 0.0 )
-set( MINOR_VERSION 2 )
+FILE (READ "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog" DEBCHANGELOG)
+
+string(REGEX MATCH "([0-9]+\\.[0-9]+\\.[0-9]+)" DEBFULLVERSION "${DEBCHANGELOG}")
+STRING (REGEX MATCH "([0-9]+\\.[0-9]+)" MAJOR_VERSION "${DEBFULLVERSION}")
+STRING (REGEX MATCH "([0-9]+$)" MINOR_VERSION "${DEBFULLVERSION}")
  
 option(WITH_METABASE "Build with metabase and metabalancer support" ON)
 SET(HAVE_METABASE false)
