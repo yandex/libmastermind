@@ -12,7 +12,7 @@ STRING (REGEX MATCH "([0-9]+$)" MINOR_VERSION "${DEBFULLVERSION}")
 option(WITH_METABASE "Build with metabase and metabalancer support" ON)
 SET(HAVE_METABASE false)
 
-SET(CMAKE_CXX_FLAGS "-O0 -Wall -pedantic")
+SET(CMAKE_CXX_FLAGS "-O0 -Wall -pedantic -std=c++0x")
 
 find_package(Boost COMPONENTS system thread REQUIRED)
 

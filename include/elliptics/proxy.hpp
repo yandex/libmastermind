@@ -415,7 +415,8 @@ private:
         std::vector<EllipticsProxy::remote> lookup_addr_impl(Key &key, std::vector<int> &groups);
 
 
-	std::vector<LookupResult> parse_lookup(Key &key, std::string &l);
+	LookupResult parse_lookup(const ioremap::elliptics::lookup_result &l);
+	std::vector<LookupResult> parse_lookup(const ioremap::elliptics::write_result &l);
 	std::vector<int> getGroups(Key &key, const std::vector<int> &groups, int count = 0) const;
 
 #ifdef HAVE_METABASE
