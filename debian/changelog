@@ -1,3 +1,9 @@
+libelliptics-proxy (0.1.1) unstable; urgency=low
+
+  * Do not update balancer weights if cocaine config is not present
+
+ -- Anton Kortunov <toshik@yandex-team.ru>  Tue, 29 Jan 2013 16:48:25 +0400
+
 libelliptics-proxy (0.1.0) unstable; urgency=low
 
   * New major version

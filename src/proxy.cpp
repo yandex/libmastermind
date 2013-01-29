@@ -167,7 +167,9 @@ EllipticsProxy::EllipticsProxy(const EllipticsProxy::config &c) :
 	}
 
 	cocaine_default_policy_.deadline = c.wait_timeout;
-	weight_cache_update_thread_ = boost::thread(boost::bind(&EllipticsProxy::collectGroupWeightsLoop, this));
+	if (cocaine_dealer_.get()) {
+		weight_cache_update_thread_ = boost::thread(boost::bind(&EllipticsProxy::collectGroupWeightsLoop, this));
+	}
 #endif /* HAVE_METABASE */
 }
 
