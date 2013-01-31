@@ -12,7 +12,8 @@ Build-Depends: debhelper (>= 5),
  elliptics-client (>= 2.21),
  libcurl4-openssl-dev,
  libcocaine-dealer-dev (=0.9.4),
- libmsgpack-dev
+ libmsgpack-dev,
+ eblob (= 0.17.8)
 Standards-Version: 3.9.1
 
 Package: libelliptics-proxy
