@@ -3,12 +3,14 @@ Section: net
 Priority: optional
 Maintainer: Anton Kortunov <toshik@yandex-team.ru>
 Build-Depends: debhelper (>= 5),
+ cdbs,
+ cmake (>= 2.6),
+ libboost-dev,
  elliptics-dev (>= 2.21),
  elliptics-client (>= 2.21),
  libcurl4-openssl-dev,
  libcocaine-dealer-dev (=0.9.4),
- libmsgpack-dev,
- cmake (>= 2.6)
+ libmsgpack-dev
 Standards-Version: 3.9.1
 
 Package: libelliptics-proxy
@@ -23,6 +25,6 @@ Description: Smart client for Elliptics storage (debug symbols)
 
 Package: libelliptics-proxy-dev
 Architecture: any
-Depends: libelliptics-proxy (= ${Source-Version})
+Depends: libelliptics-proxy (= ${Source-Version}), libboost-dev, libcocaine-dealer-dev (=0.9.4), libmsgpack-dev
 Description: Smart client for Elliptics storage (developer files)
 
