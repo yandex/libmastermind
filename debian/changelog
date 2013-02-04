@@ -1,4 +1,4 @@
-libelliptics-proxy (0.1.2) unstable; urgency=low
+libelliptics-proxy (0.1.1-ell21) unstable; urgency=low
 
   * Depend on libcocaine-dealer-dev >= 0.9.10000
 
