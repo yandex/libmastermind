@@ -1,3 +1,9 @@
+libelliptics-proxy (0.1.2) unstable; urgency=low
+
+  * Depend on libcocaine-dealer-dev >= 0.9.10000
+
+ -- Anton Kortunov <toshik@yandex-team.ru>  Mon, 04 Feb 2013 20:39:05 +0400
+
 libelliptics-proxy (0.1.1) unstable; urgency=low
 
   * Do not update balancer weights if cocaine config is not present
