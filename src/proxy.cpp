@@ -412,11 +412,11 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 			if (key.byId()) {
 				lookup = elliptics_session.write_data(id, content, offset);
 			} else {
-				if (ioflags && DNET_IO_FLAGS_PREPARE) {
+				if (ioflags & DNET_IO_FLAGS_PREPARE) {
 					lookup = elliptics_session.write_prepare(key, content, offset, size);
-				} else if (ioflags && DNET_IO_FLAGS_COMMIT) {
+				} else if (ioflags & DNET_IO_FLAGS_COMMIT) {
 					lookup = elliptics_session.write_commit(key, content, offset, size);
-				} else if (ioflags && DNET_IO_FLAGS_PLAIN_WRITE) {
+				} else if (ioflags & DNET_IO_FLAGS_PLAIN_WRITE) {
 					lookup = elliptics_session.write_plain(key, content, offset);
 				} else {
 					if (chunked) {
