@@ -340,12 +340,12 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 					uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 					unsigned int replication_count, std::vector<boost::shared_ptr<embed> > embeds)
 {
-	class Healper {
+	class Helper {
 	public:
 		typedef std::vector<LookupResult> LookupResults;
 		typedef std::vector <int> groups_t;
 
-		Healper (int success_copies_num, int replication_count, const groups_t desired_groups)
+		Helper (int success_copies_num, int replication_count, const groups_t desired_groups)
 			: success_copies_num (success_copies_num)
 			, replication_count (replication_count)
 			, desired_groups (desired_groups)
@@ -367,6 +367,14 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 			}
 
 			upload_groups.swap (groups);
+		}
+
+		void fix_size (size_t size) {
+			std::string str_size = boost::lexical_cast <std::string> (size);
+			for (auto it = ret.begin (), end = ret.end (); it != end; ++it) {
+				std::string &path = it->path;
+				path.replace (path.begin () + path.rfind (':') + 1, path.end (), str_size);
+			}
 		}
 
 		const groups_t &get_upload_groups () const {
@@ -450,7 +458,7 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 	if (replication_count != 0 && (size_t)replication_count < lgroups.size ())
 		lgroups.erase (lgroups.begin () + replication_count, lgroups.end ());
 
-	Healper healper (success_copies_num_, replication_count, lgroups);
+	Helper helper (success_copies_num_, replication_count, lgroups);
 
 	try {
 		elliptics_session.set_groups(lgroups);
@@ -495,14 +503,15 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 					if (chunked) {
 						std::string write_content;
 						bool first_iter = true;
+						size_t size = content.size ();
 
 						content.substr (offset, chunk_size_).swap (write_content);
 						lookup = elliptics_session.write_prepare(key, write_content, offset, content.size ());
-						healper.update_lookup (parse_lookup (lookup), false);
+						helper.update_lookup (parse_lookup (lookup), false);
 
-						if (healper.upload_is_good ()) {
+						if (helper.upload_is_good ()) {
 							do {
-								elliptics_session.set_groups (healper.get_upload_groups ());
+								elliptics_session.set_groups (helper.get_upload_groups ());
 								offset += chunk_size_;
 								content.substr (offset, chunk_size_).swap (write_content);
 
@@ -510,10 +519,12 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 									lookup = elliptics_session.write_commit (key, write_content, offset, 0);
 								else
 									lookup = elliptics_session.write_plain(key, write_content, offset);
-								healper.update_lookup (parse_lookup (lookup), first_iter);
+								helper.update_lookup (parse_lookup (lookup), first_iter);
 								first_iter = false;
-							} while (healper.upload_is_good () && (offset + chunk_size_ < content.length ()));
+							} while (helper.upload_is_good () && (offset + chunk_size_ < content.length ()));
 						}
+
+						helper.fix_size (size);
 
 					} else {
 						lookup = elliptics_session.write_data(key, content, offset);
@@ -522,16 +533,16 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 			}
 
 			if (!chunked)
-				healper.update_lookup (parse_lookup (lookup));
+				helper.update_lookup (parse_lookup (lookup));
 
-			if (!healper.upload_is_good ()) {
+			if (!helper.upload_is_good ()) {
 				elliptics_session.set_groups (lgroups);
 				elliptics_session.remove (key.filename ());
 				throw std::runtime_error("Not enough copies was written, or problems with chunked upload");
 			}
 
-			if (chunked && healper.has_incomplete_groups ()) {
-				elliptics_session.set_groups (healper.get_incomplete_groups ());
+			if (chunked && helper.has_incomplete_groups ()) {
+				elliptics_session.set_groups (helper.get_incomplete_groups ());
 				elliptics_session.remove (key.filename ());
 			}
 
@@ -551,7 +562,7 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 		memset(&ts, 0, sizeof(ts));
 
 		elliptics_session.set_cflags(0);
-		elliptics_session.write_metadata(key, key.filename(), healper.get_upload_groups (), ts);
+		elliptics_session.write_metadata(key, key.filename(), helper.get_upload_groups (), ts);
 		elliptics_session.set_cflags(ioflags);
 
 #ifdef HAVE_METABASE
@@ -573,7 +584,7 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 		throw;
 	}
 
-	return healper.get_result ();
+	return helper.get_result ();
 }
 
 std::vector<std::string> EllipticsProxy::range_get_impl(Key &from, Key &to, uint64_t cflags, uint64_t ioflags,
