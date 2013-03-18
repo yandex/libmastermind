@@ -38,6 +38,92 @@
 #include "boost_threaded.hpp"
 #include "curl_wrapper.hpp"
 
+namespace {
+class Helper {
+public:
+	typedef std::vector<elliptics::LookupResult> LookupResults;
+	typedef std::vector <int> groups_t;
+
+	Helper (int success_copies_num, int replication_count, const groups_t desired_groups)
+		: success_copies_num (success_copies_num)
+		, replication_count (replication_count)
+		, desired_groups (desired_groups)
+	{
+	}
+
+	void update_lookup (const LookupResults &tmp, bool update_ret = true) {
+		groups_t groups;
+		const size_t size = tmp.size ();
+		groups.reserve (size);
+
+		if (update_ret) {
+			ret.reserve (ret.size () + size);
+			ret.insert (ret.end (), tmp.begin (), tmp.end ());
+		}
+
+		for (auto it = tmp.begin (), end = tmp.end (); it != end; ++it) {
+			groups.push_back (it->group);
+		}
+
+		upload_groups.swap (groups);
+	}
+
+	void fix_size (size_t size) {
+		std::string str_size = boost::lexical_cast <std::string> (size);
+		for (auto it = ret.begin (), end = ret.end (); it != end; ++it) {
+			std::string &path = it->path;
+			path.replace (path.begin () + path.rfind (':') + 1, path.end (), str_size);
+		}
+	}
+
+	const groups_t &get_upload_groups () const {
+		return upload_groups;
+	}
+
+	bool upload_is_good () const {
+		switch (success_copies_num) {
+		case elliptics::SUCCESS_COPIES_TYPE__ANY:
+			return upload_groups.size () >= 1;
+		case elliptics::SUCCESS_COPIES_TYPE__QUORUM:
+			return upload_groups.size () >= static_cast <size_t> ((replication_count >> 1) + 1);
+		case elliptics::SUCCESS_COPIES_TYPE__ALL:
+			return upload_groups.size () == static_cast <size_t> (replication_count);
+		default:
+			return upload_groups.size () == static_cast <size_t> (success_copies_num);
+		}
+	}
+
+	bool has_incomplete_groups () const {
+		return desired_groups.size () != upload_groups.size ();
+	}
+
+	groups_t get_incomplete_groups () {
+		groups_t incomplete_groups;
+		incomplete_groups.reserve (desired_groups.size () - upload_groups.size ());
+		std::sort (desired_groups.begin (), desired_groups.end ());
+		std::sort (upload_groups.begin (), upload_groups.end ());
+		std::set_difference (desired_groups.begin (), desired_groups.end (),
+							 upload_groups.begin (), upload_groups.end (),
+							 std::back_inserter (incomplete_groups));
+		return incomplete_groups;
+	}
+
+	const LookupResults &get_result () const {
+		return ret;
+	}
+
+private:
+
+	int success_copies_num;
+	int replication_count;
+	//
+	LookupResults ret;
+	groups_t desired_groups;
+	groups_t upload_groups;
+
+};
+} // namespace
+
 using namespace ioremap::elliptics;
 
 #ifdef HAVE_METABASE
@@ -340,90 +426,6 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 					uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 					unsigned int replication_count, std::vector<boost::shared_ptr<embed> > embeds)
 {
-	class Helper {
-	public:
-		typedef std::vector<LookupResult> LookupResults;
-		typedef std::vector <int> groups_t;
-
-		Helper (int success_copies_num, int replication_count, const groups_t desired_groups)
-			: success_copies_num (success_copies_num)
-			, replication_count (replication_count)
-			, desired_groups (desired_groups)
-		{
-		}
-
-		void update_lookup (const LookupResults &tmp, bool update_ret = true) {
-			groups_t groups;
-			const size_t size = tmp.size ();
-			groups.reserve (size);
-
-			if (update_ret) {
-				ret.reserve (ret.size () + size);
-				ret.insert (ret.end (), tmp.begin (), tmp.end ());
-			}
-
-			for (auto it = tmp.begin (), end = tmp.end (); it != end; ++it) {
-				groups.push_back (it->group);
-			}
-
-			upload_groups.swap (groups);
-		}
-
-		void fix_size (size_t size) {
-			std::string str_size = boost::lexical_cast <std::string> (size);
-			for (auto it = ret.begin (), end = ret.end (); it != end; ++it) {
-				std::string &path = it->path;
-				path.replace (path.begin () + path.rfind (':') + 1, path.end (), str_size);
-			}
-		}
-
-		const groups_t &get_upload_groups () const {
-			return upload_groups;
-		}
-
-		bool upload_is_good () const {
-			switch (success_copies_num) {
-			case SUCCESS_COPIES_TYPE__ANY:
-				return upload_groups.size () >= 1;
-			case SUCCESS_COPIES_TYPE__ALL:
-				return upload_groups.size () == static_cast <size_t> (replication_count);
-			case SUCCESS_COPIES_TYPE__Q:
-				return upload_groups.size () >= static_cast <size_t> ((replication_count >> 1) + 1);
-			default:
-				return upload_groups.size () == static_cast <size_t> (success_copies_num);
-			}
-		}
-
-		bool has_incomplete_groups () const {
-			return desired_groups.size () != upload_groups.size ();
-		}
-
-		groups_t get_incomplete_groups () {
-			groups_t incomplete_groups;
-			incomplete_groups.reserve (desired_groups.size () - upload_groups.size ());
-			std::sort (desired_groups.begin (), desired_groups.end ());
-			std::sort (upload_groups.begin (), upload_groups.end ());
-			std::set_difference (desired_groups.begin (), desired_groups.end (),
-								 upload_groups.begin (), upload_groups.end (),
-								 std::back_inserter (incomplete_groups));
-			return incomplete_groups;
-		}
-
-		const LookupResults &get_result () const {
-			return ret;
-		}
-
-	private:
-
-		int success_copies_num;
-		int replication_count;
-		//
-		LookupResults ret;
-		groups_t desired_groups;
-		groups_t upload_groups;
-
-	};
-
 	session elliptics_session(*elliptics_node_);
 	bool use_metabase = false;
 
