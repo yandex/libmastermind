@@ -38,6 +38,10 @@
 
 #include <elliptics/cppdef.h>
 
+#define SUCCESS_COPIES_TYPE__ANY -1
+#define SUCCESS_COPIES_TYPE__ALL -2
+#define SUCCESS_COPIES_TYPE__Q -3
+
 namespace elliptics {
 
 enum metabase_type {
