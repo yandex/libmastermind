@@ -356,12 +356,16 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 			groups_t groups;
 			const size_t size = tmp.size ();
 			groups.reserve (size);
-			ret.reserve (ret.size () + size);
+
+			if (update_ret) {
+				ret.reserve (ret.size () + size);
+				ret.insert (ret.end (), tmp.begin (), tmp.end ());
+			}
+
 			for (auto it = tmp.begin (), end = tmp.end (); it != end; ++it) {
-				if (update_ret)
-					ret.push_back (*it);
 				groups.push_back (it->group);
 			}
+
 			upload_groups.swap (groups);
 		}
 
@@ -369,7 +373,7 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 			return upload_groups;
 		}
 
-		bool upload_is_good () {
+		bool upload_is_good () const {
 			switch (success_copies_num) {
 			case SUCCESS_COPIES_TYPE__ANY:
 				return upload_groups.size () >= 1;
@@ -382,11 +386,11 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 			}
 		}
 
-		bool has_incomplete_groups () {
+		bool has_incomplete_groups () const {
 			return desired_groups.size () != upload_groups.size ();
 		}
 
-		groups_t get_incoplete_groups () {
+		groups_t get_incomplete_groups () {
 			groups_t incomplete_groups;
 			incomplete_groups.reserve (desired_groups.size () - upload_groups.size ());
 			std::sort (desired_groups.begin (), desired_groups.end ());
@@ -490,23 +494,26 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 				} else {
 					if (chunked) {
 						std::string write_content;
+						bool first_iter = true;
 
 						content.substr (offset, chunk_size_).swap (write_content);
 						lookup = elliptics_session.write_prepare(key, write_content, offset, content.size ());
-						healper.update_lookup ( parse_lookup (lookup));
+						healper.update_lookup (parse_lookup (lookup), false);
 
-						do {
-							elliptics_session.set_groups (healper.get_upload_groups ());
-							offset += chunk_size_;
-							content.substr (offset, chunk_size_).swap (write_content);
+						if (healper.upload_is_good ()) {
+							do {
+								elliptics_session.set_groups (healper.get_upload_groups ());
+								offset += chunk_size_;
+								content.substr (offset, chunk_size_).swap (write_content);
 
-							if (offset + chunk_size_ >= content.length ())
-								lookup = elliptics_session.write_commit (key, write_content, offset, 0);
-							else
-								lookup = elliptics_session.write_plain(key, write_content, offset);
-
-							healper.update_lookup (parse_lookup (lookup), false);
-						} while (offset + chunk_size_ < content.length ());
+								if (offset + chunk_size_ >= content.length ())
+									lookup = elliptics_session.write_commit (key, write_content, offset, 0);
+								else
+									lookup = elliptics_session.write_plain(key, write_content, offset);
+								healper.update_lookup (parse_lookup (lookup), first_iter);
+								first_iter = false;
+							} while (healper.upload_is_good () && (offset + chunk_size_ < content.length ()));
+						}
 
 					} else {
 						lookup = elliptics_session.write_data(key, content, offset);
@@ -524,7 +531,7 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 			}
 
 			if (chunked && healper.has_incomplete_groups ()) {
-				elliptics_session.set_groups (healper.get_incoplete_groups ());
+				elliptics_session.set_groups (healper.get_incomplete_groups ());
 				elliptics_session.remove (key.filename ());
 			}
 
