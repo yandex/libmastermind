@@ -383,6 +383,22 @@ public:
 		return lookup_addr_impl(key, groups);
 	}
 
+	BOOST_PARAMETER_MEMBER_FUNCTION(
+		(std::map<Key, std::vector<LookupResult> >), bulk_write, tag,
+		(required
+			(keys, (std::vector<Key>))
+			(data, (std::vector <std::string>))
+		)
+		(optional
+			(cflags, (uint64_t), 0)
+			(groups, (const std::vector<int>), std::vector<int>())
+			(replication_count, (unsigned int), 0)
+		)
+	)
+	{
+		return bulk_write_impl(keys, data, cflags, groups, replication_count);
+	}
+
 #ifdef HAVE_METABASE
 	BOOST_PARAMETER_MEMBER_FUNCTION(
 		(std::vector<int>), get_metabalancer_groups, tag,
@@ -420,6 +436,9 @@ private:
 	std::map<Key, ReadResult> bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vector<int> &groups);
 
         std::vector<EllipticsProxy::remote> lookup_addr_impl(Key &key, std::vector<int> &groups);
+
+	std::map<Key, std::vector<LookupResult> > bulk_write_impl(std::vector<Key> &keys, std::vector <std::string> &data, uint64_t cflags,
+											   std::vector<int> &groups, unsigned int replication_count);
 
 
 	LookupResult parse_lookup(const ioremap::elliptics::lookup_result &l);

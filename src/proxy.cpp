@@ -797,6 +797,106 @@ std::vector<EllipticsProxy::remote> EllipticsProxy::lookup_addr_impl(Key &key, s
     return addrs;
 }
 
+std::map<Key, std::vector<LookupResult> > EllipticsProxy::bulk_write_impl (std::vector <Key> &keys, std::vector <std::string> &data, uint64_t cflags,
+										   std::vector<int> &groups, unsigned int replication_count) {
+	std::map<Key, std::vector<LookupResult> > res;
+	std::map<Key, std::vector<int> > res_groups;
+
+	if (!keys.size ())
+		return res;
+
+	session elliptics_session(*elliptics_node_);
+
+	if (replication_count == 0)
+		replication_count = replication_count_;
+
+	std::vector<int> lgroups = getGroups(keys[0], groups);
+
+	std::map<ID, Key> keys_transformed;
+
+	try {
+		if (keys.size () != data.size ())
+			throw std::runtime_error ("counts of keys and data are not equal");
+
+		elliptics_session.set_groups(lgroups);
+
+		std::vector<struct dnet_io_attr> ios;
+		ios.reserve(keys.size());
+
+		for (size_t index = 0; index != keys.size (); ++index) {
+			struct dnet_io_attr io;
+			memset(&io, 0, sizeof(io));
+
+			Key tmp(keys [index]);
+			if (!tmp.byId()) {
+				tmp.transform(elliptics_session);
+			}
+
+			memcpy(io.id, tmp.id().dnet_id().id, sizeof(io.id));
+			io.size = data[index].size ();
+			ios.push_back(io);
+			keys_transformed.insert(std::make_pair(tmp.id(), keys [index]));
+		}
+
+		 write_result result = elliptics_session.bulk_write (ios, data);
+
+		 for (size_t i = 0; i != result.size (); ++i) {
+			 const ioremap::elliptics::lookup_result &lr = result [i];
+			 LookupResult r = parse_lookup (lr);
+			 ID ell_id (lr->command ()->id);
+			 Key key = keys_transformed [ell_id];
+			 res [key].push_back (r);
+			 res_groups [key].push_back (r.group);
+		 }
+
+		 unsigned int replication_need = 0;
+
+		 switch (success_copies_num_) {
+		 case SUCCESS_COPIES_TYPE__ANY:
+			 replication_need = 1;
+			 break;
+		 case SUCCESS_COPIES_TYPE__QUORUM:
+			 replication_need = (replication_count >> 1) + 1;
+			 break;
+		 case SUCCESS_COPIES_TYPE__ALL:
+			 replication_need = replication_count;
+			 break;
+		 default:
+			 replication_need = replication_count;
+		 }
+
+		 auto it = res_groups.begin ();
+		 auto end = res_groups.end ();
+		 for (; it != end; ++it) {
+			 if (it->second.size () < replication_need)
+				 break;
+		 }
+
+		 if (it != end) {
+			 for (auto it = res_groups.begin (), end = res_groups.end (); it != end; ++it) {
+				 elliptics_session.set_groups (it->second);
+				 elliptics_session.remove (it->first.filename ());
+			 }
+			 throw std::runtime_error("Not enough copies was written");
+		 }
+
+	}
+	catch (const std::exception &e) {
+		std::stringstream msg;
+		msg << "can not bulk write data " << e.what() << std::endl;
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+	catch (...) {
+		std::stringstream msg;
+		msg << "can not bulk write data" << std::endl;
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+
+	return res;
+}
+
 /*
 void
 EllipticsProxy::rangeDeleteHandler(fastcgi::Request *request) {
