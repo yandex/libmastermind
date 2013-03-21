@@ -16,6 +16,9 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #include <sstream>
+#include <algorithm>
+#include <iterator>
+#include <iostream>
 
 #include <fcntl.h>
 #include <errno.h>
@@ -34,6 +37,92 @@
 
 #include "boost_threaded.hpp"
 #include "curl_wrapper.hpp"
+
+namespace {
+class Helper {
+public:
+	typedef std::vector<elliptics::LookupResult> LookupResults;
+	typedef std::vector <int> groups_t;
+
+	Helper (int success_copies_num, int replication_count, const groups_t desired_groups)
+		: success_copies_num (success_copies_num)
+		, replication_count (replication_count)
+		, desired_groups (desired_groups)
+	{
+	}
+
+	void update_lookup (const LookupResults &tmp, bool update_ret = true) {
+		groups_t groups;
+		const size_t size = tmp.size ();
+		groups.reserve (size);
+
+		if (update_ret) {
+			ret.reserve (ret.size () + size);
+			ret.insert (ret.end (), tmp.begin (), tmp.end ());
+		}
+
+		for (auto it = tmp.begin (), end = tmp.end (); it != end; ++it) {
+			groups.push_back (it->group);
+		}
+
+		upload_groups.swap (groups);
+	}
+
+	void fix_size (size_t size) {
+		std::string str_size = boost::lexical_cast <std::string> (size);
+		for (auto it = ret.begin (), end = ret.end (); it != end; ++it) {
+			std::string &path = it->path;
+			path.replace (path.begin () + path.rfind (':') + 1, path.end (), str_size);
+		}
+	}
+
+	const groups_t &get_upload_groups () const {
+		return upload_groups;
+	}
+
+	bool upload_is_good () const {
+		switch (success_copies_num) {
+		case elliptics::SUCCESS_COPIES_TYPE__ANY:
+			return upload_groups.size () >= 1;
+		case elliptics::SUCCESS_COPIES_TYPE__QUORUM:
+			return upload_groups.size () >= static_cast <size_t> ((replication_count >> 1) + 1);
+		case elliptics::SUCCESS_COPIES_TYPE__ALL:
+			return upload_groups.size () == static_cast <size_t> (replication_count);
+		default:
+			return upload_groups.size () == static_cast <size_t> (success_copies_num);
+		}
+	}
+
+	bool has_incomplete_groups () const {
+		return desired_groups.size () != upload_groups.size ();
+	}
+
+	groups_t get_incomplete_groups () {
+		groups_t incomplete_groups;
+		incomplete_groups.reserve (desired_groups.size () - upload_groups.size ());
+		std::sort (desired_groups.begin (), desired_groups.end ());
+		std::sort (upload_groups.begin (), upload_groups.end ());
+		std::set_difference (desired_groups.begin (), desired_groups.end (),
+							 upload_groups.begin (), upload_groups.end (),
+							 std::back_inserter (incomplete_groups));
+		return incomplete_groups;
+	}
+
+	const LookupResults &get_result () const {
+		return ret;
+	}
+
+private:
+
+	int success_copies_num;
+	int replication_count;
+	//
+	LookupResults ret;
+	groups_t desired_groups;
+	groups_t upload_groups;
+
+};
+} // namespace
 
 using namespace ioremap::elliptics;
 
@@ -223,7 +312,7 @@ EllipticsProxy::parse_lookup(const ioremap::elliptics::write_result &l)
 	std::vector<LookupResult> ret;
 
 	for (size_t i = 0; i < l.size(); ++i)
-		ret.push_back(parse_lookup(l[0]));
+		ret.push_back(parse_lookup(l[i]));
 
 	return ret;
 }
@@ -338,7 +427,6 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 					unsigned int replication_count, std::vector<boost::shared_ptr<embed> > embeds)
 {
 	session elliptics_session(*elliptics_node_);
-	std::vector<LookupResult> ret;
 	bool use_metabase = false;
 
 	elliptics_session.set_cflags(cflags);
@@ -369,33 +457,28 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 		}
 	}
 #endif /* HAVE_METABASE */
+	if (replication_count != 0 && (size_t)replication_count < lgroups.size ())
+		lgroups.erase (lgroups.begin () + replication_count, lgroups.end ());
+
+	Helper helper (success_copies_num_, replication_count, lgroups);
 
 	try {
 		elliptics_session.set_groups(lgroups);
 
 		bool chunked = false;
-		boost::uint64_t chunk_offset = 0;
-		boost::uint64_t write_offset;
-		boost::uint64_t total_size = data.size();
 
 		std::string content;
 
 		for (std::vector<boost::shared_ptr<embed> >::const_iterator it = embeds.begin(); it != embeds.end(); it++) {
 			content.append((*it)->pack());
 		}
-		total_size += content.size();
+		content.append(data);
 
-
-		if (chunk_size_ && data.size() > (unsigned int)chunk_size_ && !key.byId()) {
-			boost::uint64_t size = chunk_size_ - content.size();
+		if (chunk_size_ && content.size () > static_cast <size_t> (chunk_size_) && !key.byId ()
+				&& !(ioflags & (DNET_IO_FLAGS_PREPARE | DNET_IO_FLAGS_COMMIT | DNET_IO_FLAGS_PLAIN_WRITE))) {
 			chunked = true;
-			content.append(data, chunk_offset, size);
-			chunk_offset += size;
-		} else {
-			content.append(data);
 		}
 
-		int result = 0;
 		ioremap::elliptics::write_result lookup;
 
 		struct dnet_id id;
@@ -420,12 +503,51 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 					lookup = elliptics_session.write_plain(key, content, offset);
 				} else {
 					if (chunked) {
-						lookup = elliptics_session.write_prepare(key, content, offset, total_size);
+						std::string write_content;
+						bool first_iter = true;
+						size_t size = content.size ();
+
+						content.substr (offset, chunk_size_).swap (write_content);
+						lookup = elliptics_session.write_prepare(key, write_content, offset, content.size ());
+						helper.update_lookup (parse_lookup (lookup), false);
+
+						if (helper.upload_is_good ()) {
+							do {
+								elliptics_session.set_groups (helper.get_upload_groups ());
+								offset += chunk_size_;
+								content.substr (offset, chunk_size_).swap (write_content);
+
+								if (offset + chunk_size_ >= content.length ())
+									lookup = elliptics_session.write_commit (key, write_content, offset, 0);
+								else
+									lookup = elliptics_session.write_plain(key, write_content, offset);
+								helper.update_lookup (parse_lookup (lookup), first_iter);
+								first_iter = false;
+							} while (helper.upload_is_good () && (offset + chunk_size_ < content.length ()));
+						}
+
+						helper.fix_size (size);
+
 					} else {
 						lookup = elliptics_session.write_data(key, content, offset);
 					}
 				}
 			}
+
+			if (!chunked)
+				helper.update_lookup (parse_lookup (lookup));
+
+			if (!helper.upload_is_good ()) {
+				elliptics_session.set_groups (lgroups);
+				elliptics_session.remove (key.filename ());
+				throw std::runtime_error("Not enough copies was written, or problems with chunked upload");
+			}
+
+			if (chunked && helper.has_incomplete_groups ()) {
+				elliptics_session.set_groups (helper.get_incomplete_groups ());
+				elliptics_session.remove (key.filename ());
+			}
+
 		}
 		catch (const std::exception &e) {
 			std::stringstream msg;
@@ -438,94 +560,11 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 			throw;
 		}
 
-		if ((result == 0) && (lookup.size() == 0)) {
-			std::stringstream msg;
-			msg << "Can't write data for key " << key.str();
-			elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
-			throw std::runtime_error("can not write file");
-		}
-
-
-		std::vector<int> temp_groups;
-		if (replication_count != 0 && lgroups.size() != groups_.size() && !use_metabase) {
-			for (std::size_t i = 0; i < groups_.size(); ++i) {
-				if (lgroups.end() == std::find(lgroups.begin(), lgroups.end(), groups_[i])) {
-					temp_groups.push_back(groups_[i]);
-				}
-			}
-		}
-
-		std::vector<int> upload_group;
-		while (!ret.size() || ret.size() < replication_count) {
-			std::vector<LookupResult> tmp = parse_lookup(lookup);
-			ret.insert(ret.end(), tmp.begin(), tmp.end());
-			lookup = ioremap::elliptics::write_result();
-
-			if (temp_groups.size() == 0 || (ret.size() && ret.size() >= replication_count) || use_metabase ) {
-				break;
-			}
-
-			std::vector<int> try_group(1, 0);
-			for (std::vector<int>::iterator it = temp_groups.begin(), end = temp_groups.end(); end != it; ++it) {
-				try {
-					try_group[0] = *it;
-					elliptics_session.set_groups(try_group);
-
-					if (chunked) {
-						lookup = elliptics_session.write_plain(key, content, offset);
-					} else {
-						lookup = elliptics_session.write_data(key, content, offset);
-					}
-				
-					temp_groups.erase(it);
-					break;
-				} catch (...) {
-					continue;
-				}
-			}
-		}
-
-		try {
-			if (chunked) {
-				elliptics_session.set_groups(upload_group);
-				write_offset = offset + content.size();
-				while (chunk_offset < data.size()) {
-					content.clear();
-					content.append(data, chunk_offset, chunk_size_);
-					chunk_offset += chunk_size_;
-					write_offset += content.size();
-
-					lookup = elliptics_session.write_plain(key, content, write_offset);
-				}
-			}
-		} catch(const std::exception &e) {
-			std::stringstream msg;
-			msg << "Error while uploading chunked data for key" << key.str() << " " << e.what();
-			elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
-			ret.clear();
-		} catch(...) {
-			std::stringstream msg;
-			msg << "Error while uploading chunked data for key" << key.str();
-			elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
-			ret.clear();
-		}
-
-		if ((chunked && ret.size() == 0)
-		    || (replication_count != 0 && ret.size() < replication_count)) {
-			elliptics_session.set_groups(upload_group);
-			elliptics_session.remove(key.filename());
-			throw std::runtime_error("Not enough copies was written, or problems with chunked upload");
-		}
-
-		if (replication_count == 0) {
-			upload_group = groups_;
-		}
-
 		struct timespec ts;
 		memset(&ts, 0, sizeof(ts));
 
 		elliptics_session.set_cflags(0);
-		elliptics_session.write_metadata(key, key.filename(), upload_group, ts);
+		elliptics_session.write_metadata(key, key.filename(), helper.get_upload_groups (), ts);
 		elliptics_session.set_cflags(ioflags);
 
 #ifdef HAVE_METABASE
@@ -547,7 +586,7 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 		throw;
 	}
 
-	return ret;
+	return helper.get_result ();
 }
 
 std::vector<std::string> EllipticsProxy::range_get_impl(Key &from, Key &to, uint64_t cflags, uint64_t ioflags,
@@ -756,6 +795,106 @@ std::vector<EllipticsProxy::remote> EllipticsProxy::lookup_addr_impl(Key &key, s
     }
 
     return addrs;
+}
+
+std::map<Key, std::vector<LookupResult> > EllipticsProxy::bulk_write_impl (std::vector <Key> &keys, std::vector <std::string> &data, uint64_t cflags,
+										   std::vector<int> &groups, unsigned int replication_count) {
+	std::map<Key, std::vector<LookupResult> > res;
+	std::map<Key, std::vector<int> > res_groups;
+
+	if (!keys.size ())
+		return res;
+
+	session elliptics_session(*elliptics_node_);
+
+	if (replication_count == 0)
+		replication_count = replication_count_;
+
+	std::vector<int> lgroups = getGroups(keys[0], groups);
+
+	std::map<ID, Key> keys_transformed;
+
+	try {
+		if (keys.size () != data.size ())
+			throw std::runtime_error ("counts of keys and data are not equal");
+
+		elliptics_session.set_groups(lgroups);
+
+		std::vector<struct dnet_io_attr> ios;
+		ios.reserve(keys.size());
+
+		for (size_t index = 0; index != keys.size (); ++index) {
+			struct dnet_io_attr io;
+			memset(&io, 0, sizeof(io));
+
+			Key tmp(keys [index]);
+			if (!tmp.byId()) {
+				tmp.transform(elliptics_session);
+			}
+
+			memcpy(io.id, tmp.id().dnet_id().id, sizeof(io.id));
+			io.size = data[index].size ();
+			ios.push_back(io);
+			keys_transformed.insert(std::make_pair(tmp.id(), keys [index]));
+		}
+
+		 write_result result = elliptics_session.bulk_write (ios, data);
+
+		 for (size_t i = 0; i != result.size (); ++i) {
+			 const ioremap::elliptics::lookup_result &lr = result [i];
+			 LookupResult r = parse_lookup (lr);
+			 ID ell_id (lr->command ()->id);
+			 Key key = keys_transformed [ell_id];
+			 res [key].push_back (r);
+			 res_groups [key].push_back (r.group);
+		 }
+
+		 unsigned int replication_need = 0;
+
+		 switch (success_copies_num_) {
+		 case SUCCESS_COPIES_TYPE__ANY:
+			 replication_need = 1;
+			 break;
+		 case SUCCESS_COPIES_TYPE__QUORUM:
+			 replication_need = (replication_count >> 1) + 1;
+			 break;
+		 case SUCCESS_COPIES_TYPE__ALL:
+			 replication_need = replication_count;
+			 break;
+		 default:
+			 replication_need = replication_count;
+		 }
+
+		 auto it = res_groups.begin ();
+		 auto end = res_groups.end ();
+		 for (; it != end; ++it) {
+			 if (it->second.size () < replication_need)
+				 break;
+		 }
+
+		 if (it != end) {
+			 for (auto it = res_groups.begin (), end = res_groups.end (); it != end; ++it) {
+				 elliptics_session.set_groups (it->second);
+				 elliptics_session.remove (it->first.filename ());
+			 }
+			 throw std::runtime_error("Not enough copies was written");
+		 }
+
+	}
+	catch (const std::exception &e) {
+		std::stringstream msg;
+		msg << "can not bulk write data " << e.what() << std::endl;
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+	catch (...) {
+		std::stringstream msg;
+		msg << "can not bulk write data" << std::endl;
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+
+	return res;
 }
 
 /*
