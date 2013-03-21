@@ -276,19 +276,19 @@ EllipticsProxy::parse_lookup(const ioremap::elliptics::lookup_result &l)
 	LookupResult result;
 
 	struct dnet_cmd *cmd = l->command();
-	struct dnet_addr_attr *a = l->address_attribute();
+	struct dnet_addr *addr = l->storage_address();
 	struct dnet_file_info *info = l->file_info();
 	dnet_convert_file_info(info);
 
 	char hbuf[NI_MAXHOST];
 	memset(hbuf, 0, NI_MAXHOST);
 
-	if (getnameinfo((const sockaddr*)&a->addr, a->addr.addr_len, hbuf, sizeof (hbuf), NULL, 0, 0) != 0) {
+	if (getnameinfo((const sockaddr*)addr, addr->addr_len, hbuf, sizeof (hbuf), NULL, 0, 0) != 0) {
 		throw std::runtime_error("can not make dns lookup");
 	}
 	result.hostname.assign(hbuf);
 
-	result.port = dnet_server_convert_port((struct sockaddr *)a->addr.addr, a->addr.addr_len);
+	result.port = dnet_server_convert_port((struct sockaddr *)addr->addr, addr->addr_len);
 	result.group = cmd->id.group_id;
 
 	if (eblob_style_path_) {
