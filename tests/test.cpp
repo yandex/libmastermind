@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
 	{
 		auto results = proxy.bulk_write (keys, data_arr, _groups = groups, _replication_count = groups.size ());
 		for (auto it = results.begin (), end = results.end (); it != end; ++it) {
-			std::cout << it->first.str () << ':' << std::endl;
+			std::cout << it->first.to_string () << ':' << std::endl;
 			for (auto it2 = it->second.begin (), end2 = it->second.end (); it2 != end2; ++it2) {
 				std::cout << "\tgroup: " << it2->group << "\tpath: " << it2->hostname
 									  << ":" << it2->port << it2->path << std::endl;
@@ -92,18 +92,19 @@ int main(int argc, char* argv[])
         for (int i = 0; i < DNET_ID_SIZE; i++)
             id.id[i] = i;
 
-        ID id1(id);
-        Key key1(id1);
+		Key key1(id);
 
         memset(&id, 0, sizeof(id));
         for (int i = 0; i < DNET_ID_SIZE; i++)
             id.id[i] = i+16;
 
-        ID id2(id);
-        Key key2(id2);
+		Key key2(id);
 
-        std::cout << "ID1: " << id1.str() << " " << (id1 < id2) << " ID2: " << id2.str() << std::endl;
-        std::cout << "Key1: " << key1.str() << " " << (key1 < key2) << " Key2: " << key2.str() << std::endl;
+		dnet_id_less cmp;
+
+		std::cout << "ID1: " << dnet_dump_id_len (&key1.id (), 6) << " " << cmp (key1.id (), key2.id ())
+				  << " ID2: " << dnet_dump_id_len (&key2.id (), 6) << std::endl;
+		std::cout << "Key1: " << key1.to_string () << " " << (key1 < key2) << " Key2: " << key2.to_string () << std::endl;
 
 
 
