@@ -184,6 +184,20 @@ public:
 	std::vector<boost::shared_ptr<embed> > embeds;
 };
 
+class StatusResult {
+public:
+	std::string addr;
+	std::string id;
+	float la [3];
+	uint64_t vm_total;
+	uint64_t vm_free;
+	uint64_t vm_cached;
+	uint64_t storage_size;
+	uint64_t available_size;
+	uint64_t files;
+	uint64_t fsid;
+};
+
 BOOST_PARAMETER_NAME(key)
 BOOST_PARAMETER_NAME(keys)
 BOOST_PARAMETER_NAME(data)
@@ -399,6 +413,9 @@ public:
 		return bulk_write_impl(keys, data, cflags, groups, replication_count);
 	}
 
+	bool ping();
+	std::vector<StatusResult> stat_log();
+
 #ifdef HAVE_METABASE
 	BOOST_PARAMETER_MEMBER_FUNCTION(
 		(std::vector<int>), get_metabalancer_groups, tag,
@@ -443,6 +460,7 @@ private:
 
 	LookupResult parse_lookup(const ioremap::elliptics::lookup_result &l);
 	std::vector<LookupResult> parse_lookup(const ioremap::elliptics::write_result &l);
+
 	std::vector<int> getGroups(Key &key, const std::vector<int> &groups, int count = 0) const;
 
 #ifdef HAVE_METABASE

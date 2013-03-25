@@ -897,6 +897,51 @@ std::map<Key, std::vector<LookupResult> > EllipticsProxy::bulk_write_impl (std::
 	return res;
 }
 
+bool EllipticsProxy::ping () {
+	ioremap::elliptics::session sess(*elliptics_node_);
+	return sess.state_num() >= state_num_;
+}
+
+std::vector<StatusResult> EllipticsProxy::stat_log () {
+	std::vector<StatusResult> res;
+
+	ioremap::elliptics::session sess(*elliptics_node_);
+	const ioremap::elliptics::stat_result srs = sess.stat_log();
+
+	char id_str[DNET_ID_SIZE * 2 + 1];
+	char addr_str[128];
+
+	StatusResult sr;
+
+	for (size_t i = 0; i < srs.size(); ++i) {
+		const ioremap::elliptics::stat_result_entry &data = srs[i];
+		struct dnet_addr *addr = data.address();
+		struct dnet_cmd *cmd = data.command();
+		struct dnet_stat *st = data.statistics();
+
+		dnet_server_convert_dnet_addr_raw(addr, addr_str, sizeof(addr_str));
+		dnet_dump_id_len_raw(cmd->id.id, DNET_ID_SIZE, id_str);
+
+		sr.la[0] = (float)st->la[0] / 100.0;
+		sr.la[1] = (float)st->la[1] / 100.0;
+		sr.la[2] = (float)st->la[2] / 100.0;
+
+		sr.addr.assign (addr_str);
+		sr.id.assign (id_str);
+		sr.vm_total = st->vm_total;
+		sr.vm_free = st->vm_free;
+		sr.vm_cached = st->vm_cached;
+		sr.storage_size = st->frsize * st->blocks / 1024 / 1024;
+		sr.available_size = st->bavail * st->bsize / 1024 / 1024;
+		sr.files = st->files;
+		sr.fsid = st->fsid;
+
+		res.push_back (sr);
+	}
+
+	return res;
+}
+
 /*
 void
 EllipticsProxy::rangeDeleteHandler(fastcgi::Request *request) {
