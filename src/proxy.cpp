@@ -327,11 +327,11 @@ LookupResult EllipticsProxy::lookup_impl(Key &key, std::vector<int> &groups)
 	try {
 		elliptics_session.set_groups(lgroups);
 		lookup_result l;
-		if (key.byId()) {
-			struct dnet_id id = key.id().dnet_id();
+		if (key.by_id ()) {
+			struct dnet_id id = key.id ();
 			l = elliptics_session.lookup(id);
 		} else {
-			l = elliptics_session.lookup(key.filename());
+			l = elliptics_session.lookup(key.remote());
 		}
 
 		result = parse_lookup(l);
@@ -339,13 +339,13 @@ LookupResult EllipticsProxy::lookup_impl(Key &key, std::vector<int> &groups)
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
-		msg << "can not get download info for key " << key.str() << " " << e.what();
+		msg << "can not get download info for key " << key.to_string() << " " << e.what();
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
 	catch (...) {
 		std::stringstream msg;
-		msg << "can not get download info for key " << key.str();
+		msg << "can not get download info for key " << key.to_string();
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
@@ -380,7 +380,7 @@ EllipticsProxy::read_impl(Key &key, uint64_t offset, uint64_t size,
 			while (result.size()) {
 				if (result.size() < sizeof(struct dnet_common_embed)) {
 					std::ostringstream str;
-					str << key.str() << ": offset: " << result.offset() << ", size: " << result.size() << ": invalid size";
+					str << key.to_string () << ": offset: " << result.offset() << ", size: " << result.size() << ": invalid size";
 					throw std::runtime_error(str.str());
 				}
 
@@ -408,13 +408,13 @@ EllipticsProxy::read_impl(Key &key, uint64_t offset, uint64_t size,
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
-		msg << "can not get data for key " << key.str() << " " << e.what() << std::endl;
+		msg << "can not get data for key " << key.to_string () << " " << e.what() << std::endl;
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
 	catch (...) {
 		std::stringstream msg;
-		msg << "can not get data for key " << key.str() << std::endl;
+		msg << "can not get data for key " << key.to_string() << std::endl;
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
@@ -474,7 +474,7 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 		}
 		content.append(data);
 
-		if (chunk_size_ && content.size () > static_cast <size_t> (chunk_size_) && !key.byId ()
+		if (chunk_size_ && content.size () > static_cast <size_t> (chunk_size_) && !key.by_id ()
 				&& !(ioflags & (DNET_IO_FLAGS_PREPARE | DNET_IO_FLAGS_COMMIT | DNET_IO_FLAGS_PLAIN_WRITE))) {
 			chunked = true;
 		}
@@ -484,15 +484,15 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 		struct dnet_id id;
 		memset(&id, 0, sizeof(id));
 
-		if (key.byId()) {
-			id = key.id().dnet_id();
+		if (key.by_id ()) {
+			id = key.id();
 		} else {
-			elliptics_session.transform(key.filename(), id);
-			id.type = key.column();
+			elliptics_session.transform(key.remote(), id);
+			id.type = key.type();
 		}
 
 		try {
-			if (key.byId()) {
+			if (key.by_id ()) {
 				lookup = elliptics_session.write_data(id, content, offset);
 			} else {
 				if (ioflags & DNET_IO_FLAGS_PREPARE) {
@@ -539,19 +539,19 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 
 			if (!helper.upload_is_good ()) {
 				elliptics_session.set_groups (lgroups);
-				elliptics_session.remove (key.filename ());
+				elliptics_session.remove (key.remote ());
 				throw std::runtime_error("Not enough copies was written, or problems with chunked upload");
 			}
 
 			if (chunked && helper.has_incomplete_groups ()) {
 				elliptics_session.set_groups (helper.get_incomplete_groups ());
-				elliptics_session.remove (key.filename ());
+				elliptics_session.remove (key.remote ());
 			}
 
 		}
 		catch (const std::exception &e) {
 			std::stringstream msg;
-			msg << "Can't write data for key " << key.str() << " " << e.what();
+			msg << "Can't write data for key " << key.to_string () << " " << e.what();
 			elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 			throw;
 		}
@@ -564,7 +564,7 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 		memset(&ts, 0, sizeof(ts));
 
 		elliptics_session.set_cflags(0);
-		elliptics_session.write_metadata(key, key.filename(), helper.get_upload_groups (), ts);
+		elliptics_session.write_metadata(key, key.remote(), helper.get_upload_groups (), ts);
 		elliptics_session.set_cflags(ioflags);
 
 #ifdef HAVE_METABASE
@@ -575,13 +575,13 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
-		msg << "Can't write data for key " << key.str() << " " << e.what();
+		msg << "Can't write data for key " << key.to_string() << " " << e.what();
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
 	catch (...) {
 		std::stringstream msg;
-		msg << "Can't write data for key " << key.str();
+		msg << "Can't write data for key " << key.to_string();
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
@@ -605,12 +605,12 @@ std::vector<std::string> EllipticsProxy::range_get_impl(Key &from, Key &to, uint
 		struct dnet_io_attr io;
 		memset(&io, 0, sizeof(struct dnet_io_attr));
 
-		if (from.byId()) {
-			memcpy(io.id, from.id().dnet_id().id, sizeof(io.id));
+		if (from.by_id()) {
+			memcpy(io.id, from.id().id, sizeof(io.id));
 		}
 
-		if (to.byId()) {
-			memcpy(io.parent, from.id().dnet_id().id, sizeof(io.parent));
+		if (to.by_id()) {
+			memcpy(io.parent, from.id().id, sizeof(io.parent));
 		} else {
 			memset(io.parent, 0xff, sizeof(io.parent));
 		}
@@ -618,7 +618,7 @@ std::vector<std::string> EllipticsProxy::range_get_impl(Key &from, Key &to, uint
 		io.start = limit_start;
 		io.num = limit_num;
 		io.flags = ioflags;
-		io.type = from.column();
+		io.type = from.type();
 
 
 		for (size_t i = 0; i < lgroups.size(); ++i) {
@@ -633,7 +633,7 @@ std::vector<std::string> EllipticsProxy::range_get_impl(Key &from, Key &to, uint
 
 		if (ret.size() == 0) {
 			std::ostringstream str;
-			str << "READ_RANGE failed for key " << key.str() << " in " << groups.size() << " groups";
+			str << "READ_RANGE failed for key " << key.to_string() << " in " << groups.size() << " groups";
 			throw std::runtime_error(str.str());
 		}
 
@@ -641,13 +641,13 @@ std::vector<std::string> EllipticsProxy::range_get_impl(Key &from, Key &to, uint
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
-		msg << "READ_RANGE failed for key " << key.str() << " from:" << from.str() << " to:" << to.str() << " " << e.what();
+		msg << "READ_RANGE failed for key " << key.to_string() << " from:" << from.to_string() << " to:" << to.to_string () << " " << e.what();
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
 	catch (...) {
 		std::stringstream msg;
-		msg << "READ_RANGE failed for key " << key.str() << " from:" << from.str() << " to:" << to.str();
+		msg << "READ_RANGE failed for key " << key.to_string() << " from:" << from.to_string() << " to:" << to.to_string();
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
@@ -664,8 +664,8 @@ void EllipticsProxy::remove_impl(Key &key, std::vector<int> &groups)
 	try {
 		elliptics_session.set_groups(lgroups);
 		std::string l;
-		if (key.byId()) {
-			struct dnet_id id = key.id().dnet_id();
+		if (key.by_id()) {
+			struct dnet_id id = key.id();
 			int error = -1;
 
 			for (size_t i = 0; i < lgroups.size(); ++i) {
@@ -675,7 +675,7 @@ void EllipticsProxy::remove_impl(Key &key, std::vector<int> &groups)
 					error = 0;
 				} catch (const std::exception &e) {
 					std::stringstream msg;
-					msg << "Can't remove object " << key.str() << " in group " << groups[i] << ": " << e.what();
+					msg << "Can't remove object " << key.to_string () << " in group " << groups[i] << ": " << e.what();
 					elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 				}
 			}
@@ -686,19 +686,19 @@ void EllipticsProxy::remove_impl(Key &key, std::vector<int> &groups)
 				throw std::runtime_error(str.str());
 			}
 		} else {
-			elliptics_session.remove(key.filename());
+			elliptics_session.remove(key.remote());
 		}
 
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
-		msg << "Can't remove object " << key.str() << " " << e.what();
+		msg << "Can't remove object " << key.to_string() << " " << e.what();
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
 	catch (...) {
 		std::stringstream msg;
-		msg << "Can't remove object " << key.str();
+		msg << "Can't remove object " << key.to_string();
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
@@ -715,7 +715,7 @@ EllipticsProxy::bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vec
 	session elliptics_session(*elliptics_node_);
 	std::vector<int> lgroups = getGroups(keys[0], groups);
 
-	std::map<ID, Key> keys_transformed;
+	std::map<struct dnet_id, Key, dnet_id_less> keys_transformed;
 
 	try {
 		elliptics_session.set_groups(lgroups);
@@ -723,32 +723,31 @@ EllipticsProxy::bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vec
                 std::vector<struct dnet_io_attr> ios;
                 ios.reserve(keys.size());
 
-                for (std::vector<Key>::iterator it = keys.begin(); it != keys.end(); it++) {
+				for (std::vector<Key>::iterator it = keys.begin(); it != keys.end(); it++) {
                         struct dnet_io_attr io;
                         memset(&io, 0, sizeof(io));
 
-                        Key tmp(*it);
-                        if (!tmp.byId()) {
+						Key tmp(*it);
+						if (!tmp.by_id()) {
                         
-                                tmp.transform(elliptics_session);
+								tmp.transform(elliptics_session);
                         }
 
 
-                        memcpy(io.id, tmp.id().dnet_id().id, sizeof(io.id));
+						memcpy(io.id, tmp.id().id, sizeof(io.id));
                         ios.push_back(io);
-                        keys_transformed.insert(std::make_pair(tmp.id(), *it));
+						keys_transformed.insert(std::make_pair(tmp.id(), *it));
 		}
 
 		bulk_read_result result = elliptics_session.bulk_read(ios);
 
 		for (size_t i = 0; i < result.size(); ++i) {
 			read_result_entry entry = result[i];
-
-			ID ell_id(entry.command()->id);
+			//ID ell_id (entry.command ()->id);
 	                ReadResult tmp;
 			tmp.data = entry.file().to_string();
 
-                        ret.insert(std::make_pair(keys_transformed[ell_id], tmp));
+						ret.insert(std::make_pair(keys_transformed[entry.command ()->id], tmp));
                 }
 
 	}
@@ -780,12 +779,12 @@ std::vector<EllipticsProxy::remote> EllipticsProxy::lookup_addr_impl(Key &key, s
     {
         std::string ret;
 
-        if (key.byId()) {
-            struct dnet_id id = key.id().dnet_id();
+		if (key.by_id()) {
+			struct dnet_id id = key.id();
 	    ret = elliptics_session.lookup_address(id, *it);
 
         } else {
-	    ret = elliptics_session.lookup_address(key.filename(), *it);
+		ret = elliptics_session.lookup_address(key.remote(), *it);
         }
 
         size_t pos = ret.find(':');
@@ -798,7 +797,7 @@ std::vector<EllipticsProxy::remote> EllipticsProxy::lookup_addr_impl(Key &key, s
 }
 
 std::map<Key, std::vector<LookupResult> > EllipticsProxy::bulk_write_impl (std::vector <Key> &keys, std::vector <std::string> &data, uint64_t cflags,
-										   std::vector<int> &groups, unsigned int replication_count) {
+																		   std::vector<int> &groups, unsigned int replication_count) {
 	std::map<Key, std::vector<LookupResult> > res;
 	std::map<Key, std::vector<int> > res_groups;
 
@@ -812,7 +811,7 @@ std::map<Key, std::vector<LookupResult> > EllipticsProxy::bulk_write_impl (std::
 
 	std::vector<int> lgroups = getGroups(keys[0], groups);
 
-	std::map<ID, Key> keys_transformed;
+	std::map<struct dnet_id, Key, dnet_id_less> keys_transformed;
 
 	try {
 		if (keys.size () != data.size ())
@@ -828,11 +827,11 @@ std::map<Key, std::vector<LookupResult> > EllipticsProxy::bulk_write_impl (std::
 			memset(&io, 0, sizeof(io));
 
 			Key tmp(keys [index]);
-			if (!tmp.byId()) {
+			if (!tmp.by_id()) {
 				tmp.transform(elliptics_session);
 			}
 
-			memcpy(io.id, tmp.id().dnet_id().id, sizeof(io.id));
+			memcpy(io.id, tmp.id().id, sizeof(io.id));
 			io.size = data[index].size ();
 			ios.push_back(io);
 			keys_transformed.insert(std::make_pair(tmp.id(), keys [index]));
@@ -843,8 +842,8 @@ std::map<Key, std::vector<LookupResult> > EllipticsProxy::bulk_write_impl (std::
 		 for (size_t i = 0; i != result.size (); ++i) {
 			 const ioremap::elliptics::lookup_result &lr = result [i];
 			 LookupResult r = parse_lookup (lr);
-			 ID ell_id (lr->command ()->id);
-			 Key key = keys_transformed [ell_id];
+			 //ID ell_id (lr->command ()->id);
+			 Key key = keys_transformed [lr->command ()->id];
 			 res [key].push_back (r);
 			 res_groups [key].push_back (r.group);
 		 }
@@ -875,7 +874,7 @@ std::map<Key, std::vector<LookupResult> > EllipticsProxy::bulk_write_impl (std::
 		 if (it != end) {
 			 for (auto it = res_groups.begin (), end = res_groups.end (); it != end; ++it) {
 				 elliptics_session.set_groups (it->second);
-				 elliptics_session.remove (it->first.filename ());
+				 elliptics_session.remove (it->first.remote ());
 			 }
 			 throw std::runtime_error("Not enough copies was written");
 		 }
@@ -1562,10 +1561,11 @@ void
 EllipticsProxy::uploadMetaInfo(const std::vector<int> &groups, const Key &key) const {
 	try {
 		std::string url = metabase_write_addr_ + "/groups-meta.";
-		if (key.byId()) {
-			url += key.id().dump() + ".id";
+		if (key.by_id()) {
+			url.append (dnet_dump_id_len (&key.id(), 6));
+			url.append (".id");
 		} else {
-			url += key.filename() + ".file";
+			url += key.remote() + ".file";
 		}
 
 		yandex::common::curl_wrapper<yandex::common::boost_threading_traits> curl(url);
@@ -1598,10 +1598,11 @@ EllipticsProxy::getMetaInfo(const Key &key) const {
 		long status;
 
 		std::string url = metabase_read_addr_ + "/groups-meta.";
-		if (key.byId()) {
-			url += key.id().dump() + ".id";
+		if (key.by_id()) {
+			url.append (dnet_dump_id_len (&key.id (), 6));
+			url.append (".id");
 		} else {
-			url += key.filename() + ".file";
+			url += key.remote() + ".file";
 		}
 
 		yandex::common::curl_wrapper<yandex::common::boost_threading_traits> curl(url);
@@ -1687,28 +1688,28 @@ void EllipticsProxy::collectGroupWeightsLoop()
 std::vector<int> EllipticsProxy::get_metabalancer_groups_impl(uint64_t count, uint64_t size, Key &key)
 {
 	try {
-	    if(!weight_cache_->initialized() && !collectGroupWeights()) {
-	        return std::vector<int>();
-	    }
-	    std::vector<int> result = weight_cache_->choose(count);
+		if(!weight_cache_->initialized() && !collectGroupWeights()) {
+			return std::vector<int>();
+		}
+		std::vector<int> result = weight_cache_->choose(count);
 
-	    std::ostringstream msg;
+		std::ostringstream msg;
 
-	    msg << "Chosen group: [";
+		msg << "Chosen group: [";
 
-	    std::vector<int>::const_iterator e = result.end();
-	    for(
-	            std::vector<int>::const_iterator it = result.begin();
-	            it != e;
-	            ++it) {
-	        if(it != result.begin()) {
-	            msg << ", ";
-	        }
-	        msg << *it;
-	    }
-	    msg << "]\n";
-	    elliptics_log_->log(DNET_LOG_INFO, msg.str().c_str());
-	    return result;
+		std::vector<int>::const_iterator e = result.end();
+		for(
+				std::vector<int>::const_iterator it = result.begin();
+				it != e;
+				++it) {
+			if(it != result.begin()) {
+				msg << ", ";
+			}
+			msg << *it;
+		}
+		msg << "]\n";
+		elliptics_log_->log(DNET_LOG_INFO, msg.str().c_str());
+		return result;
 
 	} catch (const msgpack::unpack_error &e) {
 		std::stringstream msg;

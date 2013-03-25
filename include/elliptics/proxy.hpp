@@ -118,49 +118,12 @@ struct GroupInfoResponse {
 };
 #endif /* HAVE_METABASE */
 
-class ID {
-public:
-	ID();
-	ID(struct dnet_id &id);
-
-        bool operator==(const ID &id2) const;
-        bool operator<(const ID &id2) const;
-
-	std::string str() const;
-	std::string dump(unsigned int len = 6) const;
-	struct dnet_id dnet_id() const;
-
-	int group() const;
-private:
-	struct dnet_id id_;
-	bool empty_;
+struct dnet_id_less {
+	bool operator () (const struct dnet_id &ob1, const struct dnet_id &ob2);
 };
 
-class Key {
-public:
-	Key();
-	Key(std::string filename, int column=0);
-	Key(ID &id);
-
-        bool operator==(const Key &key2) const;
-        bool operator<(const Key &key2) const;
-
-	operator ioremap::elliptics::key() const;
-
-	bool byId() const;
-	const std::string filename() const;
-	const int column() const;
-	struct dnet_id dnet_id() const;
-	const ID id() const;
-	const std::string str() const;
-
-        void transform(ioremap::elliptics::session &sess);
-private:
-	bool byId_;
-	std::string filename_;
-	int column_;
-	ID id_;
-};
+typedef struct dnet_id ID;
+typedef ioremap::elliptics::key Key;
 
 class LookupResult {
 public:
@@ -452,10 +415,10 @@ private:
 
 	std::map<Key, ReadResult> bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vector<int> &groups);
 
-        std::vector<EllipticsProxy::remote> lookup_addr_impl(Key &key, std::vector<int> &groups);
+		std::vector<EllipticsProxy::remote> lookup_addr_impl(Key &key, std::vector<int> &groups);
 
 	std::map<Key, std::vector<LookupResult> > bulk_write_impl(std::vector<Key> &keys, std::vector <std::string> &data, uint64_t cflags,
-											   std::vector<int> &groups, unsigned int replication_count);
+															  std::vector<int> &groups, unsigned int replication_count);
 
 
 	LookupResult parse_lookup(const ioremap::elliptics::lookup_result &l);
