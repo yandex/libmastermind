@@ -181,6 +181,7 @@ BOOST_PARAMETER_NAME(embeded)
 BOOST_PARAMETER_NAME(replication_count)
 BOOST_PARAMETER_NAME(limit_start)
 BOOST_PARAMETER_NAME(limit_num)
+BOOST_PARAMETER_NAME(script)
 
 class EllipticsProxy {
 public:
@@ -376,6 +377,21 @@ public:
 		return bulk_write_impl(keys, data, cflags, groups, replication_count);
 	}
 
+	BOOST_PARAMETER_MEMBER_FUNCTION(
+		(std::string), exec_script, tag,
+		(required
+			(key, (Key))
+			(script, (std::string))
+			(data, (std::string))
+		)
+		(optional
+			(groups, (const std::vector<int>), std::vector<int>())
+		)
+	)
+	{
+		return exec_script_impl(key, data, script, groups);
+	}
+
 	bool ping();
 	std::vector<StatusResult> stat_log();
 
@@ -419,6 +435,8 @@ private:
 
 	std::map<Key, std::vector<LookupResult> > bulk_write_impl(std::vector<Key> &keys, std::vector <std::string> &data, uint64_t cflags,
 															  std::vector<int> &groups, unsigned int replication_count);
+
+	std::string exec_script_impl(Key &key, std::string &data, std::string &script, std::vector <int> &groups);
 
 
 	LookupResult parse_lookup(const ioremap::elliptics::lookup_result &l);

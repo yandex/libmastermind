@@ -896,6 +896,44 @@ std::map<Key, std::vector<LookupResult> > EllipticsProxy::bulk_write_impl (std::
 	return res;
 }
 
+std::string EllipticsProxy::exec_script_impl(Key &key, std::string &data, std::string &script, std::vector <int> &groups) {
+	std::string res;
+	ioremap::elliptics::session sess(*elliptics_node_);
+	if (sess.state_num() < state_num_) {
+		throw std::runtime_error("Too low number of existing states");
+	}
+
+	struct dnet_id id;
+	memset(&id, 0, sizeof(id));
+
+	if (key.by_id ()) {
+		id = key.id();
+	} else {
+		sess.transform(key.remote(), id);
+		id.type = key.type();
+	}
+
+	std::vector<int> lgroups = getGroups (key, groups);
+
+	try {
+		sess.set_groups(lgroups);
+		res = sess.exec_locked (&id, script, data, std::string());
+	}
+	catch (const std::exception &e) {
+		std::stringstream msg;
+		msg << "can not execute script  " << script << "; " << e.what() << std::endl;
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+	catch (...) {
+		std::stringstream msg;
+		msg << "can not execute script  " << script << std::endl;
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+	return res;
+}
+
 bool EllipticsProxy::ping () {
 	ioremap::elliptics::session sess(*elliptics_node_);
 	return sess.state_num() >= state_num_;
