@@ -324,33 +324,39 @@ LookupResult EllipticsProxy::lookup_impl(Key &key, std::vector<int> &groups)
 	LookupResult result;
 
 	lgroups = getGroups(key, groups);
-	try {
-		elliptics_session.set_groups(lgroups);
-		lookup_result l;
-		if (key.by_id ()) {
-			struct dnet_id id = key.id ();
-			l = elliptics_session.lookup(id);
-		} else {
-			l = elliptics_session.lookup(key.remote());
+
+	std::vector <int> tmp_group = {1};
+	for (auto it = lgroups.begin (), end = lgroups.end (); it != end; ++it) {
+		tmp_group [0] = *it;
+		try {
+			elliptics_session.set_groups(tmp_group);
+			lookup_result l;
+			if (key.by_id ()) {
+				struct dnet_id id = key.id ();
+				l = elliptics_session.lookup(id);
+			} else {
+				l = elliptics_session.lookup(key.remote());
+			}
+			result = parse_lookup(l);
+		} catch (const std::exception &e) {
+			std::stringstream msg;
+			msg << "can not get download info for key " << key.to_string() << " from " << *it << " group; " << e.what() << std::endl;
+			elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+			continue;
 		}
-
-		result = parse_lookup(l);
-
-	}
-	catch (const std::exception &e) {
-		std::stringstream msg;
-		msg << "can not get download info for key " << key.to_string() << " " << e.what();
-		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
-		throw;
-	}
-	catch (...) {
-		std::stringstream msg;
-		msg << "can not get download info for key " << key.to_string();
-		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
-		throw;
+		catch (...) {
+			std::stringstream msg;
+			msg << "can not get download info for key " << key.to_string() << " from " << *it << " group" << std::endl;
+			elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+			continue;
+		}
+		return result;
 	}
 
-	return result;
+	std::stringstream msg;
+	msg << "can not get download info for key " << key.to_string() << "from any allowed group!";
+	elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+	throw std::runtime_error (msg.str ());
 }
 
 ReadResult

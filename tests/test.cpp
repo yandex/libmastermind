@@ -4,8 +4,38 @@
 
 using namespace elliptics;
 
+void test_lookup () {
+	EllipticsProxy::config c;
+	c.groups.push_back(1);
+	c.groups.push_back(2);
+	c.log_mask = 1;
+	c.remotes.push_back(EllipticsProxy::remote("derikon.dev.yandex.net", 1025, 2));
+	c.success_copies_num = SUCCESS_COPIES_TYPE__ANY;
+
+	EllipticsProxy proxy(c);
+	sleep(1);
+
+	Key k(std::string("uniq_key"));
+
+	proxy.remove (k);
+
+	std::string data("test3");
+
+	std::vector <int> g = {2};
+	std::vector<LookupResult> l = proxy.write(k, data, _groups = g);
+	std::cout << "written " << l.size() << " copies" << std::endl;
+	for (auto it = l.begin(); it != l.end(); ++it) {
+		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+	}
+
+	LookupResult l1 = proxy.lookup(k);
+	std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std::endl;
+}
+
 int main(int argc, char* argv[])
 {
+	test_lookup ();
+	return 0;
 	EllipticsProxy::config c;
 	c.groups.push_back(1);
 	c.groups.push_back(2);
