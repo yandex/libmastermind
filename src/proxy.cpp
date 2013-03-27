@@ -122,6 +122,7 @@ private:
 	groups_t upload_groups;
 
 };
+
 } // namespace
 
 using namespace ioremap::elliptics;
@@ -234,8 +235,9 @@ EllipticsProxy::EllipticsProxy(const EllipticsProxy::config &c) :
 	dnet_conf.flags = c.flags;
 
 	if (c.ns.size()) {
-		dnet_conf.ns = const_cast<char *>(c.ns.data());
-		dnet_conf.nsize = c.ns.size();
+		// TODO: why were the fields removed from dnet_conf?
+		//dnet_conf.ns = const_cast<char *>(c.ns.data());
+		//dnet_conf.nsize = c.ns.size();
 	}
 
 	elliptics_log_.reset(new ioremap::elliptics::file_logger(c.log_path.c_str(), c.log_mask));
@@ -315,6 +317,40 @@ EllipticsProxy::parse_lookup(const ioremap::elliptics::write_result &l)
 		ret.push_back(parse_lookup(l[i]));
 
 	return ret;
+}
+
+ReadResult parse_read (const ioremap::elliptics::read_result &r, bool embeded, Key key) {
+	ReadResult res;
+	auto result = r->file ();
+	if (embeded) {
+		while (result.size()) {
+			if (result.size() < sizeof(struct dnet_common_embed)) {
+				std::ostringstream str;
+				str << key.to_string () << ": offset: " << result.offset() << ", size: " << result.size() << ": invalid size";
+				throw std::runtime_error(str.str());
+			}
+
+			struct dnet_common_embed *e = result.data<struct dnet_common_embed>();
+
+			dnet_common_convert_embedded(e);
+
+			result = result.skip<struct dnet_common_embed>();
+
+			if (result.size() < e->size + sizeof (struct dnet_common_embed)) {
+				break;
+			}
+
+			if (e->type == DNET_PROXY_EMBED_DATA) {
+				break;
+			}
+
+			result = result.skip(e->size);
+		}
+		res.data = result.to_string();
+	} else {
+		res.data = result.to_string();
+	}
+	return res;
 }
 
 LookupResult EllipticsProxy::lookup_impl(Key &key, std::vector<int> &groups)
@@ -938,6 +974,42 @@ std::string EllipticsProxy::exec_script_impl(Key &key, std::string &data, std::s
 		throw;
 	}
 	return res;
+}
+
+async_read_result EllipticsProxy::read_async_impl(Key &key, uint64_t offset, uint64_t size,
+												  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
+												  bool latest, bool embeded) {
+	ioremap::elliptics::waiter <ioremap::elliptics::read_result> waiter;
+
+	session elliptics_session(*elliptics_node_);
+	std::vector<int> lgroups;
+	lgroups = getGroups(key, groups);
+
+	elliptics_session.set_cflags(cflags);
+	elliptics_session.set_ioflags(ioflags);
+
+	try {
+		elliptics_session.set_groups(lgroups);
+
+		if (latest)
+			elliptics_session.read_latest (waiter.handler (), key, offset, size);
+		else
+			elliptics_session.read_data (waiter.handler (), key, offset, size);
+	}
+	catch (const std::exception &e) {
+		std::stringstream msg;
+		msg << "can not get data for key " << key.to_string () << " " << e.what() << std::endl;
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+	catch (...) {
+		std::stringstream msg;
+		msg << "can not get data for key " << key.to_string() << std::endl;
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+
+	return async_read_result (waiter, std::bind (&parse_read, std::placeholders::_1, embeded, key));
 }
 
 bool EllipticsProxy::ping () {

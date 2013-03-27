@@ -32,9 +32,48 @@ void test_lookup () {
 	std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std::endl;
 }
 
+void test_read_async () {
+	EllipticsProxy::config c;
+	c.groups.push_back(1);
+	c.groups.push_back(2);
+	c.log_mask = 1;
+	c.remotes.push_back(EllipticsProxy::remote("derikon.dev.yandex.net", 1025, 2));
+	c.success_copies_num = SUCCESS_COPIES_TYPE__ANY;
+
+	EllipticsProxy proxy(c);
+	sleep(1);
+
+	Key k(std::string("uniq_key"));
+
+	proxy.remove (k);
+
+	std::string data("test3");
+
+	//std::vector <int> g = {2};
+	std::vector<LookupResult> l = proxy.write(k, data/*, _groups = g*/);
+	std::cout << "written " << l.size() << " copies" << std::endl;
+	for (auto it = l.begin(); it != l.end(); ++it) {
+		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+	}
+
+	{
+		async_read_result arr = proxy.read_async(k);
+		std::cout << "Wait result..." << std::endl;
+		auto r = arr.get ();
+		std::cout << "Read result: " << r.data << std::endl;
+	}
+
+	{
+		async_read_result arr = proxy.read_async(k);
+	}
+	std::cout << "Forgot about waiter before getting result" << std::endl;
+
+}
+
 int main(int argc, char* argv[])
 {
-	test_lookup ();
+	//test_lookup ();
+	test_read_async ();
 	return 0;
 	EllipticsProxy::config c;
 	c.groups.push_back(1);
