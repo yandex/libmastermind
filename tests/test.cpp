@@ -57,23 +57,135 @@ void test_read_async () {
 	}
 
 	{
-		async_read_result arr = proxy.read_async(k);
+		async_read_result_t arr = proxy.read_async(k);
 		std::cout << "Wait result..." << std::endl;
 		auto r = arr.get ();
 		std::cout << "Read result: " << r.data << std::endl;
 	}
 
 	{
-		async_read_result arr = proxy.read_async(k);
+		async_read_result_t arr = proxy.read_async(k);
 	}
 	std::cout << "Forgot about waiter before getting result" << std::endl;
 
 }
 
+void test_async () {
+
+	EllipticsProxy::config c;
+	c.groups.push_back(1);
+	c.groups.push_back(2);
+	c.log_mask = 1;
+	c.remotes.push_back(EllipticsProxy::remote("derikon.dev.yandex.net", 1025, 2));
+	c.success_copies_num = SUCCESS_COPIES_TYPE__ANY;
+
+	EllipticsProxy proxy(c);
+	sleep(1);
+
+	Key k1(std::string("111uniq_key1.txt"));
+	Key k2(std::string("111uniq_key2.txt"));
+
+	try { proxy.remove (k1); } catch (...) {}
+	try { proxy.remove (k2); } catch (...) {}
+
+	std::string data1("data1");
+	std::string data2("data2");
+
+	std::vector<LookupResult> l;
+
+	auto awr1 = proxy.write_async(k1, data1);
+	auto awr2 = proxy.write_async(k2, data2);
+
+	try {
+		l = awr1.get ();
+	} catch (...) {
+		std::cout << "Exception during get write result" << std::endl;
+		return;
+	}
+
+	std::cout << "written " << l.size() << " copies" << std::endl;
+	for (auto it = l.begin(); it != l.end(); ++it) {
+		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+	}
+
+	try {
+		l = awr2.get ();
+	} catch (...) {
+		std::cout << "Exception during get write2 result" << std::endl;
+		return;
+	}
+
+	std::cout << "written " << l.size() << " copies" << std::endl;
+	for (auto it = l.begin(); it != l.end(); ++it) {
+		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+	}
+
+
+	async_read_result_t arr1 = proxy.read_async(k1);
+	async_read_result_t arr2 = proxy.read_async(k2);
+
+
+	ReadResult r;
+	try {
+		r = arr1.get ();
+	} catch (...) {
+		std::cout << "Exception during get read result" << std::endl;
+		return;
+	}
+	std::cout << "Read result: " << r.data << std::endl;
+	try {
+		r = arr2.get ();
+	} catch (...) {
+		std::cout << "Exception during get read result" << std::endl;
+		return;
+	}
+	std::cout << "Read result: " << r.data << std::endl;
+}
+
+void test_sync () {
+	EllipticsProxy::config c;
+	c.groups.push_back(1);
+	c.groups.push_back(2);
+	c.log_mask = 1;
+	c.remotes.push_back(EllipticsProxy::remote("derikon.dev.yandex.net", 1025, 2));
+	c.success_copies_num = SUCCESS_COPIES_TYPE__ANY;
+
+	EllipticsProxy proxy(c);
+	sleep(1);
+
+	Key k1(std::string("111uniq_key1.txt"));
+
+	try { proxy.remove (k1); } catch (...) {}
+
+	std::string data1("data1");
+
+	std::vector<LookupResult> l = proxy.write(k1, data1);
+
+	//l = awr2.get ();
+	//std::cout << "written " << l.size() << " copies" << std::endl;
+	//for (auto it = l.begin(); it != l.end(); ++it) {
+//		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+//	}
+
+	//l = awr1.get ();
+	std::cout << "written " << l.size() << " copies" << std::endl;
+	for (auto it = l.begin(); it != l.end(); ++it) {
+		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+	}
+
+
+	//async_read_result_t arr1 = proxy.read_async(k1);
+	//async_read_result_t arr2 = proxy.read_async(k2);
+	std::cout << "Read result: " << proxy.read(k1).data << std::endl;
+	//std::cout << "Read result: " << arr2.get ().data << std::endl;
+}
+
 int main(int argc, char* argv[])
 {
 	//test_lookup ();
-	test_read_async ();
+	//test_read_async ();
+	test_async ();
+	//test_sync ();
 	return 0;
 	EllipticsProxy::config c;
 	c.groups.push_back(1);

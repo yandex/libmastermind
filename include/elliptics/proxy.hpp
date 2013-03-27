@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <iostream>
 
 #ifdef HAVE_METABASE
 #include <cocaine/dealer/dealer.hpp>
@@ -163,12 +164,12 @@ public:
 };
 
 template <typename R, typename A>
-class AsyncGetter {
+class AsyncResult {
 public:
 	typedef ioremap::elliptics::waiter <A> waiter_t;
-	typedef std::function <R (A)> parser_t;
+	typedef std::function <R (const A &)> parser_t;
 
-	AsyncGetter (waiter_t waiter, parser_t parser)
+	AsyncResult (const waiter_t &waiter, const parser_t &parser)
 		: waiter (waiter), parser (parser)
 	{}
 
@@ -181,7 +182,8 @@ private:
 	parser_t parser;
 };
 
-typedef AsyncGetter <ReadResult, ioremap::elliptics::read_result> async_read_result;
+typedef AsyncResult <ReadResult, ioremap::elliptics::read_result> async_read_result_t;
+typedef AsyncResult <std::vector<LookupResult>, ioremap::elliptics::write_result> async_write_result_t;
 
 BOOST_PARAMETER_NAME(key)
 BOOST_PARAMETER_NAME(keys)
@@ -415,7 +417,7 @@ public:
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(async_read_result), read_async, tag,
+		(async_read_result_t), read_async, tag,
 		(required
 			(key, (Key))
 		)
@@ -431,6 +433,26 @@ public:
 	)
 	{
 		return read_async_impl (key, offset, size, cflags, ioflags, groups, latest, embeded);
+	}
+
+	BOOST_PARAMETER_MEMBER_FUNCTION(
+		(async_write_result_t), write_async, tag,
+		(required
+			(key, (Key))
+			(data, (std::string))
+		)
+		(optional
+			(offset, (uint64_t), 0)
+			(size, (uint64_t), 0)
+			(cflags, (uint64_t), 0)
+			(ioflags, (uint64_t), 0)
+			(groups, (const std::vector<int>), std::vector<int>())
+			(replication_count, (unsigned int), 0)
+			(embeds, (std::vector<boost::shared_ptr<embed> >), std::vector<boost::shared_ptr<embed> >())
+		)
+	)
+	{
+		return write_async_impl(key, data, offset, size, cflags, ioflags, groups, replication_count, embeds);
 	}
 
 	bool ping();
@@ -479,9 +501,13 @@ private:
 
 	std::string exec_script_impl(Key &key, std::string &data, std::string &script, std::vector <int> &groups);
 
-	async_read_result read_async_impl(Key &key, uint64_t offset, uint64_t size,
+	async_read_result_t read_async_impl(Key &key, uint64_t offset, uint64_t size,
 									  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 									  bool latest, bool embeded);
+
+	async_write_result_t write_async_impl(Key &key, std::string &data, uint64_t offset, uint64_t size,
+										  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
+										  unsigned int replication_count, std::vector<boost::shared_ptr<embed> > embeds);
 
 	LookupResult parse_lookup(const ioremap::elliptics::lookup_result &l);
 	std::vector<LookupResult> parse_lookup(const ioremap::elliptics::write_result &l);
