@@ -167,23 +167,45 @@ template <typename R, typename A>
 class AsyncResult {
 public:
 	typedef ioremap::elliptics::waiter <A> waiter_t;
+	typedef std::function <A ()> waiter2_t;
 	typedef std::function <R (const A &)> parser_t;
 
+private:
+	struct Wrap {
+		Wrap (const waiter_t &waiter)
+			: waiter (waiter) {
+		}
+
+		A operator () () {
+			return waiter.result ();
+		}
+
+	private:
+		waiter_t waiter;
+	};
+
+public:
+
 	AsyncResult (const waiter_t &waiter, const parser_t &parser)
+		: waiter (Wrap (waiter)), parser (parser)
+	{}
+
+	AsyncResult (const waiter2_t &waiter, const parser_t &parser)
 		: waiter (waiter), parser (parser)
 	{}
 
 	R get () {
-		return parser (waiter.result ());
+		return parser (waiter ());
 	}
 
 private:
-	waiter_t waiter;
+	waiter2_t waiter;
 	parser_t parser;
 };
 
 typedef AsyncResult <ReadResult, ioremap::elliptics::read_result> async_read_result_t;
 typedef AsyncResult <std::vector<LookupResult>, ioremap::elliptics::write_result> async_write_result_t;
+typedef AsyncResult <void, std::exception_ptr> async_remove_result_t;
 
 BOOST_PARAMETER_NAME(key)
 BOOST_PARAMETER_NAME(keys)
@@ -455,6 +477,19 @@ public:
 		return write_async_impl(key, data, offset, size, cflags, ioflags, groups, replication_count, embeds);
 	}
 
+	BOOST_PARAMETER_MEMBER_FUNCTION(
+		(async_remove_result_t), remove_async, tag,
+		(required
+			(key, (Key))
+		)
+		(optional
+			(groups, (const std::vector<int>), std::vector<int>())
+		)
+	)
+	{
+		return remove_async_impl(key, groups);
+	}
+
 	bool ping();
 	std::vector<StatusResult> stat_log();
 
@@ -508,6 +543,8 @@ private:
 	async_write_result_t write_async_impl(Key &key, std::string &data, uint64_t offset, uint64_t size,
 										  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 										  unsigned int replication_count, std::vector<boost::shared_ptr<embed> > embeds);
+
+	async_remove_result_t remove_async_impl(Key &key, std::vector<int> &groups);
 
 	LookupResult parse_lookup(const ioremap::elliptics::lookup_result &l);
 	std::vector<LookupResult> parse_lookup(const ioremap::elliptics::write_result &l);

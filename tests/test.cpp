@@ -85,8 +85,8 @@ void test_async () {
 	Key k1(std::string("111uniq_key1.txt"));
 	Key k2(std::string("111uniq_key2.txt"));
 
-	try { proxy.remove (k1); } catch (...) {}
-	try { proxy.remove (k2); } catch (...) {}
+	try { proxy.remove_async (k1).get (); } catch (...) {}
+	try { proxy.remove_async (k2).get (); } catch (...) {}
 
 	std::string data1("data1");
 	std::string data2("data2");
@@ -102,7 +102,6 @@ void test_async () {
 		std::cout << "Exception during get write result" << std::endl;
 		return;
 	}
-
 	std::cout << "written " << l.size() << " copies" << std::endl;
 	for (auto it = l.begin(); it != l.end(); ++it) {
 		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
@@ -114,16 +113,13 @@ void test_async () {
 		std::cout << "Exception during get write2 result" << std::endl;
 		return;
 	}
-
 	std::cout << "written " << l.size() << " copies" << std::endl;
 	for (auto it = l.begin(); it != l.end(); ++it) {
 		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
 	}
 
-
 	async_read_result_t arr1 = proxy.read_async(k1);
 	async_read_result_t arr2 = proxy.read_async(k2);
-
 
 	ReadResult r;
 	try {
@@ -133,6 +129,7 @@ void test_async () {
 		return;
 	}
 	std::cout << "Read result: " << r.data << std::endl;
+
 	try {
 		r = arr2.get ();
 	} catch (...) {
@@ -161,23 +158,12 @@ void test_sync () {
 
 	std::vector<LookupResult> l = proxy.write(k1, data1);
 
-	//l = awr2.get ();
-	//std::cout << "written " << l.size() << " copies" << std::endl;
-	//for (auto it = l.begin(); it != l.end(); ++it) {
-//		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
-//	}
-
-	//l = awr1.get ();
 	std::cout << "written " << l.size() << " copies" << std::endl;
 	for (auto it = l.begin(); it != l.end(); ++it) {
 		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
 	}
 
-
-	//async_read_result_t arr1 = proxy.read_async(k1);
-	//async_read_result_t arr2 = proxy.read_async(k2);
 	std::cout << "Read result: " << proxy.read(k1).data << std::endl;
-	//std::cout << "Read result: " << arr2.get ().data << std::endl;
 }
 
 int main(int argc, char* argv[])

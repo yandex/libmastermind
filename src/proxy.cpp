@@ -995,7 +995,7 @@ std::string EllipticsProxy::exec_script_impl(Key &key, std::string &data, std::s
 async_read_result_t EllipticsProxy::read_async_impl(Key &key, uint64_t offset, uint64_t size,
 												  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 												  bool latest, bool embeded) {
-	ioremap::elliptics::waiter <ioremap::elliptics::read_result> waiter;
+	async_read_result_t::waiter_t waiter;
 
 	session elliptics_session(*elliptics_node_);
 	std::vector<int> lgroups;
@@ -1058,7 +1058,7 @@ async_write_result_t EllipticsProxy::write_async_impl(Key &key, std::string &dat
 													  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 													  unsigned int replication_count, std::vector<boost::shared_ptr<embed> > embeds)
 {
-	ioremap::elliptics::waiter <ioremap::elliptics::write_result> waiter;
+	async_write_result_t::waiter_t waiter;
 	session elliptics_session(*elliptics_node_);
 	bool use_metabase = false;
 
@@ -1142,6 +1142,79 @@ async_write_result_t EllipticsProxy::write_async_impl(Key &key, std::string &dat
 	catch (...) {
 		std::stringstream msg;
 		msg << "Can't write data for key " << key.to_string();
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+}
+
+void parse_remove_stub (const std::exception_ptr &) {}
+
+struct remove_proxy {
+	std::exception_ptr operator () () {
+		for (auto it = waiters.begin (), end = waiters.end (); it != end; ++it) {
+			it->result ();
+		}
+		return std::exception_ptr ();
+	}
+
+	void add_waiter (const async_remove_result_t::waiter_t &w) {
+		waiters.push_back (w);
+	}
+
+private:
+	std::vector <async_remove_result_t::waiter_t> waiters;
+};
+
+async_remove_result_t EllipticsProxy::remove_async_impl(Key &key, std::vector<int> &groups) {
+	session elliptics_session(*elliptics_node_);
+	std::vector<int> lgroups;
+
+	remove_proxy rp;
+
+	lgroups = getGroups(key, groups);
+	try {
+		elliptics_session.set_groups(lgroups);
+		std::string l;
+		if (key.by_id()) {
+			struct dnet_id id = key.id();
+			int error = -1;
+
+			for (size_t i = 0; i < lgroups.size(); ++i) {
+				id.group_id = lgroups[i];
+				try {
+					async_remove_result_t::waiter_t waiter;
+					elliptics_session.remove(waiter.handler (), id);
+					rp.add_waiter (waiter);
+					error = 0;
+				} catch (const std::exception &e) {
+					std::stringstream msg;
+					msg << "Can't remove object " << key.to_string () << " in group " << groups[i] << ": " << e.what();
+					elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+				}
+			}
+
+			if (error) {
+				std::ostringstream str;
+				str << dnet_dump_id(&id) << ": REMOVE failed";
+				throw std::runtime_error(str.str());
+			}
+		} else {
+			//ioremap::elliptics::waiter <std::exception_ptr> waiter;
+			async_remove_result_t::waiter_t waiter;
+			elliptics_session.remove (waiter.handler (), key.remote ());
+			rp.add_waiter (waiter);
+		}
+		return async_remove_result_t (rp, std::bind (&parse_remove_stub, std::placeholders::_1));
+	}
+	catch (const std::exception &e) {
+		std::stringstream msg;
+		msg << "Can't remove object " << key.to_string() << " " << e.what();
+		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+	catch (...) {
+		std::stringstream msg;
+		msg << "Can't remove object " << key.to_string();
 		elliptics_log_->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
