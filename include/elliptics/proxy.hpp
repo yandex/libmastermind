@@ -24,6 +24,8 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <functional>
+#include <iostream>
 
 #ifdef HAVE_METABASE
 #include <cocaine/dealer/dealer.hpp>
@@ -161,6 +163,50 @@ public:
 	uint64_t fsid;
 };
 
+template <typename R, typename A>
+class AsyncResult {
+public:
+	typedef ioremap::elliptics::waiter <A> waiter_t;
+	typedef std::function <A ()> waiter2_t;
+	typedef std::function <R (const A &)> parser_t;
+
+private:
+	struct Wrap {
+		Wrap (const waiter_t &waiter)
+			: waiter (waiter) {
+		}
+
+		A operator () () {
+			return waiter.result ();
+		}
+
+	private:
+		waiter_t waiter;
+	};
+
+public:
+
+	AsyncResult (const waiter_t &waiter, const parser_t &parser)
+		: waiter (Wrap (waiter)), parser (parser)
+	{}
+
+	AsyncResult (const waiter2_t &waiter, const parser_t &parser)
+		: waiter (waiter), parser (parser)
+	{}
+
+	R get () {
+		return parser (waiter ());
+	}
+
+private:
+	waiter2_t waiter;
+	parser_t parser;
+};
+
+typedef AsyncResult <ReadResult, ioremap::elliptics::read_result> async_read_result_t;
+typedef AsyncResult <std::vector<LookupResult>, ioremap::elliptics::write_result> async_write_result_t;
+typedef AsyncResult <void, std::exception_ptr> async_remove_result_t;
+
 BOOST_PARAMETER_NAME(key)
 BOOST_PARAMETER_NAME(keys)
 BOOST_PARAMETER_NAME(data)
@@ -181,6 +227,7 @@ BOOST_PARAMETER_NAME(embeded)
 BOOST_PARAMETER_NAME(replication_count)
 BOOST_PARAMETER_NAME(limit_start)
 BOOST_PARAMETER_NAME(limit_num)
+BOOST_PARAMETER_NAME(script)
 
 class EllipticsProxy {
 public:
@@ -376,6 +423,73 @@ public:
 		return bulk_write_impl(keys, data, cflags, groups, replication_count);
 	}
 
+	BOOST_PARAMETER_MEMBER_FUNCTION(
+		(std::string), exec_script, tag,
+		(required
+			(key, (Key))
+			(script, (std::string))
+			(data, (std::string))
+		)
+		(optional
+			(groups, (const std::vector<int>), std::vector<int>())
+		)
+	)
+	{
+		return exec_script_impl(key, data, script, groups);
+	}
+
+	BOOST_PARAMETER_MEMBER_FUNCTION(
+		(async_read_result_t), read_async, tag,
+		(required
+			(key, (Key))
+		)
+		(optional
+			(offset, (uint64_t), 0)
+			(size, (uint64_t), 0)
+			(cflags, (uint64_t), 0)
+			(ioflags, (uint64_t), 0)
+			(groups, (const std::vector<int>), std::vector<int>())
+			(latest, (bool), false)
+			(embeded, (bool), false)
+		)
+	)
+	{
+		return read_async_impl (key, offset, size, cflags, ioflags, groups, latest, embeded);
+	}
+
+	BOOST_PARAMETER_MEMBER_FUNCTION(
+		(async_write_result_t), write_async, tag,
+		(required
+			(key, (Key))
+			(data, (std::string))
+		)
+		(optional
+			(offset, (uint64_t), 0)
+			(size, (uint64_t), 0)
+			(cflags, (uint64_t), 0)
+			(ioflags, (uint64_t), 0)
+			(groups, (const std::vector<int>), std::vector<int>())
+			(replication_count, (unsigned int), 0)
+			(embeds, (std::vector<boost::shared_ptr<embed> >), std::vector<boost::shared_ptr<embed> >())
+		)
+	)
+	{
+		return write_async_impl(key, data, offset, size, cflags, ioflags, groups, replication_count, embeds);
+	}
+
+	BOOST_PARAMETER_MEMBER_FUNCTION(
+		(async_remove_result_t), remove_async, tag,
+		(required
+			(key, (Key))
+		)
+		(optional
+			(groups, (const std::vector<int>), std::vector<int>())
+		)
+	)
+	{
+		return remove_async_impl(key, groups);
+	}
+
 	bool ping();
 	std::vector<StatusResult> stat_log();
 
@@ -420,6 +534,17 @@ private:
 	std::map<Key, std::vector<LookupResult> > bulk_write_impl(std::vector<Key> &keys, std::vector <std::string> &data, uint64_t cflags,
 															  std::vector<int> &groups, unsigned int replication_count);
 
+	std::string exec_script_impl(Key &key, std::string &data, std::string &script, std::vector <int> &groups);
+
+	async_read_result_t read_async_impl(Key &key, uint64_t offset, uint64_t size,
+									  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
+									  bool latest, bool embeded);
+
+	async_write_result_t write_async_impl(Key &key, std::string &data, uint64_t offset, uint64_t size,
+										  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
+										  unsigned int replication_count, std::vector<boost::shared_ptr<embed> > embeds);
+
+	async_remove_result_t remove_async_impl(Key &key, std::vector<int> &groups);
 
 	LookupResult parse_lookup(const ioremap::elliptics::lookup_result &l);
 	std::vector<LookupResult> parse_lookup(const ioremap::elliptics::write_result &l);
