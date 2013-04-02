@@ -310,6 +310,11 @@ parse_lookup(const ioremap::elliptics::lookup_result &l, bool eblob_style_path, 
 
 	result.port = dnet_server_convert_port((struct sockaddr *)addr->addr, addr->addr_len);
 	result.group = cmd->id.group_id;
+	result.status = cmd->status;
+	result.short_path.assign ((char *)(info + 1));
+	char addr_dst[512];
+	dnet_server_convert_dnet_addr_raw(addr, addr_dst, sizeof (addr_dst) - 1);
+	result.addr.assign (addr_dst);
 
 	if (eblob_style_path) {
 		result.path = l->file_path();
@@ -638,7 +643,6 @@ std::vector<LookupResult> EllipticsProxy::write_impl(Key &key, std::string &data
 		elliptics_session.set_cflags(0);
 		elliptics_session.write_metadata(key, key.remote(), helper.get_upload_groups (), ts);
 		elliptics_session.set_cflags(ioflags);
-
 #ifdef HAVE_METABASE
 		if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
 			uploadMetaInfo(lgroups, key);
@@ -1263,6 +1267,20 @@ std::vector<StatusResult> EllipticsProxy::stat_log () {
 	}
 
 	return res;
+}
+
+std::string EllipticsProxy::id_str (const Key &key) {
+	ioremap::elliptics::session sess (*elliptics_node_);
+	struct dnet_id id;
+	memset(&id, 0, sizeof(id));
+	if (key.by_id ()) {
+		id = key.id ();
+	} else {
+		sess.transform (key.remote (), id);
+	}
+	char str[2 * DNET_ID_SIZE + 1];
+	dnet_dump_id_len_raw(id.id, DNET_ID_SIZE, str);
+	return std::string (str);
 }
 
 /*

@@ -133,6 +133,9 @@ public:
 	uint16_t port;
 	std::string path;
 	int group;
+	int status;
+	std::string addr;
+	std::string short_path;
 };
 
 class embed {
@@ -492,6 +495,8 @@ public:
 
 	bool ping();
 	std::vector<StatusResult> stat_log();
+
+	std::string id_str (const Key &key);
 
 #ifdef HAVE_METABASE
 	BOOST_PARAMETER_MEMBER_FUNCTION(
