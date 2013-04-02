@@ -5,52 +5,52 @@
 using namespace elliptics;
 
 void test_lookup () {
-	EllipticsProxy::config c;
+	elliptics_proxy_t::config c;
 	c.groups.push_back(1);
 	c.groups.push_back(2);
 	c.log_mask = 1;
-	c.remotes.push_back(EllipticsProxy::remote("derikon.dev.yandex.net", 1025, 2));
+	c.remotes.push_back(elliptics_proxy_t::remote("derikon.dev.yandex.net", 1025, 2));
 	c.success_copies_num = SUCCESS_COPIES_TYPE__ANY;
 
-	EllipticsProxy proxy(c);
+	elliptics_proxy_t proxy(c);
 	sleep(1);
 
-	Key k(std::string("uniq_key"));
+	elliptics::key_t k(std::string("uniq_key"));
 
 	proxy.remove (k);
 
 	std::string data("test3");
 
 	std::vector <int> g = {2};
-	std::vector<LookupResult> l = proxy.write(k, data, _groups = g);
+	std::vector<lookup_result_t> l = proxy.write(k, data, _groups = g);
 	std::cout << "written " << l.size() << " copies" << std::endl;
 	for (auto it = l.begin(); it != l.end(); ++it) {
 		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
 	}
 
-	LookupResult l1 = proxy.lookup(k);
+	lookup_result_t l1 = proxy.lookup(k);
 	std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std::endl;
 }
 
 void test_read_async () {
-	EllipticsProxy::config c;
+	elliptics_proxy_t::config c;
 	c.groups.push_back(1);
 	c.groups.push_back(2);
 	c.log_mask = 1;
-	c.remotes.push_back(EllipticsProxy::remote("derikon.dev.yandex.net", 1025, 2));
+	c.remotes.push_back(elliptics_proxy_t::remote("derikon.dev.yandex.net", 1025, 2));
 	c.success_copies_num = SUCCESS_COPIES_TYPE__ANY;
 
-	EllipticsProxy proxy(c);
+	elliptics_proxy_t proxy(c);
 	sleep(1);
 
-	Key k(std::string("uniq_key"));
+	elliptics::key_t k(std::string("uniq_key"));
 
 	proxy.remove (k);
 
 	std::string data("test3");
 
 	//std::vector <int> g = {2};
-	std::vector<LookupResult> l = proxy.write(k, data/*, _groups = g*/);
+	std::vector<lookup_result_t> l = proxy.write(k, data/*, _groups = g*/);
 	std::cout << "written " << l.size() << " copies" << std::endl;
 	for (auto it = l.begin(); it != l.end(); ++it) {
 		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
@@ -72,18 +72,18 @@ void test_read_async () {
 
 void test_async () {
 
-	EllipticsProxy::config c;
+	elliptics_proxy_t::config c;
 	c.groups.push_back(1);
 	c.groups.push_back(2);
 	c.log_mask = 1;
-	c.remotes.push_back(EllipticsProxy::remote("derikon.dev.yandex.net", 1025, 2));
+	c.remotes.push_back(elliptics_proxy_t::remote("derikon.dev.yandex.net", 1025, 2));
 	c.success_copies_num = SUCCESS_COPIES_TYPE__ANY;
 
-	EllipticsProxy proxy(c);
+	elliptics_proxy_t proxy(c);
 	sleep(1);
 
-	Key k1(std::string("111uniq_key1.txt"));
-	Key k2(std::string("111uniq_key2.txt"));
+	elliptics::key_t k1(std::string("111uniq_key1.txt"));
+	elliptics::key_t k2(std::string("111uniq_key2.txt"));
 
 	try { proxy.remove_async (k1).get (); } catch (...) {}
 	try { proxy.remove_async (k2).get (); } catch (...) {}
@@ -91,7 +91,7 @@ void test_async () {
 	std::string data1("data1");
 	std::string data2("data2");
 
-	std::vector<LookupResult> l;
+	std::vector<lookup_result_t> l;
 
 	auto awr1 = proxy.write_async(k1, data1);
 	auto awr2 = proxy.write_async(k2, data2);
@@ -121,7 +121,7 @@ void test_async () {
 	async_read_result_t arr1 = proxy.read_async(k1);
 	async_read_result_t arr2 = proxy.read_async(k2);
 
-	ReadResult r;
+	read_result_t r;
 	try {
 		r = arr1.get ();
 	} catch (...) {
@@ -140,23 +140,23 @@ void test_async () {
 }
 
 void test_sync () {
-	EllipticsProxy::config c;
+	elliptics_proxy_t::config c;
 	c.groups.push_back(1);
 	c.groups.push_back(2);
 	c.log_mask = 1;
-	c.remotes.push_back(EllipticsProxy::remote("derikon.dev.yandex.net", 1025, 2));
+	c.remotes.push_back(elliptics_proxy_t::remote("derikon.dev.yandex.net", 1025, 2));
 	c.success_copies_num = SUCCESS_COPIES_TYPE__ANY;
 
-	EllipticsProxy proxy(c);
+	elliptics_proxy_t proxy(c);
 	sleep(1);
 
-	Key k1(std::string("111uniq_key1.txt"));
+	elliptics::key_t k1(std::string("111uniq_key1.txt"));
 
 	try { proxy.remove (k1); } catch (...) {}
 
 	std::string data1("data1");
 
-	std::vector<LookupResult> l = proxy.write(k1, data1);
+	std::vector<lookup_result_t> l = proxy.write(k1, data1);
 
 	std::cout << "written " << l.size() << " copies" << std::endl;
 	for (auto it = l.begin(); it != l.end(); ++it) {
@@ -173,23 +173,23 @@ int main(int argc, char* argv[])
 	test_async ();
 	//test_sync ();
 	return 0;
-	EllipticsProxy::config c;
+	elliptics_proxy_t::config c;
 	c.groups.push_back(1);
 	c.groups.push_back(2);
 	c.log_mask = 1;
 	//c.cocaine_config = std::string("/home/toshik/cocaine/cocaine_config.json");
 
 	//c.remotes.push_back(EllipticsProxy::remote("elisto22f.dev.yandex.net", 1025));
-	c.remotes.push_back(EllipticsProxy::remote("derikon.dev.yandex.net", 1025, 2));
+	c.remotes.push_back(elliptics_proxy_t::remote("derikon.dev.yandex.net", 1025, 2));
 
-	EllipticsProxy proxy(c);
+	elliptics_proxy_t proxy(c);
 
 	sleep(1);
-	Key k(std::string("test"));
+	elliptics::key_t k(std::string("test"));
 
 	std::string data("test3");
 
-	std::vector <Key> keys = {std::string ("key5"), std::string ("key6")};
+	std::vector <elliptics::key_t> keys = {std::string ("key5"), std::string ("key6")};
 	std::vector <std::string> data_arr = {"data1", "data2"};
 	//std::vector <Key> keys = {std::string ("key1")};
 	//std::vector <std::string> data_arr = {"data1"};
@@ -242,30 +242,30 @@ int main(int argc, char* argv[])
 	std::cout << std::endl;
 	*/
 
-	GroupInfoResponse gi = proxy.get_metabalancer_group_info(103);
+	group_info_response_t gi = proxy.get_metabalancer_group_info(103);
 	std::cout << "Got info from mastermind: status: " << gi.status << ", " << gi.nodes.size() << " groups: ";
 	for (std::vector<int>::const_iterator it = gi.couples.begin(); it != gi.couples.end(); it++)
 		std::cout << *it << " ";
 	std::cout << std::endl;
 
-	std::vector<EllipticsProxy::remote> remotes = proxy.lookup_addr(k, gi.couples);
-	for (std::vector<EllipticsProxy::remote>::const_iterator it = remotes.begin(); it != remotes.end(); ++it)
+	std::vector<elliptics_proxy_t::remote> remotes = proxy.lookup_addr(k, gi.couples);
+	for (std::vector<elliptics_proxy_t::remote>::const_iterator it = remotes.begin(); it != remotes.end(); ++it)
 		std::cout << it->host << " ";
 	std::cout << std::endl;
 
-        struct dnet_id id;
+		struct dnet_id id;
 
-        memset(&id, 0, sizeof(id));
-        for (int i = 0; i < DNET_ID_SIZE; i++)
-            id.id[i] = i;
+		memset(&id, 0, sizeof(id));
+		for (int i = 0; i < DNET_ID_SIZE; i++)
+			id.id[i] = i;
 
-		Key key1(id);
+		elliptics::key_t key1(id);
 
-        memset(&id, 0, sizeof(id));
-        for (int i = 0; i < DNET_ID_SIZE; i++)
-            id.id[i] = i+16;
+		memset(&id, 0, sizeof(id));
+		for (int i = 0; i < DNET_ID_SIZE; i++)
+			id.id[i] = i+16;
 
-		Key key2(id);
+		elliptics::key_t key2(id);
 
 		dnet_id_less cmp;
 
@@ -275,23 +275,23 @@ int main(int argc, char* argv[])
 
 
 
-        
+
 
 	return 0;
 
-	std::vector<LookupResult>::const_iterator it;
-	std::vector<LookupResult> l = proxy.write(k, data);
+	std::vector<lookup_result_t>::const_iterator it;
+	std::vector<lookup_result_t> l = proxy.write(k, data);
 	std::cout << "written " << l.size() << " copies" << std::endl;
 	for (it = l.begin(); it != l.end(); ++it) {
 		std::cout << "		path: " << it->hostname << ":" << it->port << it->path << std::endl;
 	}
 
 	for (int i = 0; i < 20; i++) {
-		LookupResult l1 = proxy.lookup(k);
+		lookup_result_t l1 = proxy.lookup(k);
 		std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std::endl;
 	}
 
-	ReadResult res = proxy.read(k);
+	read_result_t res = proxy.read(k);
 
 	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!" << res.data << std::endl;
 

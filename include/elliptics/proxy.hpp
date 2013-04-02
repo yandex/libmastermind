@@ -42,7 +42,7 @@
 
 namespace elliptics {
 
-enum metabase_type {
+enum METABASE_TYPE {
 	PROXY_META_NONE = 0,
 	PROXY_META_OPTIONAL,
 	PROXY_META_NORMAL,
@@ -58,62 +58,49 @@ enum SUCCESS_COPIES_TYPE {
 
 #ifdef HAVE_METABASE
 
-struct MetabaseGroupWeightsRequest {
-    uint64_t stamp;
-    MSGPACK_DEFINE(stamp)
+struct metabase_group_weights_request_t {
+	uint64_t stamp;
+	MSGPACK_DEFINE(stamp)
 };
 
-struct MetabaseGroupWeightsResponse {
-    struct GroupWithWeight {
-        std::vector<int> group_ids;
-        uint64_t weight;
-        MSGPACK_DEFINE(group_ids, weight)
-    };
-    struct SizedGroups {
-        uint64_t size;
-        std::vector<GroupWithWeight> weighted_groups;
-        MSGPACK_DEFINE(size, weighted_groups)
-    };
-    std::vector<SizedGroups> info;
-    MSGPACK_DEFINE(info)
+struct metabase_group_weights_response_t {
+	struct GroupWithWeight {
+		std::vector<int> group_ids;
+		uint64_t weight;
+		MSGPACK_DEFINE(group_ids, weight)
+	};
+	struct SizedGroups {
+		uint64_t size;
+		std::vector<GroupWithWeight> weighted_groups;
+		MSGPACK_DEFINE(size, weighted_groups)
+	};
+	std::vector<SizedGroups> info;
+	MSGPACK_DEFINE(info)
 };
 
-class group_weights_cache_interface {
+class group_weights_cache_interface_t {
 public:
-    virtual ~group_weights_cache_interface() {};
+	virtual ~group_weights_cache_interface_t() {};
 
-    virtual bool update(MetabaseGroupWeightsResponse &resp) = 0;
-    virtual std::vector<int> choose(uint64_t count) = 0;
-    virtual bool initialized() = 0;
+	virtual bool update(metabase_group_weights_response_t &resp) = 0;
+	virtual std::vector<int> choose(uint64_t count) = 0;
+	virtual bool initialized() = 0;
 };
 
-std::auto_ptr<group_weights_cache_interface> get_group_weighs_cache();
+std::auto_ptr<group_weights_cache_interface_t> get_group_weighs_cache();
 
-struct MetabaseRequest {
-	int		groups_num;
-	uint64_t	stamp;
-	std::vector<uint8_t> id;
-	MSGPACK_DEFINE(groups_num, stamp, id)
-};
-
-struct MetabaseResponse {
-	std::vector<int> groups;
-	uint64_t	stamp;
-	MSGPACK_DEFINE(groups, stamp)
-};
-
-enum group_info_status {
+enum GROUP_INFO_STATUS {
 	GROUP_INFO_STATUS_OK,
 	GROUP_INFO_STATUS_BAD,
 	GROUP_INFO_STATUS_COUPLED
 };
 
-struct GroupInfoRequest {
+struct group_info_request_t {
 	int group;
 	MSGPACK_DEFINE(group)
 };
 
-struct GroupInfoResponse {
+struct group_info_response_t {
 	std::vector<std::string> nodes;
 	std::vector<int> couples;
 	int status;
@@ -124,10 +111,9 @@ struct dnet_id_less {
 	bool operator () (const struct dnet_id &ob1, const struct dnet_id &ob2);
 };
 
-typedef struct dnet_id ID;
-typedef ioremap::elliptics::key Key;
+typedef ioremap::elliptics::key key_t;
 
-class LookupResult {
+class lookup_result_t {
 public:
 	std::string hostname;
 	uint16_t port;
@@ -138,7 +124,7 @@ public:
 	std::string short_path;
 };
 
-class embed {
+class embed_t {
 public:
 	uint32_t type;
 	uint32_t flags;
@@ -146,10 +132,10 @@ public:
 	virtual const std::string pack() const = 0;
 };
 
-class ReadResult {
+class read_result_t {
 public:
 	std::string data;
-	std::vector<boost::shared_ptr<embed> > embeds;
+	std::vector<boost::shared_ptr<embed_t> > embeds;
 };
 
 class StatusResult {
@@ -166,21 +152,21 @@ public:
 	uint64_t fsid;
 };
 
-template <typename R, typename A>
-class AsyncResult {
+template<typename R, typename A>
+class async_result {
 public:
-	typedef ioremap::elliptics::waiter <A> waiter_t;
-	typedef std::function <A ()> waiter2_t;
-	typedef std::function <R (const A &)> parser_t;
+	typedef ioremap::elliptics::waiter<A> waiter_t;
+	typedef std::function<A()> waiter2_t;
+	typedef std::function<R(const A &)> parser_t;
 
 private:
 	struct Wrap {
-		Wrap (const waiter_t &waiter)
-			: waiter (waiter) {
+		Wrap(const waiter_t &waiter)
+			: waiter(waiter) {
 		}
 
 		A operator () () {
-			return waiter.result ();
+			return waiter.result();
 		}
 
 	private:
@@ -189,16 +175,16 @@ private:
 
 public:
 
-	AsyncResult (const waiter_t &waiter, const parser_t &parser)
-		: waiter (Wrap (waiter)), parser (parser)
+	async_result(const waiter_t &waiter, const parser_t &parser)
+		: waiter(Wrap(waiter)), parser(parser)
 	{}
 
-	AsyncResult (const waiter2_t &waiter, const parser_t &parser)
-		: waiter (waiter), parser (parser)
+	async_result(const waiter2_t &waiter, const parser_t &parser)
+		: waiter(waiter), parser(parser)
 	{}
 
-	R get () {
-		return parser (waiter ());
+	R get() {
+		return parser(waiter());
 	}
 
 private:
@@ -206,9 +192,9 @@ private:
 	parser_t parser;
 };
 
-typedef AsyncResult <ReadResult, ioremap::elliptics::read_result> async_read_result_t;
-typedef AsyncResult <std::vector<LookupResult>, ioremap::elliptics::write_result> async_write_result_t;
-typedef AsyncResult <void, std::exception_ptr> async_remove_result_t;
+typedef async_result<read_result_t, ioremap::elliptics::read_result> async_read_result_t;
+typedef async_result<std::vector<lookup_result_t>, ioremap::elliptics::write_result> async_write_result_t;
+typedef async_result<void, std::exception_ptr> async_remove_result_t;
 
 BOOST_PARAMETER_NAME(key)
 BOOST_PARAMETER_NAME(keys)
@@ -232,7 +218,7 @@ BOOST_PARAMETER_NAME(limit_start)
 BOOST_PARAMETER_NAME(limit_num)
 BOOST_PARAMETER_NAME(script)
 
-class EllipticsProxy {
+class elliptics_proxy_t {
 public:
 
 	class remote {
@@ -247,9 +233,9 @@ public:
 	public:
 		config();
 
-		std::string            log_path;
-		uint32_t               log_mask;
-		std::vector<EllipticsProxy::remote>  remotes;
+		std::string log_path;
+		uint32_t log_mask;
+		std::vector<elliptics_proxy_t::remote> remotes;
 
 		/*
 		 * Specifies wether given node will join the network,
@@ -258,51 +244,51 @@ public:
 		 *
 		 * Also has a bit to forbid route list download.
 		 */
-		int                    flags;
+		int flags;
 
 		// Namespace
-		std::string            ns;
+		std::string ns;
 
 		// Wait timeout in seconds used for example to wait for remote content sync.
-		unsigned int           wait_timeout;
+		unsigned int wait_timeout;
 
 		// Wait until transaction acknowledge is received.
-		long                   check_timeout;
+		long check_timeout;
 
-		std::vector<int>       groups;
-		int                    base_port;
-		int                    directory_bit_num;
-		int                    success_copies_num;
-		int                    state_num;
-		int                    replication_count;
-		int                    chunk_size;
-		bool                   eblob_style_path;
+		std::vector<int> groups;
+		int base_port;
+		int	directory_bit_num;
+		int success_copies_num;
+		int	state_num;
+		int replication_count;
+		int	chunk_size;
+		bool eblob_style_path;
 
 #ifdef HAVE_METABASE
-		std::string            metabase_write_addr;
-		std::string            metabase_read_addr;
+		std::string metabase_write_addr;
+		std::string	metabase_read_addr;
 
-		std::string            cocaine_config;
-		int                    group_weights_refresh_period;
+		std::string cocaine_config;
+		int group_weights_refresh_period;
 #endif /* HAVE_METABASE */
 	};
 
 
 private:
-	typedef boost::char_separator<char> Separator;
-	typedef boost::tokenizer<Separator> Tokenizer;
+	typedef boost::char_separator<char> separator_t;
+	typedef boost::tokenizer<separator_t> tokenizer_t;
 
 public:
-	EllipticsProxy(const EllipticsProxy::config &c);
+	elliptics_proxy_t(const elliptics_proxy_t::config &c);
 #ifdef HAVE_METABASE
-	virtual ~EllipticsProxy();
+	virtual ~elliptics_proxy_t();
 #endif //HAVE_METABASE
 
 public:
 	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(LookupResult), lookup, tag,
+		(lookup_result_t), lookup, tag,
 		(required
-			(key, (Key))
+			(key, (key_t))
 		)
 		(optional
 			(groups, (const std::vector<int>), std::vector<int>())
@@ -313,9 +299,9 @@ public:
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(std::vector<LookupResult>), write, tag,
+		(std::vector<lookup_result_t>), write, tag,
 		(required
-			(key, (Key))
+			(key, (key_t))
 			(data, (std::string))
 		)
 		(optional
@@ -325,7 +311,7 @@ public:
 			(ioflags, (uint64_t), 0)
 			(groups, (const std::vector<int>), std::vector<int>())
 			(replication_count, (unsigned int), 0)
-			(embeds, (std::vector<boost::shared_ptr<embed> >), std::vector<boost::shared_ptr<embed> >())
+			(embeds, (std::vector<boost::shared_ptr<embed_t> >), std::vector<boost::shared_ptr<embed_t> >())
 		)
 	)
 	{
@@ -333,9 +319,9 @@ public:
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(ReadResult), read, tag,
+		(read_result_t), read, tag,
 		(required
-			(key, (Key))
+			(key, (key_t))
 		)
 		(optional
 			(offset, (uint64_t), 0)
@@ -354,7 +340,7 @@ public:
 	BOOST_PARAMETER_MEMBER_FUNCTION(
 		(void), remove, tag,
 		(required
-			(key, (Key))
+			(key, (key_t))
 		)
 		(optional
 			(groups, (const std::vector<int>), std::vector<int>())
@@ -367,8 +353,8 @@ public:
 	BOOST_PARAMETER_MEMBER_FUNCTION(
 		(std::vector<std::string>), range_get, tag,
 		(required
-			(from, (Key))
-			(to, (Key))
+			(from, (key_t))
+			(to, (key_t))
 		)
 		(optional
 			(limit_start, (uint64_t), 0)
@@ -376,7 +362,7 @@ public:
 			(cflags, (uint64_t), 0)
 			(ioflags, (uint64_t), 0)
 			(groups, (const std::vector<int>), std::vector<int>())
-			(key, (Key), Key())
+			(key, (key_t), key_t())
 		)
 	)
 	{
@@ -384,9 +370,9 @@ public:
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(std::map<Key, ReadResult>), bulk_read, tag,
+		(std::map<key_t, read_result_t>), bulk_read, tag,
 		(required
-			(keys, (std::vector<Key>))
+			(keys, (std::vector<key_t>))
 		)
 		(optional
 			(cflags, (uint64_t), 0)
@@ -398,9 +384,9 @@ public:
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(std::vector<EllipticsProxy::remote>), lookup_addr, tag,
+		(std::vector<elliptics_proxy_t::remote>), lookup_addr, tag,
 		(required
-			(key, (Key))
+			(key, (key_t))
 		)
 		(optional
 			(groups, (const std::vector<int>), std::vector<int>())
@@ -411,10 +397,10 @@ public:
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(std::map<Key, std::vector<LookupResult> >), bulk_write, tag,
+		(std::map<key_t, std::vector<lookup_result_t> >), bulk_write, tag,
 		(required
-			(keys, (std::vector<Key>))
-			(data, (std::vector <std::string>))
+			(keys, (std::vector<key_t>))
+			(data, (std::vector<std::string>))
 		)
 		(optional
 			(cflags, (uint64_t), 0)
@@ -429,7 +415,7 @@ public:
 	BOOST_PARAMETER_MEMBER_FUNCTION(
 		(std::string), exec_script, tag,
 		(required
-			(key, (Key))
+			(key, (key_t))
 			(script, (std::string))
 			(data, (std::string))
 		)
@@ -444,7 +430,7 @@ public:
 	BOOST_PARAMETER_MEMBER_FUNCTION(
 		(async_read_result_t), read_async, tag,
 		(required
-			(key, (Key))
+			(key, (key_t))
 		)
 		(optional
 			(offset, (uint64_t), 0)
@@ -457,13 +443,13 @@ public:
 		)
 	)
 	{
-		return read_async_impl (key, offset, size, cflags, ioflags, groups, latest, embeded);
+		return read_async_impl(key, offset, size, cflags, ioflags, groups, latest, embeded);
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
 		(async_write_result_t), write_async, tag,
 		(required
-			(key, (Key))
+			(key, (key_t))
 			(data, (std::string))
 		)
 		(optional
@@ -473,7 +459,7 @@ public:
 			(ioflags, (uint64_t), 0)
 			(groups, (const std::vector<int>), std::vector<int>())
 			(replication_count, (unsigned int), 0)
-			(embeds, (std::vector<boost::shared_ptr<embed> >), std::vector<boost::shared_ptr<embed> >())
+			(embeds, (std::vector<boost::shared_ptr<embed_t> >), std::vector<boost::shared_ptr<embed_t> >())
 		)
 	)
 	{
@@ -483,7 +469,7 @@ public:
 	BOOST_PARAMETER_MEMBER_FUNCTION(
 		(async_remove_result_t), remove_async, tag,
 		(required
-			(key, (Key))
+			(key, (key_t))
 		)
 		(optional
 			(groups, (const std::vector<int>), std::vector<int>())
@@ -496,7 +482,7 @@ public:
 	bool ping();
 	std::vector<StatusResult> stat_log();
 
-	std::string id_str (const Key &key);
+	std::string id_str(const key_t &key);
 
 #ifdef HAVE_METABASE
 	BOOST_PARAMETER_MEMBER_FUNCTION(
@@ -504,65 +490,65 @@ public:
 		(optional
 			(count, (uint64_t), 0)
 			(size, (uint64_t), 0)
-			(key, (Key), Key())
+			(key, (key_t), key_t())
 		)
 	)
 	{
 		return get_metabalancer_groups_impl(count, size, key);
 	}
 
-	GroupInfoResponse get_metabalancer_group_info(int group) {
+	group_info_response_t get_metabalancer_group_info(int group) {
 		return get_metabalancer_group_info_impl(group);
 	}
 #endif /* HAVE_METABASE */
 
 private:
-	LookupResult lookup_impl(Key &key, std::vector<int> &groups);
+	lookup_result_t lookup_impl(key_t &key, std::vector<int> &groups);
 
-	std::vector<LookupResult> write_impl(Key &key, std::string &data, uint64_t offset, uint64_t size,
+	std::vector<lookup_result_t> write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-				unsigned int replication_count, std::vector<boost::shared_ptr<embed> > embeds);
+				unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds);
 
-	ReadResult read_impl(Key &key, uint64_t offset, uint64_t size,
+	read_result_t read_impl(key_t &key, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 				bool latest, bool embeded);
 
-	void remove_impl(Key &key, std::vector<int> &groups);
+	void remove_impl(key_t &key, std::vector<int> &groups);
 
-	std::vector<std::string> range_get_impl(Key &from, Key &to, uint64_t cflags, uint64_t ioflags,
-				uint64_t limit_start, uint64_t limit_num, const std::vector<int> &groups, Key &key);
+	std::vector<std::string> range_get_impl(key_t &from, key_t &to, uint64_t cflags, uint64_t ioflags,
+				uint64_t limit_start, uint64_t limit_num, const std::vector<int> &groups, key_t &key);
 
-	std::map<Key, ReadResult> bulk_read_impl(std::vector<Key> &keys, uint64_t cflags, std::vector<int> &groups);
+	std::map<key_t, read_result_t> bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups);
 
-		std::vector<EllipticsProxy::remote> lookup_addr_impl(Key &key, std::vector<int> &groups);
+		std::vector<elliptics_proxy_t::remote> lookup_addr_impl(key_t &key, std::vector<int> &groups);
 
-	std::map<Key, std::vector<LookupResult> > bulk_write_impl(std::vector<Key> &keys, std::vector <std::string> &data, uint64_t cflags,
+	std::map<key_t, std::vector<lookup_result_t> > bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
 															  std::vector<int> &groups, unsigned int replication_count);
 
-	std::string exec_script_impl(Key &key, std::string &data, std::string &script, std::vector <int> &groups);
+	std::string exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups);
 
-	async_read_result_t read_async_impl(Key &key, uint64_t offset, uint64_t size,
+	async_read_result_t read_async_impl(key_t &key, uint64_t offset, uint64_t size,
 									  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 									  bool latest, bool embeded);
 
-	async_write_result_t write_async_impl(Key &key, std::string &data, uint64_t offset, uint64_t size,
+	async_write_result_t write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 										  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-										  unsigned int replication_count, std::vector<boost::shared_ptr<embed> > embeds);
+										  unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds);
 
-	async_remove_result_t remove_async_impl(Key &key, std::vector<int> &groups);
+	async_remove_result_t remove_async_impl(key_t &key, std::vector<int> &groups);
 
-	LookupResult parse_lookup(const ioremap::elliptics::lookup_result &l);
-	std::vector<LookupResult> parse_lookup(const ioremap::elliptics::write_result &l);
+	lookup_result_t parse_lookup(const ioremap::elliptics::lookup_result &l);
+	std::vector<lookup_result_t> parse_lookup(const ioremap::elliptics::write_result &l);
 
-	std::vector<int> getGroups(Key &key, const std::vector<int> &groups, int count = 0) const;
+	std::vector<int> get_groups(key_t &key, const std::vector<int> &groups, int count = 0) const;
 
 #ifdef HAVE_METABASE
-	void uploadMetaInfo(const std::vector<int> &groups, const Key &key) const;
-	std::vector<int> getMetaInfo(const Key &key) const;
-	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, Key &key);
-	GroupInfoResponse get_metabalancer_group_info_impl(int group);
-	bool collectGroupWeights();
-	void collectGroupWeightsLoop();
+	void upload_meta_info(const std::vector<int> &groups, const key_t &key) const;
+	std::vector<int> get_meta_info(const key_t &key) const;
+	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, key_t &key);
+	group_info_response_t get_metabalancer_group_info_impl(int group);
+	bool collect_group_weights();
+	void collect_group_weights_loop();
 #endif /* HAVE_METABASE */
 
 /*
@@ -581,35 +567,35 @@ private:
 
 
 private:
-	std::vector<std::string>                    remotes_;
-	std::vector<int>                            groups_;
+	std::vector<std::string>					remotes_;
+	std::vector<int>							groups_;
 */
 private:
-	boost::shared_ptr<ioremap::elliptics::file_logger>  elliptics_log_;
-	boost::shared_ptr<ioremap::elliptics::node>      elliptics_node_;
-	std::vector<int>                            groups_;
+	boost::shared_ptr<ioremap::elliptics::file_logger> m_elliptics_log;
+	boost::shared_ptr<ioremap::elliptics::node> m_elliptics_node;
+	std::vector<int> m_groups;
 
-	int                                         base_port_;
-	int                                         directory_bit_num_;
-	int                                         success_copies_num_;
-	int                                         state_num_;
-	int                                         replication_count_;
-	int                                         chunk_size_;
-	bool                                        eblob_style_path_;
+	int m_base_port;
+	int m_directory_bit_num;
+	int m_success_copies_num;
+	int m_state_num;
+	int m_replication_count;
+	int m_chunk_size;
+	bool m_eblob_style_path;
 
 #ifdef HAVE_METABASE
-	std::auto_ptr<cocaine::dealer::dealer_t>    cocaine_dealer_;
-	cocaine::dealer::message_policy_t           cocaine_default_policy_;
-	int                                         metabase_timeout_;
-	int                                         metabase_usage_;
-	uint64_t                                    metabase_current_stamp_;
+	std::auto_ptr<cocaine::dealer::dealer_t> m_cocaine_dealer;
+	cocaine::dealer::message_policy_t m_cocaine_default_policy;
+	int m_metabase_timeout;
+	int m_metabase_usage;
+	uint64_t m_metabase_current_stamp;
 
-	std::string                                 metabase_write_addr_;
-	std::string                                 metabase_read_addr_;
+	std::string m_metabase_write_addr;
+	std::string m_metabase_read_addr;
 
-	std::auto_ptr<group_weights_cache_interface> weight_cache_;
-	const int                                   group_weights_update_period_;
-	boost::thread                               weight_cache_update_thread_;
+	std::auto_ptr<group_weights_cache_interface_t> m_weight_cache;
+	const int m_group_weights_update_period;
+	boost::thread m_weight_cache_update_thread;
 #endif /* HAVE_METABASE */
 };
 
