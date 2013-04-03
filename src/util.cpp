@@ -33,6 +33,8 @@
 
 #include <elliptics/proxy.hpp>
 
+#include "utils.hpp"
+
 namespace elliptics {
 
 elliptics_proxy_t::remote::remote(const std::string &host, const int port, const int family) :

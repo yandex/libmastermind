@@ -42,74 +42,19 @@
 
 namespace elliptics {
 
-enum METABASE_TYPE {
-	PROXY_META_NONE = 0,
-	PROXY_META_OPTIONAL,
-	PROXY_META_NORMAL,
-	PROXY_META_MANDATORY
-};
-
 enum SUCCESS_COPIES_TYPE {
 	SUCCESS_COPIES_TYPE__ANY = -1,
 	SUCCESS_COPIES_TYPE__QUORUM = -2,
 	SUCCESS_COPIES_TYPE__ALL = -3
-
 };
 
 #ifdef HAVE_METABASE
-
-struct metabase_group_weights_request_t {
-	uint64_t stamp;
-	MSGPACK_DEFINE(stamp)
-};
-
-struct metabase_group_weights_response_t {
-	struct GroupWithWeight {
-		std::vector<int> group_ids;
-		uint64_t weight;
-		MSGPACK_DEFINE(group_ids, weight)
-	};
-	struct SizedGroups {
-		uint64_t size;
-		std::vector<GroupWithWeight> weighted_groups;
-		MSGPACK_DEFINE(size, weighted_groups)
-	};
-	std::vector<SizedGroups> info;
-	MSGPACK_DEFINE(info)
-};
-
-class group_weights_cache_interface_t {
-public:
-	virtual ~group_weights_cache_interface_t() {};
-
-	virtual bool update(metabase_group_weights_response_t &resp) = 0;
-	virtual std::vector<int> choose(uint64_t count) = 0;
-	virtual bool initialized() = 0;
-};
-
-std::auto_ptr<group_weights_cache_interface_t> get_group_weighs_cache();
-
-enum GROUP_INFO_STATUS {
-	GROUP_INFO_STATUS_OK,
-	GROUP_INFO_STATUS_BAD,
-	GROUP_INFO_STATUS_COUPLED
-};
-
-struct group_info_request_t {
-	int group;
-	MSGPACK_DEFINE(group)
-};
-
 struct group_info_response_t {
 	std::vector<std::string> nodes;
 	std::vector<int> couples;
 	int status;
 };
 #endif /* HAVE_METABASE */
-
-struct dnet_id_less {
-	bool operator () (const struct dnet_id &ob1, const struct dnet_id &ob2);
-};
 
 typedef ioremap::elliptics::key key_t;
 
@@ -138,7 +83,7 @@ public:
 	std::vector<boost::shared_ptr<embed_t> > embeds;
 };
 
-class StatusResult {
+class status_result_t {
 public:
 	std::string addr;
 	std::string id;
@@ -160,8 +105,8 @@ public:
 	typedef std::function<R(const A &)> parser_t;
 
 private:
-	struct Wrap {
-		Wrap(const waiter_t &waiter)
+	struct wraper_t {
+		wraper_t(const waiter_t &waiter)
 			: waiter(waiter) {
 		}
 
@@ -176,7 +121,7 @@ private:
 public:
 
 	async_result(const waiter_t &waiter, const parser_t &parser)
-		: waiter(Wrap(waiter)), parser(parser)
+		: waiter(wraper_t(waiter)), parser(parser)
 	{}
 
 	async_result(const waiter2_t &waiter, const parser_t &parser)
@@ -281,7 +226,7 @@ private:
 public:
 	elliptics_proxy_t(const elliptics_proxy_t::config &c);
 #ifdef HAVE_METABASE
-	virtual ~elliptics_proxy_t();
+	virtual ~elliptics_proxy_t() = default;
 #endif //HAVE_METABASE
 
 public:
@@ -480,7 +425,7 @@ public:
 	}
 
 	bool ping();
-	std::vector<StatusResult> stat_log();
+	std::vector<status_result_t> stat_log();
 
 	std::string id_str(const key_t &key);
 
@@ -503,6 +448,10 @@ public:
 #endif /* HAVE_METABASE */
 
 private:
+	class impl;
+	typedef std::auto_ptr<impl> impl_ptr;
+	impl_ptr pimpl;
+
 	lookup_result_t lookup_impl(key_t &key, std::vector<int> &groups);
 
 	std::vector<lookup_result_t> write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
@@ -549,53 +498,6 @@ private:
 	group_info_response_t get_metabalancer_group_info_impl(int group);
 	bool collect_group_weights();
 	void collect_group_weights_loop();
-#endif /* HAVE_METABASE */
-
-/*
-	void range(fastcgi::Request *request);
-	void rangeDelete(fastcgi::Request *request);
-	void statLog(fastcgi::Request *request);
-	void upload(fastcgi::Request *request);
-	void remove(fastcgi::Request *request);
-	void bulkRead(fastcgi::Request *request);
-	void bulkWrite(fastcgi::Request *request);
-	void execScript(fastcgi::Request *request);
-	void dnet_parse_numeric_id(const std::string &value, struct dnet_id &id);
-
-
-	static size_t paramsNum(Tokenizer &tok);
-
-
-private:
-	std::vector<std::string>					remotes_;
-	std::vector<int>							groups_;
-*/
-private:
-	boost::shared_ptr<ioremap::elliptics::file_logger> m_elliptics_log;
-	boost::shared_ptr<ioremap::elliptics::node> m_elliptics_node;
-	std::vector<int> m_groups;
-
-	int m_base_port;
-	int m_directory_bit_num;
-	int m_success_copies_num;
-	int m_state_num;
-	int m_replication_count;
-	int m_chunk_size;
-	bool m_eblob_style_path;
-
-#ifdef HAVE_METABASE
-	std::auto_ptr<cocaine::dealer::dealer_t> m_cocaine_dealer;
-	cocaine::dealer::message_policy_t m_cocaine_default_policy;
-	int m_metabase_timeout;
-	int m_metabase_usage;
-	uint64_t m_metabase_current_stamp;
-
-	std::string m_metabase_write_addr;
-	std::string m_metabase_read_addr;
-
-	std::auto_ptr<group_weights_cache_interface_t> m_weight_cache;
-	const int m_group_weights_update_period;
-	boost::thread m_weight_cache_update_thread;
 #endif /* HAVE_METABASE */
 };
 

@@ -4,6 +4,7 @@
 #include <boost/thread.hpp>
 
 #include "elliptics/proxy.hpp"
+#include "utils.hpp"
 
 #ifdef HAVE_METABASE
 

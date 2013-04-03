@@ -267,9 +267,8 @@ int main(int argc, char* argv[])
 
 		elliptics::key_t key2(id);
 
-		dnet_id_less cmp;
 
-		std::cout << "ID1: " << dnet_dump_id_len (&key1.id (), 6) << " " << cmp (key1.id (), key2.id ())
+		std::cout << "ID1: " << dnet_dump_id_len (&key1.id (), 6) << " "
 				  << " ID2: " << dnet_dump_id_len (&key2.id (), 6) << std::endl;
 		std::cout << "Key1: " << key1.to_string () << " " << (key1 < key2) << " Key2: " << key2.to_string () << std::endl;
 
