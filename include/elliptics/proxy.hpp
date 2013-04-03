@@ -492,12 +492,8 @@ private:
 	std::vector<int> get_groups(key_t &key, const std::vector<int> &groups, int count = 0) const;
 
 #ifdef HAVE_METABASE
-	void upload_meta_info(const std::vector<int> &groups, const key_t &key) const;
-	std::vector<int> get_meta_info(const key_t &key) const;
 	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, key_t &key);
 	group_info_response_t get_metabalancer_group_info_impl(int group);
-	bool collect_group_weights();
-	void collect_group_weights_loop();
 #endif /* HAVE_METABASE */
 };
 

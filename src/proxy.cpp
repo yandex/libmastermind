@@ -390,28 +390,12 @@ std::vector<int> elliptics_proxy_t::get_groups(key_t &key, const std::vector<int
 
 #ifdef HAVE_METABASE
 
-void elliptics_proxy_t::upload_meta_info(const std::vector<int> &groups, const key_t &key) const {
-	pimpl->upload_meta_info(groups, key);
-}
-
-std::vector<int> elliptics_proxy_t::get_meta_info(const key_t &key) const {
-	return pimpl->get_meta_info(key);
-}
-
 std::vector<int> elliptics_proxy_t::get_metabalancer_groups_impl(uint64_t count, uint64_t size, key_t &key) {
 	return pimpl->get_metabalancer_groups_impl(count, size, key);
 }
 
 group_info_response_t elliptics_proxy_t::get_metabalancer_group_info_impl(int group) {
 	return pimpl->get_metabalancer_group_info_impl(group);
-}
-
-bool elliptics_proxy_t::collect_group_weights() {
-	return pimpl->collect_group_weights();
-}
-
-void elliptics_proxy_t::collect_group_weights_loop() {
-	pimpl->collect_group_weights_loop();
 }
 
 #endif /* HAVE_METABASE */
