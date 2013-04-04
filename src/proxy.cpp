@@ -34,14 +34,11 @@
 
 #include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
-#include <boost/thread.hpp>
 
 #include <elliptics/proxy.hpp>
 #include <cocaine/dealer/utils/error.hpp>
 #include <msgpack.hpp>
 
-#include "boost_threaded.hpp"
-#include "curl_wrapper.hpp"
 #include "utils.hpp"
 
 namespace {
@@ -280,8 +277,6 @@ public:
 	std::vector<int> get_groups(key_t &key, const std::vector<int> &groups, int count = 0) const;
 
 #ifdef HAVE_METABASE
-	void upload_meta_info(const std::vector<int> &groups, const key_t &key) const;
-	std::vector<int> get_meta_info(const key_t &key) const;
 	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, key_t &key);
 	group_info_response_t get_metabalancer_group_info_impl(int group);
 	bool collect_group_weights();
@@ -313,7 +308,8 @@ private:
 
 	std::unique_ptr<group_weights_cache_interface_t>   m_weight_cache;
 	const int                                          m_group_weights_update_period;
-	boost::thread                                      m_weight_cache_update_thread;
+	std::thread                                        m_weight_cache_update_thread;
+	std::condition_variable                            m_weight_cache_condition_variable;
 #endif /* HAVE_METABASE */
 };
 
@@ -467,14 +463,14 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 
 	m_cocaine_default_policy.deadline = c.wait_timeout;
 	if (m_cocaine_dealer.get()) {
-		m_weight_cache_update_thread = boost::thread(std::bind(&elliptics_proxy_t::impl::collect_group_weights_loop, this));
+		m_weight_cache_update_thread = std::thread(std::bind(&elliptics_proxy_t::impl::collect_group_weights_loop, this));
 	}
 #endif /* HAVE_METABASE */
 }
 
 #ifdef HAVE_METABASE
 elliptics::elliptics_proxy_t::impl::~impl() {
-	m_weight_cache_update_thread.interrupt();
+	m_weight_cache_condition_variable.notify_one();
 	m_weight_cache_update_thread.join();
 }
 #endif /* HAVE_METABASE */
@@ -830,11 +826,6 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std
 		elliptics_session.set_cflags(0);
 		elliptics_session.write_metadata(key, key.remote(), helper.get_upload_groups(), ts);
 		elliptics_session.set_cflags(ioflags);
-#ifdef HAVE_METABASE
-		if (!m_metabase_write_addr.empty() && !m_metabase_read_addr.empty()) {
-			upload_meta_info(lgroups, key);
-		}
-#endif /* HAVE_METABASE */
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
@@ -1481,15 +1472,6 @@ std::vector<int> elliptics_proxy_t::impl::get_groups(key_t &key, const std::vect
 	}
 	else {
 		lgroups = m_groups;
-#ifdef HAVE_METABASE
-		if (!m_metabase_write_addr.empty() && !m_metabase_read_addr.empty()) {
-			try {
-				lgroups = get_meta_info(key);
-			}
-			catch (...) {
-			}
-		}
-#endif /* HAVE_METABASE */
 		if (lgroups.size() > 1) {
 			std::vector<int>::iterator git = lgroups.begin();
 			++git;
@@ -1510,79 +1492,6 @@ std::vector<int> elliptics_proxy_t::impl::get_groups(key_t &key, const std::vect
 
 
 #ifdef HAVE_METABASE
-void elliptics_proxy_t::impl::upload_meta_info(const std::vector<int> &groups, const key_t &key) const {
-	try {
-		std::string url = m_metabase_write_addr + "/groups-meta.";
-		if (key.by_id()) {
-			url.append(dnet_dump_id_len(&key.id(), 6));
-			url.append(".id");
-		} else {
-			url += key.remote() + ".file";
-		}
-
-		yandex::common::curl_wrapper<yandex::common::boost_threading_traits> curl(url);
-		curl.header("Expect", "");
-		curl.timeout(10);
-
-		std::ostringstream oss;
-		for (std::size_t i = 0; i < groups.size(); ++i) {
-			if (i != 0) {
-				oss << ':';
-			}
-			oss << groups[i];
-		}
-		std::string result;
-		oss.str().swap(result);
-
-		std::stringstream response;
-		long status = curl.perform_post(response, result);
-		if (200 != status) {
-			throw std::runtime_error("Failed to get meta info");
-		}
-	}
-	catch (...) {
-		throw;
-	}
-}
-
-std::vector<int> elliptics_proxy_t::impl::get_meta_info(const key_t &key) const {
-	try {
-		std::stringstream response;
-		long status;
-
-		std::string url = m_metabase_read_addr + "/groups-meta.";
-		if (key.by_id()) {
-			url.append(dnet_dump_id_len(&key.id(), 6));
-			url.append(".id");
-		} else {
-			url += key.remote() + ".file";
-		}
-
-		yandex::common::curl_wrapper<yandex::common::boost_threading_traits> curl(url);
-		curl.header("Expect", "");
-		curl.timeout(10);
-		status = curl.perform(response);
-
-		if (200 != status) {
-			throw std::runtime_error("Failed to get meta info");
-		}
-
-		std::vector<int> groups;
-
-		separator_t sep(":");
-		tokenizer_t tok(response.str(), sep);
-
-		for (tokenizer_t::iterator it = tok.begin(), end = tok.end(); end != it; ++it) {
-			groups.push_back(boost::lexical_cast<int>(*it));
-		}
-
-		return groups;
-	}
-	catch (...) {
-		throw;
-	}
-}
-
 bool elliptics_proxy_t::impl::collect_group_weights()
 {
 	if (!m_cocaine_dealer.get()) {
@@ -1612,7 +1521,17 @@ bool elliptics_proxy_t::impl::collect_group_weights()
 
 void elliptics_proxy_t::impl::collect_group_weights_loop()
 {
-	while(!boost::this_thread::interruption_requested()) {
+	std::mutex mutex;
+	std::unique_lock<std::mutex> lock(mutex);
+#if __GNUC_MINOR__ >= 6
+	auto no_timeout = std::cv_status::no_timeout;
+#else
+	bool no_timeout = false;
+#endif
+	//while(!boost::this_thread::interruption_requested()) {
+	while(no_timeout == m_weight_cache_condition_variable.wait_for(lock,
+													 std::chrono::milliseconds(
+														 m_group_weights_update_period))) {
 		try {
 			collect_group_weights();
 			m_elliptics_log->log(DNET_LOG_INFO, "Updated group weights");
@@ -1633,7 +1552,7 @@ void elliptics_proxy_t::impl::collect_group_weights_loop()
 			msg << "Error while updating cache: " << e.what();
 			m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
 		}
-		boost::this_thread::sleep(boost::posix_time::seconds(m_group_weights_update_period));
+		//boost::this_thread::sleep(boost::posix_time::seconds(m_group_weights_update_period));
 	}
 
 }
