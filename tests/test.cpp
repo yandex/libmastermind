@@ -196,7 +196,7 @@ int main(int argc, char* argv[])
 	std::vector <int> groups = {1, 2};
 
 	{
-		auto results = proxy.bulk_write (keys, data_arr, _groups = groups, _replication_count = groups.size ());
+		auto results = proxy.bulk_write (keys, data_arr, _groups = groups);
 		for (auto it = results.begin (), end = results.end (); it != end; ++it) {
 			std::cout << it->first.to_string () << ':' << std::endl;
 			for (auto it2 = it->second.begin (), end2 = it->second.end (); it2 != end2; ++it2) {

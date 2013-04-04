@@ -234,7 +234,7 @@ public:
 
 	std::vector<lookup_result_t> write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-				unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds);
+				unsigned int success_copies_num, std::vector<boost::shared_ptr<embed_t> > embeds);
 
 	read_result_t read_impl(key_t &key, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
@@ -250,7 +250,7 @@ public:
 		std::vector<elliptics_proxy_t::remote> lookup_addr_impl(key_t &key, std::vector<int> &groups);
 
 	std::map<key_t, std::vector<lookup_result_t> > bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
-															  std::vector<int> &groups, unsigned int replication_count);
+															  std::vector<int> &groups, unsigned int success_copies_num);
 
 	std::string exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups);
 
@@ -260,7 +260,7 @@ public:
 
 	async_write_result_t write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 										  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-										  unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds);
+										  unsigned int success_copies_num, std::vector<boost::shared_ptr<embed_t> > embeds);
 
 	async_remove_result_t remove_async_impl(key_t &key, std::vector<int> &groups);
 
@@ -324,8 +324,8 @@ lookup_result_t elliptics_proxy_t::lookup_impl(key_t &key, std::vector<int> &gro
 
 std::vector<lookup_result_t> elliptics_proxy_t::write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 			uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-			unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds) {
-	return pimpl->write_impl(key, data, offset, size, cflags, ioflags, groups, replication_count, embeds);
+			unsigned int success_copies_num, std::vector<boost::shared_ptr<embed_t> > embeds) {
+	return pimpl->write_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num, embeds);
 }
 
 read_result_t elliptics_proxy_t::read_impl(key_t &key, uint64_t offset, uint64_t size,
@@ -352,8 +352,8 @@ std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::lookup_addr_impl(key_t
 }
 
 std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
-														  std::vector<int> &groups, unsigned int replication_count) {
-	return pimpl->bulk_write_impl(keys, data, cflags, groups, replication_count);
+														  std::vector<int> &groups, unsigned int success_copies_num) {
+	return pimpl->bulk_write_impl(keys, data, cflags, groups, success_copies_num);
 }
 
 std::string elliptics_proxy_t::exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups) {
@@ -368,8 +368,8 @@ async_read_result_t elliptics_proxy_t::read_async_impl(key_t &key, uint64_t offs
 
 async_write_result_t elliptics_proxy_t::write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 									  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-									  unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds) {
-	return pimpl->write_async_impl(key, data, offset, size, cflags, ioflags, groups, replication_count, embeds);
+									  unsigned int success_copies_num, std::vector<boost::shared_ptr<embed_t> > embeds) {
+	return pimpl->write_async_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num, embeds);
 }
 
 async_remove_result_t elliptics_proxy_t::remove_async_impl(key_t &key, std::vector<int> &groups) {
@@ -680,8 +680,9 @@ read_result_t elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset, ui
 
 std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 					uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-					unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds)
+					unsigned int success_copies_num, std::vector<boost::shared_ptr<embed_t> > embeds)
 {
+	unsigned int replication_count = groups.size();
 	session elliptics_session(*m_elliptics_node);
 	bool use_metabase = false;
 
@@ -716,7 +717,7 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std
 	if (replication_count != 0 && (size_t)replication_count < lgroups.size())
 		lgroups.erase(lgroups.begin() + replication_count, lgroups.end());
 
-	write_helper_t helper(m_success_copies_num, replication_count, lgroups);
+	write_helper_t helper(success_copies_num != 0 ? success_copies_num : m_success_copies_num, replication_count, lgroups);
 
 	try {
 		elliptics_session.set_groups(lgroups);
@@ -1051,7 +1052,8 @@ std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::impl::lookup_addr_impl
 }
 
 std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
-																		   std::vector<int> &groups, unsigned int replication_count) {
+																		   std::vector<int> &groups, unsigned int success_copies_num) {
+	unsigned int replication_count = groups.size();
 	std::map<key_t, std::vector<lookup_result_t> > res;
 	std::map<key_t, std::vector<int> > res_groups;
 
@@ -1102,7 +1104,8 @@ std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_wri
 			 res_groups [key].push_back(r.group);
 		 }
 
-		 unsigned int replication_need =  uploads_need(m_success_copies_num, replication_count);
+		 unsigned int replication_need =  uploads_need(success_copies_num != 0 ? success_copies_num : m_success_copies_num,
+													   replication_count);
 
 		 auto it = res_groups.begin();
 		 auto end = res_groups.end();
@@ -1238,8 +1241,9 @@ std::vector<lookup_result_t> parse_write(const ioremap::elliptics::write_result 
 
 async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 													  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-													  unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds)
+													  unsigned int success_copies_num, std::vector<boost::shared_ptr<embed_t> > embeds)
 {
+	unsigned int replication_count = groups.size();
 	async_write_result_t::waiter_t waiter;
 	session elliptics_session(*m_elliptics_node);
 	bool use_metabase = false;
@@ -1312,8 +1316,9 @@ async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, std::
 		}
 
 		return async_write_result_t(waiter, std::bind(&parse_write, std::placeholders::_1,
-															  m_eblob_style_path, m_base_port, m_success_copies_num,
-															  replication_count, elliptics_session, key));
+													  m_eblob_style_path, m_base_port,
+													  success_copies_num != 0 ? success_copies_num : m_success_copies_num,
+													  replication_count, elliptics_session, key));
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;

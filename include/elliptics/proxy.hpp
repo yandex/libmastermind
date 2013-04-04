@@ -158,7 +158,7 @@ BOOST_PARAMETER_NAME(latest)
 BOOST_PARAMETER_NAME(count)
 BOOST_PARAMETER_NAME(embeds)
 BOOST_PARAMETER_NAME(embeded)
-BOOST_PARAMETER_NAME(replication_count)
+BOOST_PARAMETER_NAME(success_copies_num)
 BOOST_PARAMETER_NAME(limit_start)
 BOOST_PARAMETER_NAME(limit_num)
 BOOST_PARAMETER_NAME(script)
@@ -255,12 +255,12 @@ public:
 			(cflags, (uint64_t), 0)
 			(ioflags, (uint64_t), 0)
 			(groups, (const std::vector<int>), std::vector<int>())
-			(replication_count, (unsigned int), 0)
+			(success_copies_num, (unsigned int), 0)
 			(embeds, (std::vector<boost::shared_ptr<embed_t> >), std::vector<boost::shared_ptr<embed_t> >())
 		)
 	)
 	{
-		return write_impl(key, data, offset, size, cflags, ioflags, groups, replication_count, embeds);
+		return write_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num, embeds);
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
@@ -350,11 +350,11 @@ public:
 		(optional
 			(cflags, (uint64_t), 0)
 			(groups, (const std::vector<int>), std::vector<int>())
-			(replication_count, (unsigned int), 0)
+			(success_copies_num, (unsigned int), 0)
 		)
 	)
 	{
-		return bulk_write_impl(keys, data, cflags, groups, replication_count);
+		return bulk_write_impl(keys, data, cflags, groups, success_copies_num);
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
@@ -403,12 +403,12 @@ public:
 			(cflags, (uint64_t), 0)
 			(ioflags, (uint64_t), 0)
 			(groups, (const std::vector<int>), std::vector<int>())
-			(replication_count, (unsigned int), 0)
+			(success_copies_num, (unsigned int), 0)
 			(embeds, (std::vector<boost::shared_ptr<embed_t> >), std::vector<boost::shared_ptr<embed_t> >())
 		)
 	)
 	{
-		return write_async_impl(key, data, offset, size, cflags, ioflags, groups, replication_count, embeds);
+		return write_async_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num, embeds);
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
@@ -456,7 +456,7 @@ private:
 
 	std::vector<lookup_result_t> write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-				unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds);
+				unsigned int success_copies_num, std::vector<boost::shared_ptr<embed_t> > embeds);
 
 	read_result_t read_impl(key_t &key, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
@@ -472,7 +472,7 @@ private:
 		std::vector<elliptics_proxy_t::remote> lookup_addr_impl(key_t &key, std::vector<int> &groups);
 
 	std::map<key_t, std::vector<lookup_result_t> > bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
-															  std::vector<int> &groups, unsigned int replication_count);
+															  std::vector<int> &groups, unsigned int success_copies_num);
 
 	std::string exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups);
 
@@ -482,7 +482,7 @@ private:
 
 	async_write_result_t write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 										  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-										  unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds);
+										  unsigned int success_copies_num, std::vector<boost::shared_ptr<embed_t> > embeds);
 
 	async_remove_result_t remove_async_impl(key_t &key, std::vector<int> &groups);
 
