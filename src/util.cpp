@@ -24,13 +24,6 @@
 
 #include <sys/socket.h>
 
-#include <boost/bind.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/tokenizer.hpp>
-#include <boost/scoped_array.hpp>
-
-//#include <eblob/blob.h>
-
 #include <elliptics/proxy.hpp>
 
 #include "utils.hpp"

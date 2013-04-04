@@ -26,14 +26,13 @@
 #include <vector>
 #include <functional>
 #include <iostream>
+#include <memory>
 
 #ifdef HAVE_METABASE
 #include <cocaine/dealer/dealer.hpp>
 #endif /* HAVE_METABASE */
 
-#include <boost/shared_ptr.hpp>
 #include <boost/tokenizer.hpp>
-#include <boost/thread.hpp>
 
 #define BOOST_PARAMETER_MAX_ARITY 10
 #include <boost/parameter.hpp>
@@ -80,7 +79,7 @@ public:
 class read_result_t {
 public:
 	std::string data;
-	std::vector<boost::shared_ptr<embed_t> > embeds;
+	std::vector<std::shared_ptr<embed_t> > embeds;
 };
 
 class status_result_t {
@@ -256,7 +255,7 @@ public:
 			(ioflags, (uint64_t), 0)
 			(groups, (const std::vector<int>), std::vector<int>())
 			(success_copies_num, (unsigned int), 0)
-			(embeds, (std::vector<boost::shared_ptr<embed_t> >), std::vector<boost::shared_ptr<embed_t> >())
+			(embeds, (std::vector<std::shared_ptr<embed_t> >), std::vector<std::shared_ptr<embed_t> >())
 		)
 	)
 	{
@@ -404,7 +403,7 @@ public:
 			(ioflags, (uint64_t), 0)
 			(groups, (const std::vector<int>), std::vector<int>())
 			(success_copies_num, (unsigned int), 0)
-			(embeds, (std::vector<boost::shared_ptr<embed_t> >), std::vector<boost::shared_ptr<embed_t> >())
+			(embeds, (std::vector<std::shared_ptr<embed_t> >), std::vector<std::shared_ptr<embed_t> >())
 		)
 	)
 	{
@@ -456,7 +455,7 @@ private:
 
 	std::vector<lookup_result_t> write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-				unsigned int success_copies_num, std::vector<boost::shared_ptr<embed_t> > embeds);
+				unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
 
 	read_result_t read_impl(key_t &key, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
@@ -482,7 +481,7 @@ private:
 
 	async_write_result_t write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 										  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-										  unsigned int success_copies_num, std::vector<boost::shared_ptr<embed_t> > embeds);
+										  unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
 
 	async_remove_result_t remove_async_impl(key_t &key, std::vector<int> &groups);
 
