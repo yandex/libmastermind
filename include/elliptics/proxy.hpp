@@ -209,9 +209,6 @@ public:
 		bool eblob_style_path;
 
 #ifdef HAVE_METABASE
-		std::string metabase_write_addr;
-		std::string	metabase_read_addr;
-
 		std::string cocaine_config;
 		int group_weights_refresh_period;
 #endif /* HAVE_METABASE */

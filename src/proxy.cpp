@@ -303,9 +303,6 @@ private:
 	int                                                m_metabase_usage;
 	uint64_t                                           m_metabase_current_stamp;
 
-	std::string                                        m_metabase_write_addr;
-	std::string                                        m_metabase_read_addr;
-
 	std::unique_ptr<group_weights_cache_interface_t>   m_weight_cache;
 	const int                                          m_group_weights_update_period;
 	std::thread                                        m_weight_cache_update_thread;
@@ -427,8 +424,6 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 #ifdef HAVE_METABASE
 	,m_cocaine_dealer(0)
 	,m_metabase_usage(PROXY_META_NONE)
-	,m_metabase_write_addr(c.metabase_write_addr)
-	,m_metabase_read_addr(c.metabase_read_addr)
 	,m_weight_cache(get_group_weighs_cache())
 	,m_group_weights_update_period(c.group_weights_refresh_period)
 #endif /* HAVE_METABASE */
