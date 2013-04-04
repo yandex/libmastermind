@@ -289,8 +289,8 @@ public:
 #endif /* HAVE_METABASE */
 
 private:
-	std::shared_ptr<ioremap::elliptics::file_logger> m_elliptics_log;
-	std::shared_ptr<ioremap::elliptics::node>        m_elliptics_node;
+	std::shared_ptr<ioremap::elliptics::file_logger>   m_elliptics_log;
+	std::shared_ptr<ioremap::elliptics::node>          m_elliptics_node;
 	std::vector<int>                                   m_groups;
 
 	int                                                m_base_port;
@@ -507,9 +507,11 @@ lookup_result_t parse_lookup(const ioremap::elliptics::lookup_result &l, bool eb
 	if (eblob_style_path) {
 		result.path = l->file_path();
 		result.path = result.path.substr(result.path.find_last_of("/\\") + 1);
-		result.path = "/" + boost::lexical_cast<std::string>(result.port - base_port) + '/'
-			+ result.path + ":" + boost::lexical_cast<std::string>(info->offset)
-			+ ":" +  boost::lexical_cast<std::string>(info->size);
+		std::ostringstream oss;
+		oss << '/' << (result.port - base_port) << '/'
+			<< result.path << ':' << info->offset
+			<< ':' << info->size;
+		oss.str().swap(result.path);
 	} else {
 		//struct dnet_id id;
 		//elliptics_node_->transform(key.filename(), id);
@@ -1522,13 +1524,15 @@ void elliptics_proxy_t::impl::upload_meta_info(const std::vector<int> &groups, c
 		curl.header("Expect", "");
 		curl.timeout(10);
 
-		std::string result;
+		std::ostringstream oss;
 		for (std::size_t i = 0; i < groups.size(); ++i) {
-			if (!result.empty()) {
-				result += ':';
+			if (i != 0) {
+				oss << ':';
 			}
-			result += boost::lexical_cast<std::string>(groups[i]);
+			oss << groups[i];
 		}
+		std::string result;
+		oss.str().swap(result);
 
 		std::stringstream response;
 		long status = curl.perform_post(response, result);
