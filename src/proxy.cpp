@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <iterator>
 #include <iostream>
+#include <memory>
 
 #include <fcntl.h>
 #include <errno.h>
@@ -297,7 +298,7 @@ private:
 	bool                                               m_eblob_style_path;
 
 #ifdef HAVE_METABASE
-	std::auto_ptr<cocaine::dealer::dealer_t>           m_cocaine_dealer;
+	std::unique_ptr<cocaine::dealer::dealer_t>         m_cocaine_dealer;
 	cocaine::dealer::message_policy_t                  m_cocaine_default_policy;
 	int                                                m_metabase_timeout;
 	int                                                m_metabase_usage;
@@ -306,7 +307,7 @@ private:
 	std::string                                        m_metabase_write_addr;
 	std::string                                        m_metabase_read_addr;
 
-	std::auto_ptr<group_weights_cache_interface_t>     m_weight_cache;
+	std::unique_ptr<group_weights_cache_interface_t>   m_weight_cache;
 	const int                                          m_group_weights_update_period;
 	boost::thread                                      m_weight_cache_update_thread;
 #endif /* HAVE_METABASE */
@@ -424,7 +425,7 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 	m_chunk_size(c.chunk_size),
 	m_eblob_style_path(c.eblob_style_path)
 #ifdef HAVE_METABASE
-	,m_cocaine_dealer(NULL)
+	,m_cocaine_dealer(0)
 	,m_metabase_usage(PROXY_META_NONE)
 	,m_metabase_write_addr(c.metabase_write_addr)
 	,m_metabase_read_addr(c.metabase_read_addr)

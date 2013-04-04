@@ -42,7 +42,7 @@ public:
   virtual bool initialized() = 0;
 };
 
-std::auto_ptr<group_weights_cache_interface_t> get_group_weighs_cache();
+std::unique_ptr<group_weights_cache_interface_t> get_group_weighs_cache();
 
 enum GROUP_INFO_STATUS {
   GROUP_INFO_STATUS_OK,

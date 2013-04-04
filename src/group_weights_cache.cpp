@@ -87,8 +87,8 @@ bool group_weights_cache_impl::initialized() {
 	return !map_.empty();
 }
 
-std::auto_ptr<group_weights_cache_interface_t> get_group_weighs_cache() {
-	return std::auto_ptr<group_weights_cache_interface_t>(new group_weights_cache_impl);
+std::unique_ptr<group_weights_cache_interface_t> get_group_weighs_cache() {
+	return std::unique_ptr<group_weights_cache_interface_t>(new group_weights_cache_impl);
 }
 
 }
