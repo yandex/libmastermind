@@ -3,7 +3,7 @@
 #include <elliptics/proxy.hpp>
 
 using namespace elliptics;
-
+#if 0
 void test_lookup () {
 	elliptics_proxy_t::config c;
 	c.groups.push_back(1);
@@ -69,6 +69,7 @@ void test_read_async () {
 	std::cout << "Forgot about waiter before getting result" << std::endl;
 
 }
+#endif
 
 void test_async () {
 
@@ -91,7 +92,11 @@ void test_async () {
 	std::string data1("data1");
 	std::string data2("data2");
 
-	std::vector<lookup_result_t> l;
+	//{
+		//ioremap::elliptics::lookup_result_entry l;
+		//l.storage_address()->addr
+	//}
+	std::vector<ioremap::elliptics::lookup_result_entry> l;
 
 	auto awr1 = proxy.write_async(k1, data1);
 	auto awr2 = proxy.write_async(k2, data2);
@@ -104,7 +109,10 @@ void test_async () {
 	}
 	std::cout << "written " << l.size() << " copies" << std::endl;
 	for (auto it = l.begin(); it != l.end(); ++it) {
-		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+		//std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+		auto host = proxy.get_host (*it);
+		auto path = proxy.get_path (*it);
+		std::cout << "\tpath: " << host.host << ":" << host.port << path << std::endl;
 	}
 
 	try {
@@ -115,28 +123,31 @@ void test_async () {
 	}
 	std::cout << "written " << l.size() << " copies" << std::endl;
 	for (auto it = l.begin(); it != l.end(); ++it) {
-		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+		//std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+		auto host = proxy.get_host (*it);
+		auto path = proxy.get_path (*it);
+		std::cout << "\tpath: " << host.host << ":" << host.port << path << std::endl;
 	}
 
-	async_read_result_t arr1 = proxy.read_async(k1);
-	async_read_result_t arr2 = proxy.read_async(k2);
+	auto arr1 = proxy.read_async(k1);
+	auto arr2 = proxy.read_async(k2);
 
-	read_result_t r;
+	ioremap::elliptics::read_result_entry r;
 	try {
-		r = arr1.get ();
+		r = arr1.get_one();
 	} catch (...) {
 		std::cout << "Exception during get read result" << std::endl;
 		return;
 	}
-	std::cout << "Read result: " << r.data << std::endl;
+	std::cout << "Read result: " << r.file().to_string() << std::endl;
 
 	try {
-		r = arr2.get ();
+		r = arr2.get_one();
 	} catch (...) {
 		std::cout << "Exception during get read result" << std::endl;
 		return;
 	}
-	std::cout << "Read result: " << r.data << std::endl;
+	std::cout << "Read result: " << r.file().to_string() << std::endl;
 }
 
 void test_sync () {
@@ -168,6 +179,10 @@ void test_sync () {
 
 int main(int argc, char* argv[])
 {
+	test_sync();
+	test_async();
+	return 0;
+#if 0
 	//test_lookup ();
 	//test_read_async ();
 	test_async ();
@@ -295,5 +310,6 @@ int main(int argc, char* argv[])
 	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!" << res.data << std::endl;
 
 	return 0;
+#endif
 }
 

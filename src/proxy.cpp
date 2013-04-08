@@ -228,9 +228,13 @@ static inline void dnet_common_convert_embedded(struct dnet_common_embed *e) {
 class elliptics_proxy_t::impl {
 public:
 	impl(const elliptics_proxy_t::config &c);
-	#ifdef HAVE_METABASE
 	~impl();
-	#endif /* HAVE_METABASE */
+
+	std::string get_path_impl(const ioremap::elliptics::lookup_result_entry &l);
+	std::vector<std::string> get_path_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l);
+
+	elliptics_proxy_t::remote get_host_impl(const ioremap::elliptics::lookup_result_entry &l);
+	std::vector<elliptics_proxy_t::remote> get_host_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l);
 
 	lookup_result_t lookup_impl(key_t &key, std::vector<int> &groups);
 
@@ -256,23 +260,23 @@ public:
 
 	std::string exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups);
 
-	async_read_result_t read_async_impl(key_t &key, uint64_t offset, uint64_t size,
+	async_read_result read_async_impl(key_t &key, uint64_t offset, uint64_t size,
 									  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 									  bool latest, bool embeded);
 
-	async_write_result_t write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
+	async_write_result write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 										  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 										  unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
 
-	async_remove_result_t remove_async_impl(key_t &key, std::vector<int> &groups);
+	async_remove_result remove_async_impl(key_t &key, std::vector<int> &groups);
 
 	bool ping();
 	std::vector<status_result_t> stat_log();
 
 	std::string id_str(const key_t &key);
 
-	lookup_result_t parse_lookup(const ioremap::elliptics::lookup_result &l);
-	std::vector<lookup_result_t> parse_lookup(const ioremap::elliptics::write_result &l);
+	lookup_result_t parse_lookup(const ioremap::elliptics::lookup_result_entry &l);
+	std::vector<lookup_result_t> parse_lookup(const std::vector<ioremap::elliptics::lookup_result_entry> &l);
 
 	std::vector<int> get_groups(key_t &key, const std::vector<int> &groups, int count = 0) const;
 
@@ -314,6 +318,22 @@ private:
 
 elliptics_proxy_t::elliptics_proxy_t(const elliptics_proxy_t::config &c)
 	: pimpl (new elliptics_proxy_t::impl(c)) {
+}
+
+std::string elliptics_proxy_t::get_path_impl(const ioremap::elliptics::lookup_result_entry &l) {
+	return pimpl->get_path_impl(l);
+}
+
+std::vector<std::string> elliptics_proxy_t::get_path_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l) {
+	return pimpl->get_path_impl(l);
+}
+
+elliptics_proxy_t::remote elliptics_proxy_t::get_host_impl(const ioremap::elliptics::lookup_result_entry &l) {
+	return pimpl->get_host_impl(l);
+}
+
+std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::get_host_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l) {
+	return pimpl->get_host_impl(l);
 }
 
 lookup_result_t elliptics_proxy_t::lookup_impl(key_t &key, std::vector<int> &groups) {
@@ -358,28 +378,20 @@ std::string elliptics_proxy_t::exec_script_impl(key_t &key, std::string &data, s
 	return pimpl->exec_script_impl(key, data, script, groups);
 }
 
-async_read_result_t elliptics_proxy_t::read_async_impl(key_t &key, uint64_t offset, uint64_t size,
+async_read_result elliptics_proxy_t::read_async_impl(key_t &key, uint64_t offset, uint64_t size,
 								  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 								  bool latest, bool embeded) {
 	return pimpl->read_async_impl(key, offset, size, cflags, ioflags, groups, latest, embeded);
 }
 
-async_write_result_t elliptics_proxy_t::write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
+async_write_result elliptics_proxy_t::write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 									  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 									  unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds) {
 	return pimpl->write_async_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num, embeds);
 }
 
-async_remove_result_t elliptics_proxy_t::remove_async_impl(key_t &key, std::vector<int> &groups) {
+async_remove_result elliptics_proxy_t::remove_async_impl(key_t &key, std::vector<int> &groups) {
 	return pimpl->remove_async_impl(key, groups);
-}
-
-lookup_result_t elliptics_proxy_t::parse_lookup(const ioremap::elliptics::lookup_result &l) {
-	return pimpl->parse_lookup (l);
-}
-
-std::vector<lookup_result_t> elliptics_proxy_t::parse_lookup(const ioremap::elliptics::write_result &l) {
-	return pimpl->parse_lookup (l);
 }
 
 std::vector<int> elliptics_proxy_t::get_groups(key_t &key, const std::vector<int> &groups, int count) const {
@@ -422,7 +434,7 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 	m_chunk_size(c.chunk_size),
 	m_eblob_style_path(c.eblob_style_path)
 #ifdef HAVE_METABASE
-	,m_cocaine_dealer(0)
+	,m_cocaine_dealer()
 	,m_metabase_usage(PROXY_META_NONE)
 	,m_weight_cache(get_group_weighs_cache())
 	,m_group_weights_update_period(c.group_weights_refresh_period)
@@ -463,20 +475,20 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 #endif /* HAVE_METABASE */
 }
 
-#ifdef HAVE_METABASE
 elliptics::elliptics_proxy_t::impl::~impl() {
+#ifdef HAVE_METABASE
 	m_weight_cache_condition_variable.notify_one();
 	m_weight_cache_update_thread.join();
-}
 #endif /* HAVE_METABASE */
+}
 
-lookup_result_t parse_lookup(const ioremap::elliptics::lookup_result &l, bool eblob_style_path, int base_port)
+lookup_result_t parse_lookup(const ioremap::elliptics::lookup_result_entry &l, bool eblob_style_path, int base_port)
 {
 	lookup_result_t result;
 
-	struct dnet_cmd *cmd = l->command();
-	struct dnet_addr *addr = l->storage_address();
-	struct dnet_file_info *info = l->file_info();
+	struct dnet_cmd *cmd = l.command();
+	struct dnet_addr *addr = l.storage_address();
+	struct dnet_file_info *info = l.file_info();
 	dnet_convert_file_info(info);
 
 	char hbuf[NI_MAXHOST];
@@ -496,7 +508,7 @@ lookup_result_t parse_lookup(const ioremap::elliptics::lookup_result &l, bool eb
 	result.addr.assign(addr_dst);
 
 	if (eblob_style_path) {
-		result.path = l->file_path();
+		result.path = l.file_path();
 		result.path = result.path.substr(result.path.find_last_of("/\\") + 1);
 		std::ostringstream oss;
 		oss << '/' << (result.port - base_port) << '/'
@@ -512,7 +524,7 @@ lookup_result_t parse_lookup(const ioremap::elliptics::lookup_result &l, bool eb
 	return result;
 }
 
-std::vector<lookup_result_t> parse_lookup(const ioremap::elliptics::write_result &l, bool eblob_style_path, int base_port)
+std::vector<lookup_result_t> parse_lookup(const std::vector<lookup_result_entry> &l, bool eblob_style_path, int base_port)
 {
 	std::vector<lookup_result_t> ret;
 
@@ -522,48 +534,70 @@ std::vector<lookup_result_t> parse_lookup(const ioremap::elliptics::write_result
 	return ret;
 }
 
-lookup_result_t elliptics_proxy_t::impl::parse_lookup(const ioremap::elliptics::lookup_result &l)
+lookup_result_t elliptics_proxy_t::impl::parse_lookup(const ioremap::elliptics::lookup_result_entry &l)
 {
 	return elliptics::parse_lookup(l, m_eblob_style_path, m_base_port);
 }
 
-std::vector<lookup_result_t> elliptics_proxy_t::impl::parse_lookup(const ioremap::elliptics::write_result &l)
+std::vector<lookup_result_t> elliptics_proxy_t::impl::parse_lookup(const std::vector<lookup_result_entry> &l)
 {
 	return elliptics::parse_lookup(l, m_eblob_style_path, m_base_port);
 }
 
-read_result_t parse_read(const ioremap::elliptics::read_result &r, bool embeded, key_t key) {
-	read_result_t res;
-	auto result = r->file();
-	if (embeded) {
-		while (result.size()) {
-			if (result.size() < sizeof(struct dnet_common_embed)) {
-				std::ostringstream str;
-				str << key.to_string() << ": offset: " << result.offset() << ", size: " << result.size() << ": invalid size";
-				throw std::runtime_error(str.str());
-			}
 
-			struct dnet_common_embed *e = result.data<struct dnet_common_embed>();
-
-			dnet_common_convert_embedded(e);
-
-			result = result.skip<struct dnet_common_embed>();
-
-			if (result.size() < e->size + sizeof (struct dnet_common_embed)) {
-				break;
-			}
-
-			if (e->type == DNET_PROXY_EMBED_DATA) {
-				break;
-			}
-
-			result = result.skip(e->size);
-		}
-		res.data = result.to_string();
+std::string elliptics_proxy_t::impl::get_path_impl(const ioremap::elliptics::lookup_result_entry &l) {
+	std::string path;
+	struct dnet_addr *addr = l.storage_address();
+	struct dnet_file_info *info = l.file_info();
+	dnet_convert_file_info(info);
+	uint16_t port = dnet_server_convert_port((struct sockaddr *)addr->addr, addr->addr_len);
+	if (m_eblob_style_path) {
+		path = l.file_path();
+		path = path.substr(path.find_last_of("/\\") + 1);
+		std::ostringstream oss;
+		oss << '/' << (port - m_base_port) << '/'
+			<< path << ':' << info->offset
+			<< ':' << info->size;
+		oss.str().swap(path);
 	} else {
-		res.data = result.to_string();
+		//struct dnet_id id;
+		//elliptics_node_->transform(key.filename(), id);
+		//result.path = "/" + boost::lexical_cast<std::string>(port - base_port_) + '/' + hex_dir + '/' + id;
 	}
-	return res;
+	return path;
+}
+
+std::vector<std::string> elliptics_proxy_t::impl::get_path_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l) {
+	std::vector<std::string> ret;
+	for (auto it = l.begin(), end = l.end(); it != end; ++it) {
+		ret.push_back(get_path_impl(*it));
+	}
+	return ret;
+}
+
+elliptics_proxy_t::remote elliptics_proxy_t::impl::get_host_impl(const ioremap::elliptics::lookup_result_entry &l) {
+	struct dnet_addr *addr = l.storage_address();
+	struct dnet_file_info *info = l.file_info();
+	dnet_convert_file_info(info);
+
+	char hbuf[NI_MAXHOST];
+	memset(hbuf, 0, NI_MAXHOST);
+
+	if (getnameinfo((const sockaddr*)addr, addr->addr_len, hbuf, sizeof(hbuf), NULL, 0, 0) != 0) {
+		throw std::runtime_error("can not make dns lookup");
+	}
+	std::string host(hbuf);
+
+	uint16_t port = dnet_server_convert_port((struct sockaddr *)addr->addr, addr->addr_len);
+	return elliptics_proxy_t::remote(host, port);
+}
+
+std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::impl::get_host_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l) {
+	std::vector<elliptics_proxy_t::remote> ret;
+	for (auto it = l.begin(), end = l.end(); it != end; ++it) {
+		ret.push_back(get_host_impl(*it));
+	}
+	return ret;
 }
 
 lookup_result_t elliptics_proxy_t::impl::lookup_impl(key_t &key, std::vector<int> &groups)
@@ -579,14 +613,7 @@ lookup_result_t elliptics_proxy_t::impl::lookup_impl(key_t &key, std::vector<int
 		tmp_group [0] = *it;
 		try {
 			elliptics_session.set_groups(tmp_group);
-			lookup_result l;
-			if (key.by_id()) {
-				struct dnet_id id = key.id();
-				l = elliptics_session.lookup(id);
-			} else {
-				l = elliptics_session.lookup(key.remote());
-			}
-			result = parse_lookup(l);
+			result = parse_lookup(elliptics_session.lookup(key).get_one());
 		} catch (const std::exception &e) {
 			std::stringstream msg;
 			msg << "can not get download info for key " << key.to_string() << " from " << *it << " group; " << e.what() << std::endl;
@@ -626,9 +653,9 @@ read_result_t elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset, ui
 		elliptics_session.set_groups(lgroups);
 
 		if (latest)
-			result = elliptics_session.read_latest(key, offset, size)->file();
+			result = elliptics_session.read_latest(key, offset, size).get_one().file();
 		else
-			result = elliptics_session.read_data(key, offset, size)->file();
+			result = elliptics_session.read_data(key, offset, size).get_one().file();
 
 		if (embeded) {
 			while (result.size()) {
@@ -734,58 +761,44 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std
 			chunked = true;
 		}
 
-		ioremap::elliptics::write_result lookup;
-
-		struct dnet_id id;
-		memset(&id, 0, sizeof(id));
-
-		if (key.by_id()) {
-			id = key.id();
-		} else {
-			elliptics_session.transform(key.remote(), id);
-			id.type = key.type();
-		}
+		std::vector<write_result_entry> lookup;
 
 		try {
-			if (key.by_id()) {
-				lookup = elliptics_session.write_data(id, content, offset);
+			if (ioflags & DNET_IO_FLAGS_PREPARE) {
+				lookup = elliptics_session.write_prepare(key, content, offset, size).get();
+			} else if (ioflags & DNET_IO_FLAGS_COMMIT) {
+				lookup = elliptics_session.write_commit(key, content, offset, size).get();
+			} else if (ioflags & DNET_IO_FLAGS_PLAIN_WRITE) {
+				lookup = elliptics_session.write_plain(key, content, offset).get();
 			} else {
-				if (ioflags & DNET_IO_FLAGS_PREPARE) {
-					lookup = elliptics_session.write_prepare(key, content, offset, size);
-				} else if (ioflags & DNET_IO_FLAGS_COMMIT) {
-					lookup = elliptics_session.write_commit(key, content, offset, size);
-				} else if (ioflags & DNET_IO_FLAGS_PLAIN_WRITE) {
-					lookup = elliptics_session.write_plain(key, content, offset);
-				} else {
-					if (chunked) {
-						std::string write_content;
-						bool first_iter = true;
-						size_t size = content.size();
+				if (chunked) {
+					std::string write_content;
+					bool first_iter = true;
+					size_t size = content.size();
 
-						content.substr(offset, m_chunk_size).swap(write_content);
-						lookup = elliptics_session.write_prepare(key, write_content, offset, content.size());
-						helper.update_lookup(parse_lookup(lookup), false);
+					content.substr(offset, m_chunk_size).swap(write_content);
+					lookup = elliptics_session.write_prepare(key, write_content, offset, content.size()).get();
+					helper.update_lookup(parse_lookup(lookup), false);
 
-						if (helper.upload_is_good()) {
-							do {
-								elliptics_session.set_groups(helper.get_upload_groups());
-								offset += m_chunk_size;
-								content.substr(offset, m_chunk_size).swap(write_content);
+					if (helper.upload_is_good()) {
+						do {
+							elliptics_session.set_groups(helper.get_upload_groups());
+							offset += m_chunk_size;
+							content.substr(offset, m_chunk_size).swap(write_content);
 
-								if (offset + m_chunk_size >= content.length())
-									lookup = elliptics_session.write_commit(key, write_content, offset, 0);
-								else
-									lookup = elliptics_session.write_plain(key, write_content, offset);
-								helper.update_lookup(parse_lookup(lookup), first_iter);
-								first_iter = false;
-							} while (helper.upload_is_good() && (offset + m_chunk_size < content.length()));
-						}
-
-						helper.fix_size(size);
-
-					} else {
-						lookup = elliptics_session.write_data(key, content, offset);
+							if (offset + m_chunk_size >= content.length())
+								lookup = elliptics_session.write_commit(key, write_content, offset, 0).get();
+							else
+								lookup = elliptics_session.write_plain(key, write_content, offset).get();
+							helper.update_lookup(parse_lookup(lookup), first_iter);
+							first_iter = false;
+						} while (helper.upload_is_good() && (offset + m_chunk_size < content.length()));
 					}
+
+					helper.fix_size(size);
+
+				} else {
+					lookup = elliptics_session.write_data(key, content, offset).get();
 				}
 			}
 
@@ -794,12 +807,14 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std
 
 			if (!helper.upload_is_good()) {
 				elliptics_session.set_groups(lgroups);
+				elliptics_session.set_filter(ioremap::elliptics::filters::all);
 				elliptics_session.remove(key.remote());
 				throw std::runtime_error("Not enough copies was written, or problems with chunked upload");
 			}
 
 			if (chunked && helper.has_incomplete_groups()) {
 				elliptics_session.set_groups(helper.get_incomplete_groups());
+				elliptics_session.set_filter(ioremap::elliptics::filters::all);
 				elliptics_session.remove(key.remote());
 			}
 
@@ -872,7 +887,23 @@ std::vector<std::string> elliptics_proxy_t::impl::range_get_impl(key_t &from, ke
 
 		for (size_t i = 0; i < lgroups.size(); ++i) {
 			try {
-				ret = elliptics_session.read_data_range_raw(io, lgroups[i]);
+				sync_read_result range_result = elliptics_session.read_data_range(io, lgroups[i]).get();
+
+				uint64_t num = 0;
+
+				for (size_t i = 0; i < range_result.size(); ++i) {
+					read_result_entry entry = range_result[i];
+					if (!(io.flags & DNET_IO_FLAGS_NODATA))
+						num += entry.io_attribute()->num;
+					else
+						ret.push_back(entry.data().to_string());
+				}
+
+				if (io.flags & DNET_IO_FLAGS_NODATA) {
+					std::ostringstream str;
+					str << num;
+					ret.push_back(str.str());
+				}
 				if (ret.size())
 					break;
 			} catch (...) {
@@ -920,6 +951,7 @@ void elliptics_proxy_t::impl::remove_impl(key_t &key, std::vector<int> &groups)
 			for (size_t i = 0; i < lgroups.size(); ++i) {
 				id.group_id = lgroups[i];
 				try {
+					elliptics_session.set_filter(ioremap::elliptics::filters::all);
 					elliptics_session.remove(id);
 					error = 0;
 				} catch (const std::exception &e) {
@@ -957,8 +989,8 @@ std::map<key_t, read_result_t> elliptics_proxy_t::impl::bulk_read_impl(std::vect
 {
 	std::map<key_t, read_result_t> ret;
 
-		if (!keys.size())
-				return ret;
+	if (!keys.size())
+		return ret;
 
 	session elliptics_session(*m_elliptics_node);
 	std::vector<int> lgroups = get_groups(keys[0], groups);
@@ -968,35 +1000,35 @@ std::map<key_t, read_result_t> elliptics_proxy_t::impl::bulk_read_impl(std::vect
 	try {
 		elliptics_session.set_groups(lgroups);
 
-				std::vector<struct dnet_io_attr> ios;
-				ios.reserve(keys.size());
+		std::vector<struct dnet_io_attr> ios;
+		ios.reserve(keys.size());
 
-				for (std::vector<key_t>::iterator it = keys.begin(); it != keys.end(); it++) {
-						struct dnet_io_attr io;
-						memset(&io, 0, sizeof(io));
+		for (std::vector<key_t>::iterator it = keys.begin(); it != keys.end(); it++) {
+			struct dnet_io_attr io;
+			memset(&io, 0, sizeof(io));
 
-						key_t tmp(*it);
-						if (!tmp.by_id()) {
+			key_t tmp(*it);
+			if (!tmp.by_id()) {
 
-								tmp.transform(elliptics_session);
-						}
+				tmp.transform(elliptics_session);
+			}
 
 
-						memcpy(io.id, tmp.id().id, sizeof(io.id));
-						ios.push_back(io);
-						keys_transformed.insert(std::make_pair(tmp.id(), *it));
+			memcpy(io.id, tmp.id().id, sizeof(io.id));
+			ios.push_back(io);
+			keys_transformed.insert(std::make_pair(tmp.id(), *it));
 		}
 
-		bulk_read_result result = elliptics_session.bulk_read(ios);
+		auto result = elliptics_session.bulk_read(ios).get();
 
-		for (size_t i = 0; i < result.size(); ++i) {
-			read_result_entry entry = result[i];
-			//ID ell_id(entry.command()->id);
-					read_result_t tmp;
+		for (auto it = result.begin(), end = result.end(); it != end; ++it) {
+			read_result_entry entry = *it;
+			read_result_t tmp;
 			tmp.data = entry.file().to_string();
 
-						ret.insert(std::make_pair(keys_transformed[entry.command()->id], tmp));
-				}
+			ret.insert(std::make_pair(keys_transformed[entry.command()->id], tmp));
+		}
+
 
 	}
 	catch (const std::exception &e) {
@@ -1086,13 +1118,14 @@ std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_wri
 			keys_transformed.insert(std::make_pair(tmp.id(), keys [index]));
 		}
 
-		 write_result result = elliptics_session.bulk_write(ios, data);
+		 auto result = elliptics_session.bulk_write(ios, data).get();
 
-		 for (size_t i = 0; i != result.size(); ++i) {
-			 const ioremap::elliptics::lookup_result &lr = result [i];
+		 //for (size_t i = 0; i != result.size(); ++i) {
+		 for (auto it = result.begin(), end = result.end(); it != end; ++it) {
+			 const ioremap::elliptics::lookup_result_entry &lr = *it;//result [i];
 			 lookup_result_t r = parse_lookup(lr);
 			 //ID ell_id(lr->command()->id);
-			 key_t key = keys_transformed [lr->command()->id];
+			 key_t key = keys_transformed [lr.command()->id];
 			 res [key].push_back(r);
 			 res_groups [key].push_back(r.group);
 		 }
@@ -1170,11 +1203,9 @@ std::string elliptics_proxy_t::impl::exec_script_impl(key_t &key, std::string &d
 	return res;
 }
 
-async_read_result_t elliptics_proxy_t::impl::read_async_impl(key_t &key, uint64_t offset, uint64_t size,
+async_read_result elliptics_proxy_t::impl::read_async_impl(key_t &key, uint64_t offset, uint64_t size,
 												  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 												  bool latest, bool embeded) {
-	async_read_result_t::waiter_t waiter;
-
 	session elliptics_session(*m_elliptics_node);
 	std::vector<int> lgroups;
 	lgroups = get_groups(key, groups);
@@ -1186,9 +1217,9 @@ async_read_result_t elliptics_proxy_t::impl::read_async_impl(key_t &key, uint64_
 		elliptics_session.set_groups(lgroups);
 
 		if (latest)
-			elliptics_session.read_latest(waiter.handler(), key, offset, size);
+			return elliptics_session.read_latest(key, offset, size);
 		else
-			elliptics_session.read_data(waiter.handler(), key, offset, size);
+			return elliptics_session.read_data(key, offset, size);
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
@@ -1202,42 +1233,13 @@ async_read_result_t elliptics_proxy_t::impl::read_async_impl(key_t &key, uint64_
 		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
-
-	return async_read_result_t(waiter, std::bind(&parse_read, std::placeholders::_1, embeded, key));
 }
 
-std::vector<lookup_result_t> parse_write(const ioremap::elliptics::write_result &r, bool eblob_style_path, int base_port,
-										const size_t &success_copies_num, const size_t &replication_count,
-										ioremap::elliptics::session elliptics_session,
-										const key_t &key) {
-	auto lr = elliptics::parse_lookup(r, eblob_style_path, base_port);
-
-	std::vector<int> groups;
-	groups.reserve(lr.size());
-	for (auto it = lr.begin(), end = lr.end(); it != end; ++it)
-		groups.push_back(it->group);
-	elliptics_session.set_groups(groups);
-
-	if (!upload_is_good(success_copies_num, replication_count, lr.size())) {
-		elliptics_session.remove(key.remote());
-		throw std::runtime_error("Not enough copies was written, or problems with chunked upload");
-	}
-
-	struct timespec ts;
-	memset(&ts, 0, sizeof(ts));
-
-	elliptics_session.set_cflags(0);
-	elliptics_session.write_metadata(key, key.remote(), groups, ts);
-
-	return lr;
-}
-
-async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
+async_write_result elliptics_proxy_t::impl::write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 													  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 													  unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds)
 {
 	unsigned int replication_count = groups.size();
-	async_write_result_t::waiter_t waiter;
 	session elliptics_session(*m_elliptics_node);
 	bool use_metabase = false;
 
@@ -1284,34 +1286,15 @@ async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, std::
 		}
 		content.append(data);
 
-		struct dnet_id id;
-		memset(&id, 0, sizeof(id));
-
-		if (key.by_id()) {
-			id = key.id();
+		if (ioflags & DNET_IO_FLAGS_PREPARE) {
+			return elliptics_session.write_prepare(key, content, offset, size);
+		} else if (ioflags & DNET_IO_FLAGS_COMMIT) {
+			return elliptics_session.write_commit(key, content, offset, size);
+		} else if (ioflags & DNET_IO_FLAGS_PLAIN_WRITE) {
+			return elliptics_session.write_plain(key, content, offset);
 		} else {
-			elliptics_session.transform(key.remote(), id);
-			id.type = key.type();
+			return elliptics_session.write_data(key, content, offset);
 		}
-
-		if (key.by_id()) {
-			elliptics_session.write_data(waiter.handler(), id, content, offset);
-		} else {
-			if (ioflags & DNET_IO_FLAGS_PREPARE) {
-				elliptics_session.write_prepare(waiter.handler(), key, content, offset, size);
-			} else if (ioflags & DNET_IO_FLAGS_COMMIT) {
-				elliptics_session.write_commit(waiter.handler(), key, content, offset, size);
-			} else if (ioflags & DNET_IO_FLAGS_PLAIN_WRITE) {
-				elliptics_session.write_plain(waiter.handler(), key, content, offset);
-			} else {
-				elliptics_session.write_data(waiter.handler(), key, content, offset);
-			}
-		}
-
-		return async_write_result_t(waiter, std::bind(&parse_write, std::placeholders::_1,
-													  m_eblob_style_path, m_base_port,
-													  success_copies_num != 0 ? success_copies_num : m_success_copies_num,
-													  replication_count, elliptics_session, key));
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
@@ -1327,64 +1310,14 @@ async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, std::
 	}
 }
 
-void parse_remove_stub(const std::exception_ptr &) {}
-
-struct remove_proxy {
-	std::exception_ptr operator () () {
-		for (auto it = waiters.begin(), end = waiters.end(); it != end; ++it) {
-			it->result();
-		}
-		return std::exception_ptr();
-	}
-
-	void add_waiter(const async_remove_result_t::waiter_t &w) {
-		waiters.push_back(w);
-	}
-
-private:
-	std::vector<async_remove_result_t::waiter_t> waiters;
-};
-
-async_remove_result_t elliptics_proxy_t::impl::remove_async_impl(key_t &key, std::vector<int> &groups) {
+async_remove_result elliptics_proxy_t::impl::remove_async_impl(key_t &key, std::vector<int> &groups) {
 	session elliptics_session(*m_elliptics_node);
 	std::vector<int> lgroups;
-
-	remove_proxy rp;
 
 	lgroups = get_groups(key, groups);
 	try {
 		elliptics_session.set_groups(lgroups);
-		std::string l;
-		if (key.by_id()) {
-			struct dnet_id id = key.id();
-			int error = -1;
-
-			for (size_t i = 0; i < lgroups.size(); ++i) {
-				id.group_id = lgroups[i];
-				try {
-					async_remove_result_t::waiter_t waiter;
-					elliptics_session.remove(waiter.handler(), id);
-					rp.add_waiter(waiter);
-					error = 0;
-				} catch (const std::exception &e) {
-					std::stringstream msg;
-					msg << "Can't remove object " << key.to_string() << " in group " << groups[i] << ": " << e.what();
-					m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
-				}
-			}
-
-			if (error) {
-				std::ostringstream str;
-				str << dnet_dump_id(&id) << ": REMOVE failed";
-				throw std::runtime_error(str.str());
-			}
-		} else {
-			//ioremap::elliptics::waiter<std::exception_ptr> waiter;
-			async_remove_result_t::waiter_t waiter;
-			elliptics_session.remove(waiter.handler(), key.remote());
-			rp.add_waiter(waiter);
-		}
-		return async_remove_result_t(rp, std::bind(&parse_remove_stub, std::placeholders::_1));
+		return elliptics_session.remove(key);
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
@@ -1409,15 +1342,17 @@ std::vector<status_result_t> elliptics_proxy_t::impl::stat_log() {
 	std::vector<status_result_t> res;
 
 	ioremap::elliptics::session sess(*m_elliptics_node);
-	const ioremap::elliptics::stat_result srs = sess.stat_log();
+
+	std::vector<ioremap::elliptics::stat_result_entry> srs = sess.stat_log().get();
 
 	char id_str[DNET_ID_SIZE * 2 + 1];
 	char addr_str[128];
 
 	status_result_t sr;
 
-	for (size_t i = 0; i < srs.size(); ++i) {
-		const ioremap::elliptics::stat_result_entry &data = srs[i];
+	//for (size_t i = 0; i < srs.size(); ++i) {
+	for (auto it = srs.begin(), end = srs.end(); it != end; ++it) {
+		const ioremap::elliptics::stat_result_entry &data = *it;//srs[i];
 		struct dnet_addr *addr = data.address();
 		struct dnet_cmd *cmd = data.command();
 		struct dnet_stat *st = data.statistics();
