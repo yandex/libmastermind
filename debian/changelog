@@ -1,3 +1,17 @@
+libelliptics-proxy (0.2.0) unstable; urgency=low
+
+  * Elliptics 2.20.22 support
+  * Added async methods
+  * stat_num renamed to die_limit
+  * Refactored write method
+  * Added bulk_* methods
+  * Added range_* methods
+  * Added server side script execution functions
+  * Added ping and stat_log methods
+  * Cocaine v0.10 dealer support
+
+ -- Anton Kortunov <toshik@yandex-team.ru>  Mon, 08 Apr 2013 19:08:37 +0400
+
 libelliptics-proxy (0.1.1-ell21) unstable; urgency=low
 
   * Depend on libcocaine-dealer-dev >= 0.9.10000
