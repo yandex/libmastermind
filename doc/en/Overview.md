@@ -96,7 +96,7 @@ Specify a number how many good recording is needed to consider write call as suc
     requires [replication_count div 2 plus 1] successful records.
     - SUCCESS_COPIES_TYPE__ALL  
     exactly replication_count successful records are needed.
-- `int state_num;`
+- `int die_limit;`
 - `int replication_count;`  
 How many replicas needs to be stored. Equals to size of groups list if not set.
 - `int chunk_size;`  

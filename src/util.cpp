@@ -43,7 +43,7 @@ elliptics_proxy_t::config::config() :
 				base_port(1024),
 				directory_bit_num(32),
 				success_copies_num(2),
-				state_num(0),
+				die_limit(0),
 				replication_count(0),
 				chunk_size(0),
 				eblob_style_path(true)

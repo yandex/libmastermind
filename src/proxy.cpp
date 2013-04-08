@@ -291,7 +291,7 @@ private:
 	int                                                m_base_port;
 	int                                                m_directory_bit_num;
 	int                                                m_success_copies_num;
-	int                                                m_state_num;
+	int                                                m_die_limit;
 	int                                                m_replication_count;
 	int                                                m_chunk_size;
 	bool                                               m_eblob_style_path;
@@ -417,7 +417,7 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 	m_base_port(c.base_port),
 	m_directory_bit_num(c.directory_bit_num),
 	m_success_copies_num(c.success_copies_num),
-	m_state_num(c.state_num),
+	m_die_limit(c.die_limit),
 	m_replication_count(c.replication_count),
 	m_chunk_size(c.chunk_size),
 	m_eblob_style_path(c.eblob_style_path)
@@ -687,7 +687,7 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std
 	elliptics_session.set_cflags(cflags);
 	elliptics_session.set_ioflags(ioflags);
 
-	if (elliptics_session.state_num() < m_state_num) {
+	if (elliptics_session.state_num() < m_die_limit) {
 		throw std::runtime_error("Too low number of existing states");
 	}
 
@@ -1135,7 +1135,7 @@ std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_wri
 std::string elliptics_proxy_t::impl::exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups) {
 	std::string res;
 	ioremap::elliptics::session sess(*m_elliptics_node);
-	if (sess.state_num() < m_state_num) {
+	if (sess.state_num() < m_die_limit) {
 		throw std::runtime_error("Too low number of existing states");
 	}
 
@@ -1244,7 +1244,7 @@ async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, std::
 	elliptics_session.set_cflags(cflags);
 	elliptics_session.set_ioflags(ioflags);
 
-	if (elliptics_session.state_num() < m_state_num) {
+	if (elliptics_session.state_num() < m_die_limit) {
 		throw std::runtime_error("Too low number of existing states");
 	}
 
@@ -1402,7 +1402,7 @@ async_remove_result_t elliptics_proxy_t::impl::remove_async_impl(key_t &key, std
 
 bool elliptics_proxy_t::impl::ping() {
 	ioremap::elliptics::session sess(*m_elliptics_node);
-	return sess.state_num() >= m_state_num;
+	return sess.state_num() >= m_die_limit;
 }
 
 std::vector<status_result_t> elliptics_proxy_t::impl::stat_log() {

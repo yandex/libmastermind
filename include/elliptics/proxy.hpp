@@ -203,7 +203,7 @@ public:
 		int base_port;
 		int	directory_bit_num;
 		int success_copies_num;
-		int	state_num;
+		int	die_limit;
 		int replication_count;
 		int	chunk_size;
 		bool eblob_style_path;
