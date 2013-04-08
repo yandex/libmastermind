@@ -59,7 +59,7 @@ Specify a number how many good recording is needed to consider write call as suc
 - `uint64_t limit_num;`
 
 #Initialization
-You have to fill `elliptics_proxy_t::config` for create an `elliptics_proxy_t` object. It consists:
+You have to fill [`elliptics_proxy_t::config`](#-config) for create an `elliptics_proxy_t` object. It consists:
 
 - `std::string log_path;`  
 Path to the logfile.
@@ -73,7 +73,7 @@ Determines constraints which messages should not be printed. It can be set to:
 For example: if you set log_mask to DNET_LOG_INFO you will get DATA, ERROR and INFO messages, but NOTICE and DEBUG messages will not appear in logfile.
 - `std::vector<elliptics_proxy_t::remote> remotes;`  
 List of remote nodes. Proxy will communicate with these nodes at first time to get a remote table.
-`elliptics_proxy_t::remote` consists host name, port and family.
+[`elliptics_proxy_t::remote`](#-remote) consists host name, port and family.
 - `int flags;`  
 Specifies wether given node will join the network  or it is a client node and its ID should not be checked against collision with others. Also has a bit to forbid route list download.
 - `std::string ns;`  
@@ -427,6 +427,57 @@ try { proxy.remove_async (k2).get (); } catch (...) {}
 |[read_result_t](#-read_result_t)||
 |[async_result](#-async_result)||
 -->
+## <a id="config"/> config
+
+```
+class config {
+public:
+	config();
+
+	std::string log_path;
+	uint32_t log_mask;
+	std::vector<elliptics_proxy_t::remote> remotes;
+
+	int flags;
+
+	std::string ns;
+
+	unsigned int wait_timeout;
+	
+	long check_timeout;
+
+	std::vector<int> groups;
+	int base_port;
+	int directory_bit_num;
+	int success_copies_num;
+	int die_limit;
+	int replication_count;
+	int chunk_size;
+	bool eblob_style_path;
+
+#ifdef HAVE_METABASE
+	std::string cocaine_config;
+	int group_weights_refresh_period;
+#endif /* HAVE_METABASE */
+};
+```
+
+<!-- [Types](#-types) -->
+
+## <a id="remote"/> remote
+
+```
+class remote {
+public:
+	remote(const std::string &host, const int port, const int family=2);
+	std::string host;
+	int port;
+	int family;
+};
+```
+
+<!-- [Types](#-types) -->
+
 ## <a id="key_t"/> key_t
 
 ```
