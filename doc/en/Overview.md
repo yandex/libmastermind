@@ -270,6 +270,54 @@ Returns string.
 
 <!-- [Methods](#-methods) -->
 
+## <a id="ping"/> ping
+
+```
+bool ping();
+```
+
+Check whether or not count of connections greter then or equal to [die_limit](#initialization).
+
+**Return value**
+
+Returns boolean.
+
+<!-- [Methods](#-methods) -->
+
+## <a id="stat_log"/> stat_log
+
+```
+std::vector<status_result_t> stat_log();
+```
+
+Collects information about nodes from the remote table.
+
+**Return value**
+
+Returns vector of [`status_result_t`](#-status_result_t).
+
+<!-- [Methods](#-methods) -->
+
+###Example:
+```
+key_t k(std::string("filename.txt"));
+proxy.remove (k);
+std::string data("some data");
+std::vector <int> g = {2};
+std::vector<lookup_result_t> l = proxy.write(k, data, _groups = g);
+std::cout << "written " << l.size() << " copies" << std::endl;
+for (auto it = l.begin(); it != l.end(); ++it) {
+    std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+}
+lookup_result_t l1 = proxy.lookup(k);
+std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std::endl;
+```
+
+# Asynchronous methods
+
+
+`_async` suffix means method is asynchronous. You get async_object after call that and can to call method 'get' to get a result.
+
 ## <a id="read_async"/> read_async
 
 ```
@@ -314,52 +362,6 @@ You can gain a result by [`async_remove_result_t`](#-async_result) later.
 Returns [`async_result`](#-async_result).
 
 <!-- [Methods](#-methods) -->
-
-## <a id="ping"/> ping
-
-```
-bool ping();
-```
-
-Check whether or not count of connections greter then or equal to [die_limit](#initialization).
-
-**Return value**
-
-Returns boolean.
-
-<!-- [Methods](#-methods) -->
-
-## <a id="stat_log"/> stat_log
-
-```
-std::vector<status_result_t> stat_log();
-```
-
-Collects information about nodes from the remote table.
-
-**Return value**
-
-Returns vector of [`status_result_t`](#-status_result_t).
-
-<!-- [Methods](#-methods) -->
-
-###Example:
-```
-key_t k(std::string("filename.txt"));
-proxy.remove (k);
-std::string data("some data");
-std::vector <int> g = {2};
-std::vector<lookup_result_t> l = proxy.write(k, data, _groups = g);
-std::cout << "written " << l.size() << " copies" << std::endl;
-for (auto it = l.begin(); it != l.end(); ++it) {
-    std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
-}
-lookup_result_t l1 = proxy.lookup(k);
-std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std::endl;
-```
-
-
-`_async` suffix means method is asynchronous. You get async_object after call that and can to call method 'get' to get a result.
 
 ###Example:
 ```
