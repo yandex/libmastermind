@@ -19,6 +19,12 @@
 #include <algorithm>
 #include <iterator>
 #include <iostream>
+#include <memory>
+#include <functional>
+#include <thread>
+#include <condition_variable>
+#include <mutex>
+#include <chrono>
 
 #include <fcntl.h>
 #include <errno.h>
@@ -26,17 +32,13 @@
 
 #include <sys/socket.h>
 
-#include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
-#include <boost/scoped_array.hpp>
 
 #include <elliptics/proxy.hpp>
 #include <cocaine/dealer/utils/error.hpp>
 #include <msgpack.hpp>
 
-#include "boost_threaded.hpp"
-#include "curl_wrapper.hpp"
 #include "utils.hpp"
 
 namespace {
@@ -234,7 +236,7 @@ public:
 
 	std::vector<lookup_result_t> write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-				unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds);
+				unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
 
 	read_result_t read_impl(key_t &key, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
@@ -250,7 +252,7 @@ public:
 		std::vector<elliptics_proxy_t::remote> lookup_addr_impl(key_t &key, std::vector<int> &groups);
 
 	std::map<key_t, std::vector<lookup_result_t> > bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
-															  std::vector<int> &groups, unsigned int replication_count);
+															  std::vector<int> &groups, unsigned int success_copies_num);
 
 	std::string exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups);
 
@@ -260,7 +262,7 @@ public:
 
 	async_write_result_t write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 										  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-										  unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds);
+										  unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
 
 	async_remove_result_t remove_async_impl(key_t &key, std::vector<int> &groups);
 
@@ -275,8 +277,6 @@ public:
 	std::vector<int> get_groups(key_t &key, const std::vector<int> &groups, int count = 0) const;
 
 #ifdef HAVE_METABASE
-	void upload_meta_info(const std::vector<int> &groups, const key_t &key) const;
-	std::vector<int> get_meta_info(const key_t &key) const;
 	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, key_t &key);
 	group_info_response_t get_metabalancer_group_info_impl(int group);
 	bool collect_group_weights();
@@ -284,31 +284,29 @@ public:
 #endif /* HAVE_METABASE */
 
 private:
-	boost::shared_ptr<ioremap::elliptics::file_logger> m_elliptics_log;
-	boost::shared_ptr<ioremap::elliptics::node>        m_elliptics_node;
+	std::shared_ptr<ioremap::elliptics::file_logger>   m_elliptics_log;
+	std::shared_ptr<ioremap::elliptics::node>          m_elliptics_node;
 	std::vector<int>                                   m_groups;
 
 	int                                                m_base_port;
 	int                                                m_directory_bit_num;
 	int                                                m_success_copies_num;
-	int                                                m_state_num;
+	int                                                m_die_limit;
 	int                                                m_replication_count;
 	int                                                m_chunk_size;
 	bool                                               m_eblob_style_path;
 
 #ifdef HAVE_METABASE
-	std::auto_ptr<cocaine::dealer::dealer_t>           m_cocaine_dealer;
+	std::unique_ptr<cocaine::dealer::dealer_t>         m_cocaine_dealer;
 	cocaine::dealer::message_policy_t                  m_cocaine_default_policy;
 	int                                                m_metabase_timeout;
 	int                                                m_metabase_usage;
 	uint64_t                                           m_metabase_current_stamp;
 
-	std::string                                        m_metabase_write_addr;
-	std::string                                        m_metabase_read_addr;
-
-	std::auto_ptr<group_weights_cache_interface_t>     m_weight_cache;
+	std::unique_ptr<group_weights_cache_interface_t>   m_weight_cache;
 	const int                                          m_group_weights_update_period;
-	boost::thread                                      m_weight_cache_update_thread;
+	std::thread                                        m_weight_cache_update_thread;
+	std::condition_variable                            m_weight_cache_condition_variable;
 #endif /* HAVE_METABASE */
 };
 
@@ -324,8 +322,8 @@ lookup_result_t elliptics_proxy_t::lookup_impl(key_t &key, std::vector<int> &gro
 
 std::vector<lookup_result_t> elliptics_proxy_t::write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 			uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-			unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds) {
-	return pimpl->write_impl(key, data, offset, size, cflags, ioflags, groups, replication_count, embeds);
+			unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds) {
+	return pimpl->write_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num, embeds);
 }
 
 read_result_t elliptics_proxy_t::read_impl(key_t &key, uint64_t offset, uint64_t size,
@@ -352,8 +350,8 @@ std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::lookup_addr_impl(key_t
 }
 
 std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
-														  std::vector<int> &groups, unsigned int replication_count) {
-	return pimpl->bulk_write_impl(keys, data, cflags, groups, replication_count);
+														  std::vector<int> &groups, unsigned int success_copies_num) {
+	return pimpl->bulk_write_impl(keys, data, cflags, groups, success_copies_num);
 }
 
 std::string elliptics_proxy_t::exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups) {
@@ -368,8 +366,8 @@ async_read_result_t elliptics_proxy_t::read_async_impl(key_t &key, uint64_t offs
 
 async_write_result_t elliptics_proxy_t::write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 									  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-									  unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds) {
-	return pimpl->write_async_impl(key, data, offset, size, cflags, ioflags, groups, replication_count, embeds);
+									  unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds) {
+	return pimpl->write_async_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num, embeds);
 }
 
 async_remove_result_t elliptics_proxy_t::remove_async_impl(key_t &key, std::vector<int> &groups) {
@@ -419,15 +417,13 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 	m_base_port(c.base_port),
 	m_directory_bit_num(c.directory_bit_num),
 	m_success_copies_num(c.success_copies_num),
-	m_state_num(c.state_num),
+	m_die_limit(c.die_limit),
 	m_replication_count(c.replication_count),
 	m_chunk_size(c.chunk_size),
 	m_eblob_style_path(c.eblob_style_path)
 #ifdef HAVE_METABASE
-	,m_cocaine_dealer(NULL)
+	,m_cocaine_dealer(0)
 	,m_metabase_usage(PROXY_META_NONE)
-	,m_metabase_write_addr(c.metabase_write_addr)
-	,m_metabase_read_addr(c.metabase_read_addr)
 	,m_weight_cache(get_group_weighs_cache())
 	,m_group_weights_update_period(c.group_weights_refresh_period)
 #endif /* HAVE_METABASE */
@@ -462,14 +458,14 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 
 	m_cocaine_default_policy.deadline = c.wait_timeout;
 	if (m_cocaine_dealer.get()) {
-		m_weight_cache_update_thread = boost::thread(boost::bind(&elliptics_proxy_t::impl::collect_group_weights_loop, this));
+		m_weight_cache_update_thread = std::thread(std::bind(&elliptics_proxy_t::impl::collect_group_weights_loop, this));
 	}
 #endif /* HAVE_METABASE */
 }
 
 #ifdef HAVE_METABASE
 elliptics::elliptics_proxy_t::impl::~impl() {
-	m_weight_cache_update_thread.interrupt();
+	m_weight_cache_condition_variable.notify_one();
 	m_weight_cache_update_thread.join();
 }
 #endif /* HAVE_METABASE */
@@ -502,9 +498,11 @@ lookup_result_t parse_lookup(const ioremap::elliptics::lookup_result &l, bool eb
 	if (eblob_style_path) {
 		result.path = l->file_path();
 		result.path = result.path.substr(result.path.find_last_of("/\\") + 1);
-		result.path = "/" + boost::lexical_cast<std::string>(result.port - base_port) + '/'
-			+ result.path + ":" + boost::lexical_cast<std::string>(info->offset)
-			+ ":" +  boost::lexical_cast<std::string>(info->size);
+		std::ostringstream oss;
+		oss << '/' << (result.port - base_port) << '/'
+			<< result.path << ':' << info->offset
+			<< ':' << info->size;
+		oss.str().swap(result.path);
 	} else {
 		//struct dnet_id id;
 		//elliptics_node_->transform(key.filename(), id);
@@ -680,15 +678,16 @@ read_result_t elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset, ui
 
 std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 					uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-					unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds)
+					unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds)
 {
+	unsigned int replication_count = groups.size();
 	session elliptics_session(*m_elliptics_node);
 	bool use_metabase = false;
 
 	elliptics_session.set_cflags(cflags);
 	elliptics_session.set_ioflags(ioflags);
 
-	if (elliptics_session.state_num() < m_state_num) {
+	if (elliptics_session.state_num() < m_die_limit) {
 		throw std::runtime_error("Too low number of existing states");
 	}
 
@@ -716,7 +715,7 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std
 	if (replication_count != 0 && (size_t)replication_count < lgroups.size())
 		lgroups.erase(lgroups.begin() + replication_count, lgroups.end());
 
-	write_helper_t helper(m_success_copies_num, replication_count, lgroups);
+	write_helper_t helper(success_copies_num != 0 ? success_copies_num : m_success_copies_num, replication_count, lgroups);
 
 	try {
 		elliptics_session.set_groups(lgroups);
@@ -725,7 +724,7 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std
 
 		std::string content;
 
-		for (std::vector<boost::shared_ptr<embed_t> >::const_iterator it = embeds.begin(); it != embeds.end(); it++) {
+		for (std::vector<std::shared_ptr<embed_t> >::const_iterator it = embeds.begin(); it != embeds.end(); it++) {
 			content.append((*it)->pack());
 		}
 		content.append(data);
@@ -822,11 +821,6 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std
 		elliptics_session.set_cflags(0);
 		elliptics_session.write_metadata(key, key.remote(), helper.get_upload_groups(), ts);
 		elliptics_session.set_cflags(ioflags);
-#ifdef HAVE_METABASE
-		if (!m_metabase_write_addr.empty() && !m_metabase_read_addr.empty()) {
-			upload_meta_info(lgroups, key);
-		}
-#endif /* HAVE_METABASE */
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
@@ -1051,7 +1045,8 @@ std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::impl::lookup_addr_impl
 }
 
 std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
-																		   std::vector<int> &groups, unsigned int replication_count) {
+																		   std::vector<int> &groups, unsigned int success_copies_num) {
+	unsigned int replication_count = groups.size();
 	std::map<key_t, std::vector<lookup_result_t> > res;
 	std::map<key_t, std::vector<int> > res_groups;
 
@@ -1102,7 +1097,8 @@ std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_wri
 			 res_groups [key].push_back(r.group);
 		 }
 
-		 unsigned int replication_need =  uploads_need(m_success_copies_num, replication_count);
+		 unsigned int replication_need =  uploads_need(success_copies_num != 0 ? success_copies_num : m_success_copies_num,
+													   replication_count);
 
 		 auto it = res_groups.begin();
 		 auto end = res_groups.end();
@@ -1139,7 +1135,7 @@ std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_wri
 std::string elliptics_proxy_t::impl::exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups) {
 	std::string res;
 	ioremap::elliptics::session sess(*m_elliptics_node);
-	if (sess.state_num() < m_state_num) {
+	if (sess.state_num() < m_die_limit) {
 		throw std::runtime_error("Too low number of existing states");
 	}
 
@@ -1238,8 +1234,9 @@ std::vector<lookup_result_t> parse_write(const ioremap::elliptics::write_result 
 
 async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 													  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-													  unsigned int replication_count, std::vector<boost::shared_ptr<embed_t> > embeds)
+													  unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds)
 {
+	unsigned int replication_count = groups.size();
 	async_write_result_t::waiter_t waiter;
 	session elliptics_session(*m_elliptics_node);
 	bool use_metabase = false;
@@ -1247,7 +1244,7 @@ async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, std::
 	elliptics_session.set_cflags(cflags);
 	elliptics_session.set_ioflags(ioflags);
 
-	if (elliptics_session.state_num() < m_state_num) {
+	if (elliptics_session.state_num() < m_die_limit) {
 		throw std::runtime_error("Too low number of existing states");
 	}
 
@@ -1282,7 +1279,7 @@ async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, std::
 
 		std::string content;
 
-		for (std::vector<boost::shared_ptr<embed_t> >::const_iterator it = embeds.begin(); it != embeds.end(); it++) {
+		for (std::vector<std::shared_ptr<embed_t> >::const_iterator it = embeds.begin(); it != embeds.end(); it++) {
 			content.append((*it)->pack());
 		}
 		content.append(data);
@@ -1312,8 +1309,9 @@ async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, std::
 		}
 
 		return async_write_result_t(waiter, std::bind(&parse_write, std::placeholders::_1,
-															  m_eblob_style_path, m_base_port, m_success_copies_num,
-															  replication_count, elliptics_session, key));
+													  m_eblob_style_path, m_base_port,
+													  success_copies_num != 0 ? success_copies_num : m_success_copies_num,
+													  replication_count, elliptics_session, key));
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
@@ -1404,7 +1402,7 @@ async_remove_result_t elliptics_proxy_t::impl::remove_async_impl(key_t &key, std
 
 bool elliptics_proxy_t::impl::ping() {
 	ioremap::elliptics::session sess(*m_elliptics_node);
-	return sess.state_num() >= m_state_num;
+	return sess.state_num() >= m_die_limit;
 }
 
 std::vector<status_result_t> elliptics_proxy_t::impl::stat_log() {
@@ -1469,15 +1467,6 @@ std::vector<int> elliptics_proxy_t::impl::get_groups(key_t &key, const std::vect
 	}
 	else {
 		lgroups = m_groups;
-#ifdef HAVE_METABASE
-		if (!m_metabase_write_addr.empty() && !m_metabase_read_addr.empty()) {
-			try {
-				lgroups = get_meta_info(key);
-			}
-			catch (...) {
-			}
-		}
-#endif /* HAVE_METABASE */
 		if (lgroups.size() > 1) {
 			std::vector<int>::iterator git = lgroups.begin();
 			++git;
@@ -1498,77 +1487,6 @@ std::vector<int> elliptics_proxy_t::impl::get_groups(key_t &key, const std::vect
 
 
 #ifdef HAVE_METABASE
-void elliptics_proxy_t::impl::upload_meta_info(const std::vector<int> &groups, const key_t &key) const {
-	try {
-		std::string url = m_metabase_write_addr + "/groups-meta.";
-		if (key.by_id()) {
-			url.append(dnet_dump_id_len(&key.id(), 6));
-			url.append(".id");
-		} else {
-			url += key.remote() + ".file";
-		}
-
-		yandex::common::curl_wrapper<yandex::common::boost_threading_traits> curl(url);
-		curl.header("Expect", "");
-		curl.timeout(10);
-
-		std::string result;
-		for (std::size_t i = 0; i < groups.size(); ++i) {
-			if (!result.empty()) {
-				result += ':';
-			}
-			result += boost::lexical_cast<std::string>(groups[i]);
-		}
-
-		std::stringstream response;
-		long status = curl.perform_post(response, result);
-		if (200 != status) {
-			throw std::runtime_error("Failed to get meta info");
-		}
-	}
-	catch (...) {
-		throw;
-	}
-}
-
-std::vector<int> elliptics_proxy_t::impl::get_meta_info(const key_t &key) const {
-	try {
-		std::stringstream response;
-		long status;
-
-		std::string url = m_metabase_read_addr + "/groups-meta.";
-		if (key.by_id()) {
-			url.append(dnet_dump_id_len(&key.id(), 6));
-			url.append(".id");
-		} else {
-			url += key.remote() + ".file";
-		}
-
-		yandex::common::curl_wrapper<yandex::common::boost_threading_traits> curl(url);
-		curl.header("Expect", "");
-		curl.timeout(10);
-		status = curl.perform(response);
-
-		if (200 != status) {
-			throw std::runtime_error("Failed to get meta info");
-		}
-
-		std::vector<int> groups;
-
-		separator_t sep(":");
-		tokenizer_t tok(response.str(), sep);
-
-		for (tokenizer_t::iterator it = tok.begin(), end = tok.end(); end != it; ++it) {
-			groups.push_back(boost::lexical_cast<int>(*it));
-		}
-
-		return groups;
-	}
-	catch (...) {
-		throw;
-	}
-}
-
 bool elliptics_proxy_t::impl::collect_group_weights()
 {
 	if (!m_cocaine_dealer.get()) {
@@ -1598,7 +1516,17 @@ bool elliptics_proxy_t::impl::collect_group_weights()
 
 void elliptics_proxy_t::impl::collect_group_weights_loop()
 {
-	while(!boost::this_thread::interruption_requested()) {
+	std::mutex mutex;
+	std::unique_lock<std::mutex> lock(mutex);
+#if __GNUC_MINOR__ >= 6
+	auto no_timeout = std::cv_status::no_timeout;
+#else
+	bool no_timeout = false;
+#endif
+	//while(!boost::this_thread::interruption_requested()) {
+	while(no_timeout == m_weight_cache_condition_variable.wait_for(lock,
+													 std::chrono::milliseconds(
+														 m_group_weights_update_period))) {
 		try {
 			collect_group_weights();
 			m_elliptics_log->log(DNET_LOG_INFO, "Updated group weights");
@@ -1619,7 +1547,7 @@ void elliptics_proxy_t::impl::collect_group_weights_loop()
 			msg << "Error while updating cache: " << e.what();
 			m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
 		}
-		boost::this_thread::sleep(boost::posix_time::seconds(m_group_weights_update_period));
+		//boost::this_thread::sleep(boost::posix_time::seconds(m_group_weights_update_period));
 	}
 
 }
