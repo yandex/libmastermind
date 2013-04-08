@@ -91,7 +91,7 @@ Path to the cocaine config.
 - `int group_weights_refresh_period;`   
 Time in milliseconds. Is used to wait between requests to mastermind.
 
-##Example:
+###Example:
 ```
 elliptics_proxy_t::config c;
 c.groups.push_back(1);
@@ -102,35 +102,170 @@ c.success_copies_num = SUCCESS_COPIES_TYPE__ANY;
 elliptics_proxy_t proxy(c);
 ```
 
-#Methods
+# <a id="methods"/> Methods
 
 Elliptics_proxy_t members list:
 
-`lookup_result_t lookup(key_t &key, std::vector<int> &groups);`
+|Function|Description|
+|-----|--------|
+|[lookup](#-lookup)||
+|[write](#-write)||
+|[read](#-read)||
+|[remove](#-remove)||
+|[range_get](#-range_get)||
+|[bulk_read](#-bulk_read)||
+|[lookup_addr](#-lookup_addr)||
+|[bulk_write](#-bulk_write)||
+|[exec_script](#-bulk_write)||
+|[read_async](#-read_async)||
+|[write_async](#-write_async)||
+|[remove_async](#-remove_async)||
 
-`std::vector<lookup_result_t> write(key_t &key, std::string &data, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);`
+## <a id="lookup"/> lookup
 
-`read_result_t read(key_t &key, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, bool latest, bool embeded);`
+```
+lookup_result_t lookup(key_t &key, std::vector<int> &groups);
+```
 
-`void remove(key_t &key, std::vector<int> &groups);`
+**Return value**
 
-`std::vector<std::string> range_get(key_t &from, key_t &to, uint64_t cflags, uint64_t ioflags, uint64_t limit_start, uint64_t limit_num, const std::vector<int> &groups, key_t &key);`
+Returns [`lookup_result_t`](#-lookup_result_t).
 
-`std::map<key_t, read_result_t> bulk_read(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups);`
+[Methods](#-methods)
 
-`std::vector<elliptics_proxy_t::remote> lookup_addr(key_t &key, std::vector<int> &groups);`
+## <a id="write"/> write
 
-`std::map<key_t, std::vector<lookup_result_t> > bulk_write(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags, std::vector<int> &groups, unsigned int success_copies_num);`
+```
+std::vector<lookup_result_t> write(key_t &key, std::string &data, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
+```
 
-`std::string exec_script(key_t &key, std::string &data, std::string &script, std::vector<int> &groups);`
+**Return value**
 
-`async_read_result_t read_async(key_t &key, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, bool latest, bool embeded);`
+Returns vector of [`lookup_result_t`](#-lookup_result_t).
 
-`async_write_result_t write_async(key_t &key, std::string &data, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);`
+[Methods](#-methods)
 
-`async_remove_result_t remove_async(key_t &key, std::vector<int> &groups);`
+## <a id="read"/> read
 
-##Example:
+```
+read_result_t read(key_t &key, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, bool latest, bool embeded);
+```
+
+**Return value**
+
+Returns [`read_result_t`](#-lookup_result_t).
+
+[Methods](#-methods)
+
+## <a id="remove"/> remove
+
+```
+void remove(key_t &key, std::vector<int> &groups);
+```
+
+**Return value**
+
+None.
+
+[Methods](#-methods)
+
+## <a id="range_get"/> range_get
+
+```
+std::vector<std::string> range_get(key_t &from, key_t &to, uint64_t cflags, uint64_t ioflags, uint64_t limit_start, uint64_t limit_num, const std::vector<int> &groups, key_t &key);
+```
+
+**Return value**
+
+Returns vector of [`std::string`](http://en.cppreference.com/w/cpp/string/basic_string).
+
+[Methods](#-methods)
+
+## <a id="bulk_read"/> bulk_read
+
+```
+std::map<key_t, read_result_t> bulk_read(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups);
+```
+
+**Return value**
+
+Returns maps of `key_t` and [`read_result_t`](#-lookup_result_t).
+
+[Methods](#-methods)
+
+## <a id="lookup_addr"/> lookup_addr
+
+```
+std::vector<elliptics_proxy_t::remote> lookup_addr(key_t &key, std::vector<int> &groups);
+```
+
+**Return value**
+
+Returns vector of maps of `elliptics_proxy_t::remote`.
+
+[Methods](#-methods)
+
+## <a id="bulk_write"/> bulk_write
+
+```
+std::map<key_t, std::vector<lookup_result_t> > bulk_write(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags, std::vector<int> &groups, unsigned int success_copies_num);
+```
+
+**Return value**
+
+Returns maps of `key_t` and vector of [`lookup_result_t`](#-lookup_result_t).
+
+[Methods](#-methods)
+
+## <a id="exec_script"/> exec_script
+
+```
+std::string exec_script(key_t &key, std::string &data, std::string &script, std::vector<int> &groups);
+```
+
+**Return value**
+
+Returns string.
+
+[Methods](#-methods)
+
+## <a id="read_async"/> read_async
+
+```
+async_read_result_t read_async(key_t &key, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, bool latest, bool embeded);
+```
+
+**Return value**
+
+Returns [`async_result`](#-async_result).
+
+[Methods](#-methods)
+
+## <a id="write_async"/> write_async
+
+```
+async_write_result_t write_async(key_t &key, std::string &data, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
+```
+
+**Return value**
+
+Returns [`async_result`](#-async_result).
+
+[Methods](#-methods)
+
+## <a id="remove_async"/> remove_async
+
+```
+async_remove_result_t remove_async(key_t &key, std::vector<int> &groups);
+```
+
+**Return value**
+
+Returns [`async_result`](#-async_result).
+
+[Methods](#-methods)
+
+###Example:
 ```
 key_t k(std::string("filename.txt"));
 proxy.remove (k);
@@ -148,7 +283,7 @@ std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std:
 
 `_async` suffix means method is asynchronous. You get async_object after call that and can to call method 'get' to get a result.
 
-##Example:
+###Example:
 ```
 key_t k1(std::string("key1.txt"));
 key_t k2(std::string("key2.txt"));
@@ -205,4 +340,25 @@ std::cout << "Read result: " << r.data << std::endl;
 try { proxy.remove_async (k1).get (); } catch (...) {}
 try { proxy.remove_async (k2).get (); } catch (...) {}
 ```
+
+# <a id="types"/> Types
+
+|Type|Description|
+|-----|--------|
+|[lookup_result_t](#-lookup_result_t)||
+|[read_result_t](#-read_result_t)||
+|[async_result](#-async_result)||
+
+## <a id="lookup_result_t"/> lookup_result_t
+
+[Types](#-types)
+
+## <a id="read_result_t"/> read_result_t
+
+[Types](#-types)
+
+
+## <a id="async_result"/> async_result
+
+[Types](#-types)
 
