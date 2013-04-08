@@ -33,13 +33,15 @@
 
 #include <elliptics/proxy.hpp>
 
+#include "utils.hpp"
+
 namespace elliptics {
 
-EllipticsProxy::remote::remote(const std::string &host, const int port, const int family) :
+elliptics_proxy_t::remote::remote(const std::string &host, const int port, const int family) :
 				host(host), port(port), family(family)
 { }
 
-EllipticsProxy::config::config() :
+elliptics_proxy_t::config::config() :
 				log_path("/dev/stderr"),
 				log_mask(DNET_LOG_INFO|DNET_LOG_ERROR),
 				flags(0),
