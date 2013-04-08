@@ -1,4 +1,4 @@
-Libelliptics-proxy provides you usefull development kit to communicate with elliptics. It consists of elliptics_proxy_t class and several ancillary enumerations and structures.
+Libelliptics-proxy provides you usefull development kit to communicate with elliptics. It consists of `elliptics_proxy_t` class and several ancillary enumerations and structures.
 
 #Parameters
 Libelliptics-proxy uses boost.parameters so you do not have to set long list of parameters to call a function.
@@ -48,7 +48,8 @@ SUCCESS_COPIES_TYPE__ALL – exactly replication_count successful records are ne
 - `uint64_t limit_start;`
 - `uint64_t limit_num;`
 
-You have to fill elliptics_proxy_t::config for create an elliptics_proxy_t object. It consists:
+#Initialization
+You have to fill `elliptics_proxy_t::config` for create an `elliptics_proxy_t` object. It consists:
 
 - `std::string log_path;`   
 Path to the logfile.
@@ -90,7 +91,7 @@ Path to the cocaine config.
 - `int group_weights_refresh_period;`   
 Time in milliseconds. Is used to wait between requests to mastermind.
 
-Example:
+##Example:
 ```
 elliptics_proxy_t::config c;
 c.groups.push_back(1);
@@ -129,7 +130,7 @@ Elliptics_proxy_t members list:
 
 `async_remove_result_t remove_async(key_t &key, std::vector<int> &groups);`
 
-Example:
+##Example:
 ```
 key_t k(std::string("filename.txt"));
 proxy.remove (k);
@@ -147,7 +148,7 @@ std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std:
 
 `_async` suffix means method is asynchronous. You get async_object after call that and can to call method 'get' to get a result.
 
-Example:
+##Example:
 ```
 key_t k1(std::string("key1.txt"));
 key_t k2(std::string("key2.txt"));
