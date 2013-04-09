@@ -1,3 +1,10 @@
+libelliptics-proxy (0.2.1) unstable; urgency=low
+
+  * Elliptics 2.20.23 support
+  * Updated lookup method
+
+ -- Anton Kortunov <toshik@yandex-team.ru>  Tue, 09 Apr 2013 15:19:01 +0400
+
 libelliptics-proxy (0.2.0) unstable; urgency=low
 
   * Elliptics 2.20.22 support
