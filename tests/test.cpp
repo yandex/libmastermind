@@ -3,75 +3,28 @@
 #include <functional>
 
 #include <elliptics/proxy.hpp>
+#include <boost/lexical_cast.hpp>
 
 using namespace elliptics;
-#if 0
-void test_lookup () {
-	elliptics_proxy_t::config c;
-	c.groups.push_back(1);
-	c.groups.push_back(2);
-	c.log_mask = 1;
-	c.remotes.push_back(elliptics_proxy_t::remote("derikon.dev.yandex.net", 1025, 2));
-	c.success_copies_num = SUCCESS_COPIES_TYPE__ANY;
 
-	elliptics_proxy_t proxy(c);
-	sleep(1);
+void test_lookup (elliptics_proxy_t &proxy) {
 
-	elliptics::key_t k(std::string("uniq_key"));
+	elliptics::key_t k(std::string("key.txt"));
 
-	proxy.remove (k);
+	try { proxy.remove (k); } catch (...) {}
 
-	std::string data("test3");
+	std::string data("data");
 
 	std::vector <int> g = {2};
-	std::vector<lookup_result_t> l = proxy.write(k, data, _groups = g);
-	std::cout << "written " << l.size() << " copies" << std::endl;
-	for (auto it = l.begin(); it != l.end(); ++it) {
-		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
-	}
-
-	lookup_result_t l1 = proxy.lookup(k);
-	std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std::endl;
-}
-
-void test_read_async () {
-	elliptics_proxy_t::config c;
-	c.groups.push_back(1);
-	c.groups.push_back(2);
-	c.log_mask = 1;
-	c.remotes.push_back(elliptics_proxy_t::remote("derikon.dev.yandex.net", 1025, 2));
-	c.success_copies_num = SUCCESS_COPIES_TYPE__ANY;
-
-	elliptics_proxy_t proxy(c);
-	sleep(1);
-
-	elliptics::key_t k(std::string("uniq_key"));
-
-	proxy.remove (k);
-
-	std::string data("test3");
-
-	//std::vector <int> g = {2};
 	std::vector<lookup_result_t> l = proxy.write(k, data/*, _groups = g*/);
 	std::cout << "written " << l.size() << " copies" << std::endl;
 	for (auto it = l.begin(); it != l.end(); ++it) {
 		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
 	}
 
-	{
-		async_read_result_t arr = proxy.read_async(k);
-		std::cout << "Wait result..." << std::endl;
-		auto r = arr.get ();
-		std::cout << "Read result: " << r.data << std::endl;
-	}
-
-	{
-		async_read_result_t arr = proxy.read_async(k);
-	}
-	std::cout << "Forgot about waiter before getting result" << std::endl;
-
+	auto l1 = proxy.lookup(k);
+	std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std::endl;
 }
-#endif
 
 void test_async (elliptics_proxy_t &proxy) {
 
@@ -84,10 +37,6 @@ void test_async (elliptics_proxy_t &proxy) {
 	std::string data1("data1");
 	std::string data2("data2");
 
-	//{
-		//ioremap::elliptics::lookup_result_entry l;
-		//l.storage_address()->addr
-	//}
 	std::vector<ioremap::elliptics::lookup_result_entry> l;
 
 	auto awr1 = proxy.write_async(k1, data1);
@@ -124,7 +73,6 @@ void test_async (elliptics_proxy_t &proxy) {
 	auto arr1 = proxy.read_async(k1);
 	auto arr2 = proxy.read_async(k2);
 
-	//ioremap::elliptics::read_result_entry r;
 	read_result_t r;
 	try {
 		r = arr1.get();
@@ -188,35 +136,64 @@ void test_bulk_sync(elliptics_proxy_t &proxy) {
 	}
 }
 
-struct Tester {
+class tester {
+public:
 	typedef std::function<void (elliptics_proxy_t &)> test_t;
 	typedef std::initializer_list<test_t> tests_t;
-	static void process(tests_t tests) {
-		elliptics_proxy_t::config c;
-		c.groups.push_back(1);
-		c.groups.push_back(2);
-		c.log_mask = 1;
-		c.remotes.push_back(elliptics_proxy_t::remote("derikon.dev.yandex.net", 1025, 2));
-		c.success_copies_num = SUCCESS_COPIES_TYPE__ALL;
 
-		elliptics_proxy_t proxy(c);
+	tester(const std::string &host, int port, int family) {
+		elliptics_proxy_t::config elconf;
+		elconf.groups.push_back(1);
+		elconf.groups.push_back(2);
+		elconf.log_mask = 1;
+		elconf.remotes.push_back(elliptics_proxy_t::remote(host, port, family));
+		elconf.success_copies_num = SUCCESS_COPIES_TYPE__ALL;
 
+		proxy.reset(new elliptics_proxy_t(elconf));
+		sleep(1);
+	}
+
+	void process(tests_t tests) {
 		size_t num = 0;
 
 		for (auto it = tests.begin(), end = tests.end(); it != end; ++it) {
 			std::cout << "Test #" << ++num << std::endl;
 			try {
-				(*it)(proxy);
+				(*it)(*proxy);
+				std::cout << "Test #" << num << ": done" << std::endl;
 			} catch (...) {
+				std::cout << "Test #" << num << ": fail" << std::endl;
 			}
-			std::cout << "Test #" << num << ": done" << std::endl;
 		}
 	}
+
+private:
+	std::shared_ptr<elliptics_proxy_t> proxy;
 };
 
 int main(int argc, char* argv[])
 {
-	Tester::process({test_sync, test_async, test_bulk_sync});
+	std::string host = "localhost";
+	int port = 1025;
+	int family = 2;
+	switch (argc) {
+	case 4:
+		family = boost::lexical_cast<int>(argv[3]);
+	case 3:
+		port = boost::lexical_cast<int>(argv[2]);
+	case 2:
+		host.assign(argv[1]);
+		break;
+	default:
+		if (argc != 1) {
+			std::cout << "Usage:" << std::endl
+					  << std::cout << "name [host [port [family]]]" << std::endl;
+		}
+		return 0;
+	}
+
+	tester t(host, port, family);
+	t.process({test_sync, test_async, test_bulk_sync, test_lookup});
 	return 0;
 #if 0
 	//test_lookup ();

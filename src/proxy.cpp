@@ -480,8 +480,13 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 
 elliptics::elliptics_proxy_t::impl::~impl() {
 #ifdef HAVE_METABASE
-	m_weight_cache_condition_variable.notify_one();
-	m_weight_cache_update_thread.join();
+	try {
+		m_weight_cache_condition_variable.notify_one();
+		m_weight_cache_update_thread.join();
+	} catch (std::system_error) {
+
+	}
+
 #endif /* HAVE_METABASE */
 }
 
@@ -606,36 +611,35 @@ std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::impl::get_host_impl(co
 lookup_result_t elliptics_proxy_t::impl::lookup_impl(key_t &key, std::vector<int> &groups)
 {
 	session elliptics_session(*m_elliptics_node);
+	elliptics_session.set_filter(ioremap::elliptics::filters::all);
 	std::vector<int> lgroups;
-	lookup_result_t result;
 
 	lgroups = get_groups(key, groups);
 
-	std::vector<int> tmp_group = {1};
-	for (auto it = lgroups.begin(), end = lgroups.end(); it != end; ++it) {
-		tmp_group [0] = *it;
-		try {
-			elliptics_session.set_groups(tmp_group);
-			result = parse_lookup(elliptics_session.lookup(key).get_one());
-		} catch (const std::exception &e) {
-			std::stringstream msg;
-			msg << "can not get download info for key " << key.to_string() << " from " << *it << " group; " << e.what() << std::endl;
-			m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
-			continue;
+	try {
+		while (!lgroups.empty()) {
+			elliptics_session.set_groups(lgroups);
+			sync_lookup_result result = elliptics_session.lookup(key).get();
+			std::vector<int>::iterator end = lgroups.end();
+			for (auto it = result.begin(); it != result.end(); ++it) {
+				lookup_result_entry &entry = *it;
+				if (!entry.error()) {
+					try {
+						return parse_lookup(entry);
+					} catch (...) {
+					}
+				}
+				end = std::remove(lgroups.begin(), end, entry.command()->id.group_id);
+			}
+			lgroups.erase(end, lgroups.end());
 		}
-		catch (...) {
-			std::stringstream msg;
-			msg << "can not get download info for key " << key.to_string() << " from " << *it << " group" << std::endl;
-			m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
-			continue;
-		}
-		return result;
+		throw ioremap::elliptics::not_found_error(key.to_string());
+	} catch (...) {
+		std::stringstream msg;
+		msg << "can not get download info for key " << key.to_string() << std::endl;
+		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
 	}
-
-	std::stringstream msg;
-	msg << "can not get download info for key " << key.to_string() << "from any allowed group!";
-	m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
-	throw std::runtime_error(msg.str());
 }
 
 read_result_t elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset, uint64_t size,
@@ -1277,7 +1281,7 @@ async_read_result_t elliptics_proxy_t::impl::read_async_impl(key_t &key, uint64_
 	}
 }
 
-async_write_result elliptics_proxy_t::impl::write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
+async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 													  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 													  int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds)
 {
@@ -1352,7 +1356,7 @@ async_write_result elliptics_proxy_t::impl::write_async_impl(key_t &key, std::st
 	}
 }
 
-async_remove_result elliptics_proxy_t::impl::remove_async_impl(key_t &key, std::vector<int> &groups) {
+async_remove_result_t elliptics_proxy_t::impl::remove_async_impl(key_t &key, std::vector<int> &groups) {
 	session elliptics_session(*m_elliptics_node);
 	std::vector<int> lgroups;
 

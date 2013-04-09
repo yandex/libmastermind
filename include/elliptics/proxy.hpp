@@ -123,6 +123,9 @@ private:
 	parser_t parser;
 };
 
+typedef ioremap::elliptics::async_write_result async_write_result_t;
+typedef ioremap::elliptics::async_remove_result async_remove_result_t;
+
 BOOST_PARAMETER_NAME(key)
 BOOST_PARAMETER_NAME(keys)
 BOOST_PARAMETER_NAME(data)
@@ -412,7 +415,7 @@ public:
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(ioremap::elliptics::async_write_result), write_async, tag,
+		(async_write_result_t), write_async, tag,
 		(required
 			(key, (key_t))
 			(data, (std::string))
@@ -432,7 +435,7 @@ public:
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(ioremap::elliptics::async_remove_result), remove_async, tag,
+		(async_remove_result_t), remove_async, tag,
 		(required
 			(key, (key_t))
 		)
@@ -506,11 +509,11 @@ private:
 									  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 									  bool latest, bool embeded);
 
-	ioremap::elliptics::async_write_result write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
+	async_write_result_t write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
 										  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 										  int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
 
-	ioremap::elliptics::async_remove_result remove_async_impl(key_t &key, std::vector<int> &groups);
+	async_remove_result_t remove_async_impl(key_t &key, std::vector<int> &groups);
 
 
 	//lookup_result_t parse_lookup(const ioremap::elliptics::lookup_result_entry &l);
