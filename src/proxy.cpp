@@ -320,6 +320,9 @@ elliptics_proxy_t::elliptics_proxy_t(const elliptics_proxy_t::config &c)
 	: pimpl (new elliptics_proxy_t::impl(c)) {
 }
 
+elliptics_proxy_t::~elliptics_proxy_t() {
+}
+
 std::string elliptics_proxy_t::get_path_impl(const ioremap::elliptics::lookup_result_entry &l) {
 	return pimpl->get_path_impl(l);
 }
