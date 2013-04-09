@@ -209,7 +209,7 @@ private:
 public:
 	elliptics_proxy_t(const elliptics_proxy_t::config &c);
 #ifdef HAVE_METABASE
-	virtual ~elliptics_proxy_t() = default;
+	virtual ~elliptics_proxy_t() {};
 #endif //HAVE_METABASE
 
 public:
