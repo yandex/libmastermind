@@ -1,3 +1,9 @@
+libelliptics-proxy (0.2.3) unstable; urgency=low
+
+  * Fixed build on ubuntu precise
+
+ -- Anton Kortunov <toshik@yandex-team.ru>  Tue, 09 Apr 2013 16:31:09 +0400
+
 libelliptics-proxy (0.2.2) unstable; urgency=low
 
   * Added elliptics-dev depend to libelliptics-proxy-dev package
