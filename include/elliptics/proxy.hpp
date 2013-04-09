@@ -208,9 +208,7 @@ private:
 
 public:
 	elliptics_proxy_t(const elliptics_proxy_t::config &c);
-#ifdef HAVE_METABASE
-	virtual ~elliptics_proxy_t() = default;
-#endif //HAVE_METABASE
+	virtual ~elliptics_proxy_t();
 
 public:
 	BOOST_PARAMETER_MEMBER_FUNCTION(
