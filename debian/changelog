@@ -1,3 +1,9 @@
+libelliptics-proxy (0.2.2) unstable; urgency=low
+
+  * Added elliptics-dev depend to libelliptics-proxy-dev package
+
+ -- Anton Kortunov <toshik@yandex-team.ru>  Tue, 09 Apr 2013 15:36:54 +0400
+
 libelliptics-proxy (0.2.1) unstable; urgency=low
 
   * Elliptics 2.20.23 support

@@ -28,6 +28,6 @@ Description: Smart client for Elliptics storage (debug symbols)
 
 Package: libelliptics-proxy-dev
 Architecture: any
-Depends: libelliptics-proxy (= ${Source-Version}), libboost-dev, libcocaine-dealer-dev (>= 0.9.10000), libmsgpack-dev
+Depends: libelliptics-proxy (= ${Source-Version}), libboost-dev, libcocaine-dealer-dev (>= 0.9.10000), libmsgpack-dev, elliptics-dev (>= 2.23), elliptics-dev (<< 2.24)
 Description: Smart client for Elliptics storage (developer files)
 
