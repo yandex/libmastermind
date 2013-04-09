@@ -136,6 +136,39 @@ void test_bulk_sync(elliptics_proxy_t &proxy) {
 	}
 }
 
+void test_mastermind_groups(elliptics_proxy_t &proxy) {
+	auto r1 = proxy.get_symmetric_groups();
+	std::cout << "get_symmetric_groups: " << std::endl;
+	std::cout << "size = " << r1.size() << std::endl;
+	for (size_t i = 0; i != r1.size(); ++i) {
+		std::cout << "\tsize = " << r1[i].size() << std::endl;
+		std::cout << "\t\t";
+		for (size_t j = 0; j != r1[i].size(); ++j) {
+			std::cout << r1[i][j] << ' ';
+		}
+		std::cout << std::endl;
+	}
+
+	auto r2 = proxy.get_bad_groups();
+	std::cout << "get_bad_groups: " << std::endl;
+	for (auto it = r2.begin(); it != r2.end(); ++it) {
+		std::cout << it->first << std::endl;
+		std::cout << "\tsize: " << it->second.size() << std::endl;
+		std::cout << "\t\t";
+		for (auto jt = it->second.begin(); jt != it->second.end(); ++jt) {
+			std::cout << *jt << ' ';
+		}
+		std::cout << std::endl;
+	}
+
+	auto r3 = proxy.get_all_groups();
+	std::cout << "get_all_groups: " << std::endl;
+	for (auto it = r3.begin(); it != r3.end(); ++it) {
+		std::cout << *it << ' ';
+	}
+	std::cout << std::endl;
+}
+
 class tester {
 public:
 	typedef std::function<void (elliptics_proxy_t &)> test_t;
@@ -146,6 +179,7 @@ public:
 		elconf.groups.push_back(1);
 		elconf.groups.push_back(2);
 		elconf.log_mask = 1;
+		elconf.cocaine_config = std::string("/home/derikon/cocaine/cocaine_config.json");
 		elconf.remotes.push_back(elliptics_proxy_t::remote(host, port, family));
 		elconf.success_copies_num = SUCCESS_COPIES_TYPE__ALL;
 
@@ -193,7 +227,12 @@ int main(int argc, char* argv[])
 	}
 
 	tester t(host, port, family);
-	t.process({test_sync, test_async, test_bulk_sync, test_lookup});
+	t.process({test_sync
+			  , test_async
+			  , test_bulk_sync
+			  , test_lookup
+			  , test_mastermind_groups
+});
 	return 0;
 #if 0
 	//test_lookup ();

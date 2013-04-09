@@ -283,6 +283,11 @@ public:
 #ifdef HAVE_METABASE
 	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, key_t &key);
 	group_info_response_t get_metabalancer_group_info_impl(int group);
+
+	std::vector<std::vector<int> > get_symmetric_groups();
+	std::map<int, std::vector<int> > get_bad_groups();
+	std::vector<int> get_all_groups();
+
 	bool collect_group_weights();
 	void collect_group_weights_loop();
 #endif /* HAVE_METABASE */
@@ -311,6 +316,8 @@ private:
 	const int                                          m_group_weights_update_period;
 	std::thread                                        m_weight_cache_update_thread;
 	std::condition_variable                            m_weight_cache_condition_variable;
+	std::mutex                                         m_mutex;
+	bool                                               m_done;
 #endif /* HAVE_METABASE */
 };
 
@@ -411,6 +418,18 @@ group_info_response_t elliptics_proxy_t::get_metabalancer_group_info_impl(int gr
 	return pimpl->get_metabalancer_group_info_impl(group);
 }
 
+std::vector<std::vector<int> > elliptics_proxy_t::get_symmetric_groups() {
+	return pimpl->get_symmetric_groups();
+}
+
+std::map<int, std::vector<int> > elliptics_proxy_t::get_bad_groups() {
+	return pimpl->get_bad_groups();
+}
+
+std::vector<int> elliptics_proxy_t::get_all_groups() {
+	return pimpl->get_all_groups();
+}
+
 #endif /* HAVE_METABASE */
 
 bool elliptics_proxy_t::ping() {
@@ -441,6 +460,7 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 	,m_metabase_usage(PROXY_META_NONE)
 	,m_weight_cache(get_group_weighs_cache())
 	,m_group_weights_update_period(c.group_weights_refresh_period)
+	,m_done(false)
 #endif /* HAVE_METABASE */
 {
 	if (m_replication_count == 0) {
@@ -484,7 +504,12 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 elliptics::elliptics_proxy_t::impl::~impl() {
 #ifdef HAVE_METABASE
 	try {
-		m_weight_cache_condition_variable.notify_one();
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			(void)lock;
+			m_done = true;
+			m_weight_cache_condition_variable.notify_one();
+		}
 		m_weight_cache_update_thread.join();
 	} catch (std::system_error) {
 
@@ -1500,17 +1525,16 @@ bool elliptics_proxy_t::impl::collect_group_weights()
 
 void elliptics_proxy_t::impl::collect_group_weights_loop()
 {
-	std::mutex mutex;
-	std::unique_lock<std::mutex> lock(mutex);
+	std::unique_lock<std::mutex> lock(m_mutex);
 #if __GNUC_MINOR__ >= 6
 	auto no_timeout = std::cv_status::no_timeout;
 #else
 	bool no_timeout = false;
 #endif
-	//while(!boost::this_thread::interruption_requested()) {
-	while(no_timeout == m_weight_cache_condition_variable.wait_for(lock,
-													 std::chrono::milliseconds(
-														 m_group_weights_update_period))) {
+	bool tm;
+	std::cout << "wait-time: " << m_group_weights_update_period << std::endl;
+	do {
+		std::cout << "wait-time: " << m_group_weights_update_period << std::endl;
 		try {
 			collect_group_weights();
 			m_elliptics_log->log(DNET_LOG_INFO, "Updated group weights");
@@ -1531,9 +1555,12 @@ void elliptics_proxy_t::impl::collect_group_weights_loop()
 			msg << "Error while updating cache: " << e.what();
 			m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
 		}
-		//boost::this_thread::sleep(boost::posix_time::seconds(m_group_weights_update_period));
-	}
-
+		tm = true;
+		while(m_done == false)
+			tm = m_weight_cache_condition_variable.wait_for(lock,
+															std::chrono::seconds(
+																m_group_weights_update_period));
+	} while(no_timeout == tm);
 }
 
 std::vector<int> elliptics_proxy_t::impl::get_metabalancer_groups_impl(uint64_t count, uint64_t size, key_t &key)
@@ -1625,6 +1652,99 @@ group_info_response_t elliptics_proxy_t::impl::get_metabalancer_group_info_impl(
 		
 
 	return resp;
+}
+
+std::vector<std::vector<int> > elliptics_proxy_t::impl::get_symmetric_groups() {
+	std::vector<std::vector<int> > res;
+	try {
+		cocaine::dealer::message_path_t path("mastermind", "get_symmetric_groups");
+
+		boost::shared_ptr<cocaine::dealer::response_t> future;
+		future = m_cocaine_dealer->send_message(std::string(), path, m_cocaine_default_policy);
+
+		cocaine::dealer::data_container chunk;
+		future->get(&chunk);
+
+		msgpack::unpacked unpacked;
+		msgpack::unpack(&unpacked, static_cast<const char*>(chunk.data()), chunk.size());
+
+		unpacked.get().convert(&res);
+		return res;
+
+	} catch (const msgpack::unpack_error &e) {
+		std::stringstream msg;
+		msg << "Error while unpacking message: " << e.what();
+		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	} catch (const cocaine::dealer::dealer_error &e) {
+		std::stringstream msg;
+		msg << "Cocaine dealer error: " << e.what();
+		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	} catch (const cocaine::dealer::internal_error &e) {
+		std::stringstream msg;
+		msg << "Cocaine internal error: " << e.what();
+		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+}
+
+std::map<int, std::vector<int> > elliptics_proxy_t::impl::get_bad_groups() {
+	std::map<int, std::vector<int> > res;
+	try {
+		cocaine::dealer::message_path_t path("mastermind", "get_bad_groups");
+
+		boost::shared_ptr<cocaine::dealer::response_t> future;
+		future = m_cocaine_dealer->send_message(std::string(), path, m_cocaine_default_policy);
+
+		cocaine::dealer::data_container chunk;
+		future->get(&chunk);
+
+		msgpack::unpacked unpacked;
+		msgpack::unpack(&unpacked, static_cast<const char*>(chunk.data()), chunk.size());
+
+		unpacked.get().convert(&res);
+		return res;
+
+	} catch (const msgpack::unpack_error &e) {
+		std::stringstream msg;
+		msg << "Error while unpacking message: " << e.what();
+		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	} catch (const cocaine::dealer::dealer_error &e) {
+		std::stringstream msg;
+		msg << "Cocaine dealer error: " << e.what();
+		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	} catch (const cocaine::dealer::internal_error &e) {
+		std::stringstream msg;
+		msg << "Cocaine internal error: " << e.what();
+		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+}
+
+std::vector<int> elliptics_proxy_t::impl::get_all_groups() {
+	std::vector<int> res;
+
+	{
+		std::vector<std::vector<int> > r1 = get_symmetric_groups();
+		for (auto it = r1.begin(); it != r1.end(); ++it) {
+			res.insert(res.end(), it->begin(), it->end());
+		}
+	}
+
+	{
+		std::map<int, std::vector<int> > r2 = get_bad_groups();
+		for (auto it = r2.begin(); it != r2.end(); ++it) {
+			res.insert(res.end(), it->second.begin(), it->second.end());
+		}
+	}
+
+	std::sort(res.begin(), res.end());
+	res.erase(std::unique(res.begin(), res.end()), res.end());
+
+	return res;
 }
 #endif /* HAVE_METABASE */
 
