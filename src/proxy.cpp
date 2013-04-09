@@ -466,6 +466,9 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 	if (m_replication_count == 0) {
 		m_replication_count = m_groups.size();
 	}
+	if (m_success_copies_num == 0) {
+		m_success_copies_num = SUCCESS_COPIES_TYPE__QUORUM;
+	}
 	if (!c.remotes.size()) {
 		throw std::runtime_error("Remotes can't be empty");
 	}
