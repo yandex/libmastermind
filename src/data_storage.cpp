@@ -13,7 +13,7 @@ void bread(std::istringstream &iss, std::string &str, size_t size) {
 }
 } // namespace details
 
-std::string data_storage::pack(const data_storage &ds) {
+std::string data_storage_t::pack(const data_storage_t &ds) {
 	using namespace details;
 	std::ostringstream oss;
 	size_t embeds_size = sizeof(size_t);
@@ -34,9 +34,9 @@ std::string data_storage::pack(const data_storage &ds) {
 	return oss.str();
 }
 
-data_storage data_storage::unpack(const std::string &message, bool embeded) {
+data_storage_t data_storage_t::unpack(const std::string &message, bool embeded) {
 	using namespace details;
-	elliptics::data_storage ds;
+	elliptics::data_storage_t ds;
 	std::istringstream iss(message);
 	size_t embeds_size = 0;
 

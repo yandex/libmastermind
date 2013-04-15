@@ -113,7 +113,7 @@ void test_sync_embeds (elliptics_proxy_t &proxy) {
 
 	try { proxy.remove (k1); } catch (...) {}
 
-	data_storage ds("data1");
+	data_storage_t ds("data1");
 	ds.set<0>(123);
 
 	std::vector<lookup_result_t> l = proxy.write(k1, ds);

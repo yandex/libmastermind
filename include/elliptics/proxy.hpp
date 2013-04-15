@@ -270,7 +270,7 @@ public:
 		(std::vector<lookup_result_t>), write, tag,
 		(required
 			(key, (key_t))
-			(data, (data_storage))
+			(data, (data_storage_t))
 		)
 		(optional
 			(offset, (uint64_t), 0)
@@ -286,7 +286,7 @@ public:
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(data_storage), read, tag,
+		(data_storage_t), read, tag,
 		(required
 			(key, (key_t))
 		)
@@ -486,11 +486,11 @@ private:
 
 	lookup_result_t lookup_impl(key_t &key, std::vector<int> &groups);
 
-	std::vector<lookup_result_t> write_impl(key_t &key, data_storage &data, uint64_t offset, uint64_t size,
+	std::vector<lookup_result_t> write_impl(key_t &key, data_storage_t &data, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 				int success_copies_num);
 
-	data_storage read_impl(key_t &key, uint64_t offset, uint64_t size,
+	data_storage_t read_impl(key_t &key, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 				bool latest, bool embeded);
 

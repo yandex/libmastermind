@@ -1,5 +1,5 @@
-#ifndef __READ_RESULT__
-#define __READ_RESULT__
+#ifndef _ELLIPTICS_DATA_STORAGE_HPP_
+#define _ELLIPTICS_DATA_STORAGE_HPP_
 
 #include <map>
 #include <string>
@@ -47,35 +47,35 @@ void bread(std::istringstream &iss, T &ob) {
 void bread(std::istringstream &iss, std::string &str, size_t size);
 } // namespace details
 
-class data_storage {
+class data_storage_t {
 public:
-	data_storage() {}
+	data_storage_t() {}
 
-	data_storage(const std::string &message)
+	data_storage_t(const std::string &message)
 		: data(message)
 	{}
 
-	data_storage(std::string &&message)
+	data_storage_t(std::string &&message)
 		:data(std::move(message))
 	{}
 
-	data_storage(const data_storage &ds)
+	data_storage_t(const data_storage_t &ds)
 		: data(ds.data)
 		, embeds(ds.embeds)
 	{}
 
-	data_storage(data_storage &&ds)
+	data_storage_t(data_storage_t &&ds)
 		: data(std::move(ds.data))
 		, embeds(std::move(ds.embeds))
 	{}
 
-	data_storage &operator = (const data_storage &ds) {
+	data_storage_t &operator = (const data_storage_t &ds) {
 		data = ds.data;
 		embeds = ds.embeds;
 		return *this;
 	}
 
-	data_storage &operator = (data_storage &&ds) {
+	data_storage_t &operator = (data_storage_t &&ds) {
 		data = std::move(ds.data);
 		embeds = std::move(ds.embeds);
 		return *this;
@@ -95,8 +95,8 @@ public:
 									type_traits<type>::convert(ob)));
 	}
 
-	static std::string pack(const data_storage &ds);
-	static data_storage unpack(const std::string &message, bool embeded = false);
+	static std::string pack(const data_storage_t &ds);
+	static data_storage_t unpack(const std::string &message, bool embeded = false);
 
 	std::string data;
 
@@ -105,4 +105,4 @@ private:
 };
 } // namespace elliptcis
 
-#endif /* __READ_RESULT__ */
+#endif /* _ELLIPTICS_DATA_STORAGE_HPP_ */
