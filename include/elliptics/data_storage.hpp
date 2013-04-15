@@ -6,23 +6,23 @@
 #include <sstream>
 #include <boost/optional.hpp>
 #include <msgpack.hpp>
+#include <elliptics/cppdef.h>
 
 namespace elliptics {
 
 template<typename T>
 struct type_traits_base {
 	typedef T type;
-	static std::string convert(const type &ob) {
-		msgpack::sbuffer buffer;
-		msgpack::pack(buffer, ob);
-		return buffer.data();
+	static ioremap::elliptics::data_pointer convert(const type &ob) {
+		ioremap::elliptics::data_buffer data_buffer;
+		msgpack::pack(data_buffer, ob);
+		return std::move(data_buffer);
 	}
 
-	static type convert(const std::string &ob) {
+	static type convert(ioremap::elliptics::data_pointer data_pointer) {
 		type res;
 		msgpack::unpacked unpacked;
-		msgpack::unpack(&unpacked, ob.data(), ob.size());
-
+		msgpack::unpack(&unpacked, (const char *)data_pointer.data(), data_pointer.size());
 		unpacked.get().convert(&res);
 		return res;
 	}
@@ -33,20 +33,6 @@ struct type_traits;
 
 template<> struct type_traits<0> : type_traits_base<time_t> {};
 
-namespace details {
-template<typename T>
-void bwrite(std::ostringstream &oss, T ob) {
-	oss.write((const char *)&ob, sizeof(T));
-}
-
-template<typename T>
-void bread(std::istringstream &iss, T &ob) {
-	iss.read((char *)&ob, sizeof(T));
-}
-
-void bread(std::istringstream &iss, std::string &str, size_t size);
-} // namespace details
-
 class data_storage_t {
 public:
 	data_storage_t() {}
@@ -56,7 +42,7 @@ public:
 	{}
 
 	data_storage_t(std::string &&message)
-		:data(std::move(message))
+		: data(std::move(message))
 	{}
 
 	data_storage_t(const data_storage_t &ds)
@@ -86,22 +72,29 @@ public:
 		auto it = embeds.find(type);
 		if (it == embeds.end())
 			return boost::optional<typename type_traits<type>::type>();
-		return type_traits<type>::convert(it->second);
+		return type_traits<type>::convert(it->second.data_pointer);
 	}
 
 	template<size_t type>
 	void set(const typename type_traits<type>::type &ob) {
-		embeds.insert(std::make_pair(type,
-									type_traits<type>::convert(ob)));
+		embed_t e;
+		e.flags = 0;
+		e.data_pointer = type_traits<type>::convert(ob);
+		embeds.insert(std::make_pair(type, e));
 	}
 
-	static std::string pack(const data_storage_t &ds);
-	static data_storage_t unpack(const std::string &message, bool embeded = false);
+	static ioremap::elliptics::data_pointer pack(const data_storage_t &ds);
+	static data_storage_t unpack(ioremap::elliptics::data_pointer data_pointer, bool embeded = false);
 
 	std::string data;
 
 private:
-	std::map<size_t, std::string> embeds;
+	struct embed_t {
+		size_t flags;
+		ioremap::elliptics::data_pointer data_pointer;
+	};
+
+	std::map<size_t, embed_t> embeds;
 };
 } // namespace elliptcis
 

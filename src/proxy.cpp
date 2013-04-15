@@ -686,9 +686,9 @@ data_storage_t elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset, u
 		elliptics_session.set_groups(lgroups);
 
 		if (latest)
-			return data_storage_t::unpack(elliptics_session.read_latest(key, offset, size).get_one().file().to_string(), embeded);
+			return data_storage_t::unpack(elliptics_session.read_latest(key, offset, size).get_one().file(), embeded);
 		else
-			return data_storage_t::unpack(elliptics_session.read_data(key, offset, size).get_one().file().to_string(), embeded);
+			return data_storage_t::unpack(elliptics_session.read_data(key, offset, size).get_one().file(), embeded);
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
@@ -752,7 +752,7 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, dat
 
 		bool chunked = false;
 
-		std::string content = data_storage_t::pack(data);
+		ioremap::elliptics::data_pointer content = data_storage_t::pack(data);
 
 		if (m_chunk_size && content.size() > static_cast<size_t>(m_chunk_size) && !key.by_id()
 				&& !(ioflags & (DNET_IO_FLAGS_PREPARE | DNET_IO_FLAGS_COMMIT | DNET_IO_FLAGS_PLAIN_WRITE))) {
@@ -770,11 +770,11 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, dat
 				lookup = elliptics_session.write_plain(key, content, offset).get();
 			} else {
 				if (chunked) {
-					std::string write_content;
+					ioremap::elliptics::data_pointer write_content;
 					bool first_iter = true;
 					size_t size = content.size();
 
-					content.substr(offset, m_chunk_size).swap(write_content);
+					write_content = content.slice(offset, m_chunk_size);
 					lookup = elliptics_session.write_prepare(key, write_content, offset, content.size()).get();
 					helper.update_lookup(parse_lookup(lookup), false);
 
@@ -782,15 +782,15 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, dat
 						do {
 							elliptics_session.set_groups(helper.get_upload_groups());
 							offset += m_chunk_size;
-							content.substr(offset, m_chunk_size).swap(write_content);
+							write_content = content.slice(offset, m_chunk_size);
 
-							if (offset + m_chunk_size >= content.length())
+							if (offset + m_chunk_size >= content.size())
 								lookup = elliptics_session.write_commit(key, write_content, offset, 0).get();
 							else
 								lookup = elliptics_session.write_plain(key, write_content, offset).get();
 							helper.update_lookup(parse_lookup(lookup), first_iter);
 							first_iter = false;
-						} while (helper.upload_is_good() && (offset + m_chunk_size < content.length()));
+						} while (helper.upload_is_good() && (offset + m_chunk_size < content.size()));
 					}
 
 					helper.fix_size(size);
