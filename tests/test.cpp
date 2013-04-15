@@ -94,7 +94,7 @@ void test_async (elliptics_proxy_t &proxy) {
 void test_sync (elliptics_proxy_t &proxy) {
 	elliptics::key_t k1(std::string("key1.txt"));
 
-	//try { proxy.remove (k1); } catch (...) {}
+	try { proxy.remove (k1); } catch (...) {}
 
 	std::string data1("data1");
 
@@ -106,6 +106,30 @@ void test_sync (elliptics_proxy_t &proxy) {
 	}
 
 	std::cout << "Read result: " << proxy.read(k1).data << std::endl;
+}
+
+void test_sync_embeds (elliptics_proxy_t &proxy) {
+	elliptics::key_t k1(std::string("key1.txt"));
+
+	try { proxy.remove (k1); } catch (...) {}
+
+	data_storage ds("data1");
+	ds.set<0>(123);
+
+	std::vector<lookup_result_t> l = proxy.write(k1, ds);
+
+	std::cout << "written " << l.size() << " copies" << std::endl;
+	for (auto it = l.begin(); it != l.end(); ++it) {
+		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+	}
+
+	auto rr = proxy.read(k1, _embeded = true);
+	std::cout << "Read result: " << rr.data << std::endl;
+	auto r0 = rr.get<0>();
+	if (r0)
+		std::cout << "Embed result: " << *r0 << std::endl;
+	else
+		std::cout << "Embed result: none" << std::endl;
 }
 
 void test_bulk_sync(elliptics_proxy_t &proxy) {
@@ -228,6 +252,7 @@ int main(int argc, char* argv[])
 
 	tester t(host, port, family);
 	t.process({test_sync
+			  , test_sync_embeds
 			  , test_async
 			  , test_bulk_sync
 			  , test_lookup

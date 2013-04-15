@@ -238,11 +238,10 @@ public:
 
 	lookup_result_t lookup_impl(key_t &key, std::vector<int> &groups);
 
-	std::vector<lookup_result_t> write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
-				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-				int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
+	std::vector<lookup_result_t> write_impl(key_t &key, data_storage &data, uint64_t offset, uint64_t size,
+				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, int success_copies_num);
 
-	read_result_t read_impl(key_t &key, uint64_t offset, uint64_t size,
+	data_storage read_impl(key_t &key, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 				bool latest, bool embeded);
 
@@ -350,13 +349,12 @@ lookup_result_t elliptics_proxy_t::lookup_impl(key_t &key, std::vector<int> &gro
 	return pimpl->lookup_impl(key, groups);
 }
 
-std::vector<lookup_result_t> elliptics_proxy_t::write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
-			uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-			int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds) {
-	return pimpl->write_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num, embeds);
+std::vector<lookup_result_t> elliptics_proxy_t::write_impl(key_t &key, data_storage &data, uint64_t offset, uint64_t size,
+			uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, int success_copies_num) {
+	return pimpl->write_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num);
 }
 
-read_result_t elliptics_proxy_t::read_impl(key_t &key, uint64_t offset, uint64_t size,
+data_storage elliptics_proxy_t::read_impl(key_t &key, uint64_t offset, uint64_t size,
 			uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 			bool latest, bool embeded) {
 	return pimpl->read_impl(key, offset, size, cflags, ioflags, groups, latest, embeded);
@@ -673,7 +671,7 @@ lookup_result_t elliptics_proxy_t::impl::lookup_impl(key_t &key, std::vector<int
 	}
 }
 
-read_result_t elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset, uint64_t size,
+data_storage elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 				bool latest, bool embeded)
 {
@@ -684,46 +682,13 @@ read_result_t elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset, ui
 	elliptics_session.set_cflags(cflags);
 	elliptics_session.set_ioflags(ioflags);
 
-	ioremap::elliptics::data_pointer result;
-	read_result_t ret;
-
 	try {
 		elliptics_session.set_groups(lgroups);
 
 		if (latest)
-			result = elliptics_session.read_latest(key, offset, size).get_one().file();
+			return data_storage::unpack(elliptics_session.read_latest(key, offset, size).get_one().file().to_string(), embeded);
 		else
-			result = elliptics_session.read_data(key, offset, size).get_one().file();
-
-		if (embeded) {
-			while (result.size()) {
-				if (result.size() < sizeof(struct dnet_common_embed)) {
-					std::ostringstream str;
-					str << key.to_string() << ": offset: " << result.offset() << ", size: " << result.size() << ": invalid size";
-					throw std::runtime_error(str.str());
-				}
-
-				struct dnet_common_embed *e = result.data<struct dnet_common_embed>();
-
-				dnet_common_convert_embedded(e);
-
-				result = result.skip<struct dnet_common_embed>();
-
-				if (result.size() < e->size + sizeof (struct dnet_common_embed)) {
-					break;
-				}
-
-				if (e->type == DNET_PROXY_EMBED_DATA) {
-					break;
-				}
-
-				result = result.skip(e->size);
-			}
-			ret.data = result.to_string();
-		} else {
-			ret.data = result.to_string();
-		}
-
+			return data_storage::unpack(elliptics_session.read_data(key, offset, size).get_one().file().to_string(), embeded);
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
@@ -737,13 +702,10 @@ read_result_t elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset, ui
 		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
-
-	return ret;
 }
 
-std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
-					uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-					int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds)
+std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, data_storage &data, uint64_t offset, uint64_t size,
+					uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, int success_copies_num)
 {
 	unsigned int replication_count = groups.size();
 	session elliptics_session(*m_elliptics_node);
@@ -790,12 +752,7 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std
 
 		bool chunked = false;
 
-		std::string content;
-
-		for (std::vector<std::shared_ptr<embed_t> >::const_iterator it = embeds.begin(); it != embeds.end(); it++) {
-			content.append((*it)->pack());
-		}
-		content.append(data);
+		std::string content = data_storage::pack(data);
 
 		if (m_chunk_size && content.size() > static_cast<size_t>(m_chunk_size) && !key.by_id()
 				&& !(ioflags & (DNET_IO_FLAGS_PREPARE | DNET_IO_FLAGS_COMMIT | DNET_IO_FLAGS_PLAIN_WRITE))) {
@@ -1535,9 +1492,7 @@ void elliptics_proxy_t::impl::collect_group_weights_loop()
 	bool no_timeout = false;
 #endif
 	bool tm;
-	std::cout << "wait-time: " << m_group_weights_update_period << std::endl;
 	do {
-		std::cout << "wait-time: " << m_group_weights_update_period << std::endl;
 		try {
 			collect_group_weights();
 			m_elliptics_log->log(DNET_LOG_INFO, "Updated group weights");
@@ -1706,6 +1661,7 @@ std::map<int, std::vector<int> > elliptics_proxy_t::impl::get_bad_groups() {
 		msgpack::unpacked unpacked;
 		msgpack::unpack(&unpacked, static_cast<const char*>(chunk.data()), chunk.size());
 
+		//std::vector<std::vector<int> > r;
 		unpacked.get().convert(&res);
 		return res;
 

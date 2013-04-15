@@ -39,6 +39,8 @@
 
 #include <elliptics/cppdef.h>
 
+#include "elliptics/data_storage.hpp"
+
 namespace elliptics {
 
 enum SUCCESS_COPIES_TYPE {
@@ -268,7 +270,7 @@ public:
 		(std::vector<lookup_result_t>), write, tag,
 		(required
 			(key, (key_t))
-			(data, (std::string))
+			(data, (data_storage))
 		)
 		(optional
 			(offset, (uint64_t), 0)
@@ -277,15 +279,14 @@ public:
 			(ioflags, (uint64_t), 0)
 			(groups, (const std::vector<int>), std::vector<int>())
 			(success_copies_num, (int), 0)
-			(embeds, (std::vector<std::shared_ptr<embed_t> >), std::vector<std::shared_ptr<embed_t> >())
 		)
 	)
 	{
-		return write_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num, embeds);
+		return write_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num/*, embeds*/);
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(read_result_t), read, tag,
+		(data_storage), read, tag,
 		(required
 			(key, (key_t))
 		)
@@ -485,11 +486,11 @@ private:
 
 	lookup_result_t lookup_impl(key_t &key, std::vector<int> &groups);
 
-	std::vector<lookup_result_t> write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
+	std::vector<lookup_result_t> write_impl(key_t &key, data_storage &data, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-				int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
+				int success_copies_num);
 
-	read_result_t read_impl(key_t &key, uint64_t offset, uint64_t size,
+	data_storage read_impl(key_t &key, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 				bool latest, bool embeded);
 
