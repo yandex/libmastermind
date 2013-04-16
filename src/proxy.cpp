@@ -785,7 +785,7 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, dat
 							write_content = content.slice(offset, m_chunk_size);
 
 							if (offset + m_chunk_size >= content.size())
-								lookup = elliptics_session.write_commit(key, write_content, offset, 0).get();
+								lookup = elliptics_session.write_commit(key, write_content, offset, content.size()).get();
 							else
 								lookup = elliptics_session.write_plain(key, write_content, offset).get();
 							helper.update_lookup(parse_lookup(lookup), first_iter);
