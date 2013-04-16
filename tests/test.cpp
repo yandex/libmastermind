@@ -105,7 +105,7 @@ void test_sync (elliptics_proxy_t &proxy) {
 		std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
 	}
 
-	std::cout << "Read result: " << proxy.read(k1).data << std::endl;
+	std::cout << "Read result: " << proxy.read(k1).data.to_string() << std::endl;
 }
 
 void test_sync_embeds (elliptics_proxy_t &proxy) {
@@ -113,8 +113,11 @@ void test_sync_embeds (elliptics_proxy_t &proxy) {
 
 	try { proxy.remove (k1); } catch (...) {}
 
-	data_storage_t ds("data1");
-	ds.set<0>(123);
+	data_container_t ds("data1");
+	timespec ts;
+	ts.tv_sec = 123;
+	ts.tv_nsec = 456000;
+	ds.set<elliptics::DNET_FCGI_EMBED_TIMESTAMP>(ts);
 
 	std::vector<lookup_result_t> l = proxy.write(k1, ds);
 
@@ -124,10 +127,12 @@ void test_sync_embeds (elliptics_proxy_t &proxy) {
 	}
 
 	auto rr = proxy.read(k1, _embeded = true);
-	std::cout << "Read result: " << rr.data << std::endl;
-	auto r0 = rr.get<0>();
-	if (r0)
-		std::cout << "Embed result: " << *r0 << std::endl;
+	std::cout << "Read result: " << rr.data.to_string() << std::endl;
+	auto r0 = rr.get<elliptics::DNET_FCGI_EMBED_TIMESTAMP>();
+	if (r0) {
+		timespec &ts = *r0;
+		std::cout << "Embed result: " << ts.tv_sec << ' ' << ts.tv_nsec << std::endl;
+	}
 	else
 		std::cout << "Embed result: none" << std::endl;
 }
