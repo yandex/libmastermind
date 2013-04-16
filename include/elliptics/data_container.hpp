@@ -76,11 +76,8 @@ public:
 	data_container_t() {}
 
 	data_container_t(const std::string &message)
-		: data(message)
+		: data(std::move(ioremap::elliptics::data_buffer(message.data(), message.size())))
 	{
-		ioremap::elliptics::data_buffer data_buffer(message.size());
-		data_buffer.write(message.c_str(), message.size());
-		data = ioremap::elliptics::data_pointer(std::move(data_buffer));
 	}
 
 	data_container_t(const ioremap::elliptics::data_pointer &data_pointer)
