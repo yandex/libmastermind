@@ -250,11 +250,11 @@ public:
 	std::vector<std::string> range_get_impl(key_t &from, key_t &to, uint64_t cflags, uint64_t ioflags,
 				uint64_t limit_start, uint64_t limit_num, const std::vector<int> &groups, key_t &key);
 
-	std::map<key_t, read_result_t> bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups);
+	std::map<key_t, data_container_t> bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups);
 
 		std::vector<elliptics_proxy_t::remote> lookup_addr_impl(key_t &key, std::vector<int> &groups);
 
-	std::map<key_t, std::vector<lookup_result_t> > bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
+	std::map<key_t, std::vector<lookup_result_t> > bulk_write_impl(std::vector<key_t> &keys, std::vector<data_container_t> &data, uint64_t cflags,
 															  std::vector<int> &groups, int success_copies_num);
 
 	std::string exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups);
@@ -369,7 +369,7 @@ std::vector<std::string> elliptics_proxy_t::range_get_impl(key_t &from, key_t &t
 	return pimpl->range_get_impl(from, to, cflags, ioflags, limit_start, limit_num, groups, key);
 }
 
-std::map<key_t, read_result_t> elliptics_proxy_t::bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups) {
+std::map<key_t, data_container_t> elliptics_proxy_t::bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups) {
 	return pimpl->bulk_read_impl(keys, cflags, groups);
 }
 
@@ -377,7 +377,7 @@ std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::lookup_addr_impl(key_t
 	return pimpl->lookup_addr_impl(key, groups);
 }
 
-std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
+std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::bulk_write_impl(std::vector<key_t> &keys, std::vector<data_container_t> &data, uint64_t cflags,
 														  std::vector<int> &groups, int success_copies_num) {
 	return pimpl->bulk_write_impl(keys, data, cflags, groups, success_copies_num);
 }
@@ -983,9 +983,9 @@ void elliptics_proxy_t::impl::remove_impl(key_t &key, std::vector<int> &groups)
 	}
 }
 
-std::map<key_t, read_result_t> elliptics_proxy_t::impl::bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups)
+std::map<key_t, data_container_t> elliptics_proxy_t::impl::bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups)
 {
-	std::map<key_t, read_result_t> ret;
+	std::map<key_t, data_container_t> ret;
 
 	if (!keys.size())
 		return ret;
@@ -1020,11 +1020,9 @@ std::map<key_t, read_result_t> elliptics_proxy_t::impl::bulk_read_impl(std::vect
 		auto result = elliptics_session.bulk_read(ios).get();
 
 		for (auto it = result.begin(), end = result.end(); it != end; ++it) {
-			read_result_entry entry = *it;
-			read_result_t tmp;
-			tmp.data = entry.file().to_string();
+			read_result_entry &entry = *it;
 
-			ret.insert(std::make_pair(keys_transformed[entry.command()->id], tmp));
+			ret.insert(std::make_pair(keys_transformed[entry.command()->id], data_container_t::unpack(entry.file())));
 		}
 
 
@@ -1074,7 +1072,7 @@ std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::impl::lookup_addr_impl
 	return addrs;
 }
 
-std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
+std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_write_impl(std::vector<key_t> &keys, std::vector<data_container_t> &data, uint64_t cflags,
 																		   std::vector<int> &groups, int success_copies_num) {
 	unsigned int replication_count = groups.size();
 	std::map<key_t, std::vector<lookup_result_t> > res;
@@ -1099,9 +1097,13 @@ std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_wri
 		elliptics_session.set_groups(lgroups);
 
 		std::vector<struct dnet_io_attr> ios;
+		std::vector<ioremap::elliptics::data_pointer> data_pointers;
 		ios.reserve(keys.size());
+		data_pointers.reserve(keys.size());
 
 		for (size_t index = 0; index != keys.size(); ++index) {
+			data_pointers.push_back(data_container_t::pack(data[index]));
+
 			struct dnet_io_attr io;
 			memset(&io, 0, sizeof(io));
 
@@ -1111,12 +1113,12 @@ std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_wri
 			}
 
 			memcpy(io.id, tmp.id().id, sizeof(io.id));
-			io.size = data[index].size();
+			io.size = data_pointers[index].size();
 			ios.push_back(io);
 			keys_transformed.insert(std::make_pair(tmp.id(), keys [index]));
 		}
 
-		 auto result = elliptics_session.bulk_write(ios, data).get();
+		 auto result = elliptics_session.bulk_write(ios, data_pointers).get();
 
 		 //for (size_t i = 0; i != result.size(); ++i) {
 		 for (auto it = result.begin(), end = result.end(); it != end; ++it) {
@@ -1201,38 +1203,8 @@ std::string elliptics_proxy_t::impl::exec_script_impl(key_t &key, std::string &d
 	return res;
 }
 
-read_result_t read_parser(const ioremap::elliptics::read_result_entry &entry, bool embeded, const key_t &key) {
-	auto result = entry.file();
-	read_result_t ret;
-	if (embeded) {
-		while (result.size()) {
-			if (result.size() < sizeof(struct dnet_common_embed)) {
-				std::ostringstream str;
-				str << key.to_string() << ": offset: " << result.offset() << ", size: " << result.size() << ": invalid size";
-				throw std::runtime_error(str.str());
-			}
-
-			struct dnet_common_embed *e = result.data<struct dnet_common_embed>();
-
-			dnet_common_convert_embedded(e);
-
-			result = result.skip<struct dnet_common_embed>();
-
-			if (result.size() < e->size + sizeof (struct dnet_common_embed)) {
-				break;
-			}
-
-			if (e->type == DNET_PROXY_EMBED_DATA) {
-				break;
-			}
-
-			result = result.skip(e->size);
-		}
-		ret.data = result.to_string();
-	} else {
-		ret.data = result.to_string();
-	}
-	return ret;
+data_container_t read_parser(const ioremap::elliptics::read_result_entry &entry, bool embeded) {
+	return data_container_t::unpack(entry.file(), embeded);
 }
 
 async_read_result_t elliptics_proxy_t::impl::read_async_impl(key_t &key, uint64_t offset, uint64_t size,
@@ -1248,7 +1220,7 @@ async_read_result_t elliptics_proxy_t::impl::read_async_impl(key_t &key, uint64_
 	try {
 		elliptics_session.set_groups(lgroups);
 
-		auto parser = std::bind(read_parser, std::placeholders::_1, embeded, key);
+		auto parser = std::bind(read_parser, std::placeholders::_1, embeded);
 
 		if (latest)
 			return async_read_result_t(elliptics_session.read_latest(key, offset, size), parser);

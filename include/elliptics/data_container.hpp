@@ -98,12 +98,6 @@ public:
 		, embeds(std::move(ds.embeds))
 	{}
 
-	data_container_t &operator = (const data_container_t &ds) {
-		data = ds.data;
-		embeds = ds.embeds;
-		return *this;
-	}
-
 	data_container_t &operator = (data_container_t &&ds) {
 		data = std::move(ds.data);
 		embeds = std::move(ds.embeds);

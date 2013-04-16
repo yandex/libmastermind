@@ -78,12 +78,6 @@ public:
 	virtual const std::string pack() const = 0;
 };
 
-class read_result_t {
-public:
-	std::string data;
-	std::vector<std::shared_ptr<embed_t> > embeds;
-};
-
 class status_result_t {
 public:
 	std::string addr;
@@ -101,7 +95,7 @@ public:
 struct async_read_result_t {
 	typedef ioremap::elliptics::read_result_entry inner_result_entry_t;
 	typedef ioremap::elliptics::async_result<inner_result_entry_t> inner_result_t;
-	typedef read_result_t outer_result_t;
+	typedef data_container_t outer_result_t;
 	typedef std::function<outer_result_t (const inner_result_entry_t &)> parser_t;
 
 	async_read_result_t(inner_result_t &&inner_result, const parser_t &parser)
@@ -337,7 +331,7 @@ public:
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(std::map<key_t, read_result_t>), bulk_read, tag,
+		(std::map<key_t, data_container_t>), bulk_read, tag,
 		(required
 			(keys, (std::vector<key_t>))
 		)
@@ -367,7 +361,7 @@ public:
 		(std::map<key_t, std::vector<lookup_result_t> >), bulk_write, tag,
 		(required
 			(keys, (std::vector<key_t>))
-			(data, (std::vector<std::string>))
+			(data, (std::vector<data_container_t>))
 		)
 		(optional
 			(cflags, (uint64_t), 0)
@@ -499,11 +493,11 @@ private:
 	std::vector<std::string> range_get_impl(key_t &from, key_t &to, uint64_t cflags, uint64_t ioflags,
 				uint64_t limit_start, uint64_t limit_num, const std::vector<int> &groups, key_t &key);
 
-	std::map<key_t, read_result_t> bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups);
+	std::map<key_t, data_container_t> bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups);
 
 		std::vector<elliptics_proxy_t::remote> lookup_addr_impl(key_t &key, std::vector<int> &groups);
 
-	std::map<key_t, std::vector<lookup_result_t> > bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
+	std::map<key_t, std::vector<lookup_result_t> > bulk_write_impl(std::vector<key_t> &keys, std::vector<data_container_t> &data, uint64_t cflags,
 															  std::vector<int> &groups, int success_copies_num);
 
 	std::string exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups);
