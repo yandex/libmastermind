@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <boost/optional.hpp>
+#include <boost/none.hpp>
 #include <msgpack.hpp>
 #include <elliptics/cppdef.h>
 #include <ctime>
@@ -113,7 +114,7 @@ public:
 	boost::optional<typename type_traits<type>::type> get() const {
 		auto it = embeds.find(type);
 		if (it == embeds.end())
-			return boost::optional<typename type_traits<type>::type>();
+			return boost::none;
 		return type_traits<type>::convert(it->second.data_pointer);
 	}
 
@@ -138,7 +139,7 @@ private:
 
 		embed_t() {}
 
-		embed_t(const ioremap::elliptics::data_pointer &data_pointer, size_t type, size_t flags) {
+		embed_t(const ioremap::elliptics::data_pointer &data_pointer, uint32_t type, uint32_t flags) {
 			this->data_pointer = data_pointer;
 			header.type = type;
 			header.flags = flags;
