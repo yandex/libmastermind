@@ -8,6 +8,7 @@
 using namespace elliptics;
 
 void test_lookup (elliptics_proxy_t &proxy) {
+	std::cout << __func__ << std::endl;
 
 	elliptics::key_t k(std::string("key.txt"));
 
@@ -27,6 +28,7 @@ void test_lookup (elliptics_proxy_t &proxy) {
 }
 
 void test_async (elliptics_proxy_t &proxy) {
+	std::cout << __func__ << std::endl;
 
 	elliptics::key_t k1(std::string("key1.txt"));
 	elliptics::key_t k2(std::string("key2.txt"));
@@ -73,25 +75,27 @@ void test_async (elliptics_proxy_t &proxy) {
 	auto arr1 = proxy.read_async(k1);
 	auto arr2 = proxy.read_async(k2);
 
-	read_result_t r;
+	data_container_t ds;
 	try {
-		r = arr1.get();
+		ds = arr1.get();
 	} catch (...) {
 		std::cout << "Exception during get read result" << std::endl;
 		return;
 	}
-	std::cout << "Read result: " << r.data << std::endl;
+	std::cout << "Read result: " << ds.data.to_string() << std::endl;
 
 	try {
-		r = arr2.get();
+		ds = arr2.get();
 	} catch (...) {
 		std::cout << "Exception during get read result" << std::endl;
 		return;
 	}
-	std::cout << "Read result: " << r.data << std::endl;
+	std::cout << "Read result: " << ds.data.to_string() << std::endl;
 }
 
 void test_sync (elliptics_proxy_t &proxy) {
+	std::cout << __func__ << std::endl;
+
 	elliptics::key_t k1(std::string("key1.txt"));
 
 	try { proxy.remove (k1); } catch (...) {}
@@ -109,6 +113,8 @@ void test_sync (elliptics_proxy_t &proxy) {
 }
 
 void test_sync_embeds (elliptics_proxy_t &proxy) {
+	std::cout << __func__ << std::endl;
+
 	elliptics::key_t k1(std::string("key1.txt"));
 
 	try { proxy.remove (k1); } catch (...) {}
@@ -138,9 +144,12 @@ void test_sync_embeds (elliptics_proxy_t &proxy) {
 }
 
 void test_bulk_sync(elliptics_proxy_t &proxy) {
+	std::cout << __func__ << std::endl;
 
 	std::vector <elliptics::key_t> keys = {std::string ("key5"), std::string ("key6")};
-	std::vector <std::string> data_arr = {"data1", "data2"};
+	std::vector <data_container_t> data_arr;
+	data_arr.emplace_back("data1");
+	data_arr.emplace_back("data2");
 	std::vector <int> groups = {1, 2};
 
 	try { proxy.remove (keys[0]); } catch (...) {}
@@ -160,12 +169,14 @@ void test_bulk_sync(elliptics_proxy_t &proxy) {
 	{
 		auto result = proxy.bulk_read (keys, _groups = groups);
 		for (auto it = result.begin (), end = result.end (); it != end; ++it) {
-			std::cout << it->second.data << std::endl;
+			std::cout << it->second.data.to_string() << std::endl;
 		}
 	}
 }
 
 void test_mastermind_groups(elliptics_proxy_t &proxy) {
+	std::cout << __func__ << std::endl;
+
 	auto r1 = proxy.get_symmetric_groups();
 	std::cout << "get_symmetric_groups: " << std::endl;
 	std::cout << "size = " << r1.size() << std::endl;
@@ -220,7 +231,7 @@ public:
 		size_t num = 0;
 
 		for (auto it = tests.begin(), end = tests.end(); it != end; ++it) {
-			std::cout << "Test #" << ++num << std::endl;
+			std::cout << "Test #" << ++num << ": ";
 			try {
 				(*it)(*proxy);
 				std::cout << "Test #" << num << ": done" << std::endl;
