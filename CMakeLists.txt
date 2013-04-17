@@ -73,8 +73,11 @@ set (TESTS_SOURCES
 set (TEST test_${LIB})
 add_executable (${TEST} ${TESTS_SOURCES})
 target_link_libraries (${TEST} ${LIB})
+#set_target_properties(${TEST} PROPERTIES
+#        BUILD_WITH_INSTALL_RPATH 1
+#        INSTALL_RPATH .)
 set_target_properties(${TEST} PROPERTIES
-        BUILD_WITH_INSTALL_RPATH 1
-        INSTALL_RPATH .)
+        INSTALL_RPATH "."
+        BUILD_WITH_INSTALL_RPATH ON)
 enable_testing ()
 add_test (${TEST} ${TEST})
