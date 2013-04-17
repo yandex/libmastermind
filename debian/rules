@@ -13,6 +13,5 @@ DEB_DH_STRIP_ARGS := --dbg-package=libelliptics-proxy-dbg
 	dh $@
 
 override_dh_auto_test:
-	pwd
-	cd obj-x86_64-linux-gnu
-	ctest -V
+	dh_auto_test
+	cat obj-x86_64-linux-gnu/Testing/Temporary/LastTest.log
