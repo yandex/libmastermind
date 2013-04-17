@@ -1,17 +1,11 @@
 #!/usr/bin/make -f
 
-#include /usr/share/cdbs/1/class/cmake.mk
-#include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/class/cmake.mk
+include /usr/share/cdbs/1/rules/debhelper.mk
 
 DEB_CMAKE_EXTRA_FLAGS := -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
 DEB_DH_STRIP_ARGS := --dbg-package=libelliptics-proxy-dbg
 
-#DEB_MAKE_CHECK_TARGET := test
+DEB_MAKE_CHECK_TARGET := test ARGS="-V"
 
-%:
-	dh $@
-
-override_dh_auto_test:
-	dh_auto_test
-	cat obj-x86_64-linux-gnu/Testing/Temporary/LastTest.log
