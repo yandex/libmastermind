@@ -7,3 +7,5 @@ DEB_CMAKE_EXTRA_FLAGS := -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
 DEB_DH_STRIP_ARGS := --dbg-package=libelliptics-proxy-dbg
 
+DEB_MAKE_CHECK_TARGET := test
+
