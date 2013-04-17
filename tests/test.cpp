@@ -247,6 +247,12 @@ private:
 
 int main(int argc, char* argv[])
 {
+	std::cout << "##teamcity[testSuiteStarted name='suite.name']" << std::endl;
+	std::cout << "##teamcity[testStarted name='testname']" << std::endl;
+	//<here go all the test service messages with the same name>
+	std::cout << "##teamcity[testFinished name='testname']" << std::endl;
+	std::cout << "##teamcity[testSuiteFinished name='suite.name']" << std::endl;
+	return 0;
 	std::string host = "localhost";
 	int port = 1025;
 	int family = 2;
