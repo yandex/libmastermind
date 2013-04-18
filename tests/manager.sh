@@ -36,11 +36,11 @@ function stop_node {
 }
 
 function prepare_env {
-	echo pwd: `pwd`
-	echo whoami: `whoami`
-	echo who am i: `who am i`
-	apt-get install elliptics
-	for index in `seq 1 3`; do
+	if [ "$#" -ne 2 ]; then
+		exit 3;
+	fi
+
+	for index in `seq 1 $2`; do
 		path=$gpath/$index;
 		rm -rf $path;
 		mkdir -p $path;

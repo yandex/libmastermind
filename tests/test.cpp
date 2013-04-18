@@ -50,7 +50,7 @@ class elliptics_tests_t : public TestFixture {
 public:
 	elliptics_tests_t(const std::string &script)
 	: m_script(script) {
-		std::system((script + " prepare").c_str());
+		std::system((script + " prepare 4").c_str());
 		nodes<start>();
 
 		elliptics_proxy_t::config elconf;
