@@ -85,4 +85,4 @@ set_target_properties(${TEST} PROPERTIES
         INSTALL_RPATH "."
         BUILD_WITH_INSTALL_RPATH ON)
 enable_testing ()
-add_test (${TEST} ${TEST})
+add_test (${TEST} ${TEST} ${PROJECT_SOURCE_DIR}/tests/)

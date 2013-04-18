@@ -1,6 +1,8 @@
 #include <iostream>
 #include <initializer_list>
 #include <functional>
+#include <cstdlib>
+#include <sstream>
 
 #include <elliptics/proxy.hpp>
 #include <boost/lexical_cast.hpp>
@@ -17,12 +19,13 @@
 
 #include "teamcity_cppunit.h"
 
+
 using namespace elliptics;
 
 using namespace CppUnit;
 using namespace std;
 
-class MyTest : public TestCase {
+class MyTest : public TestFixture {
     CPPUNIT_TEST_SUITE(MyTest);
     CPPUNIT_TEST(testHelloWorld);
     CPPUNIT_TEST(testAssertEqual);
@@ -42,6 +45,78 @@ public:
 };
 
 CPPUNIT_TEST_SUITE_REGISTRATION(MyTest);
+
+class elliptics_tests_t : public TestFixture {
+public:
+	elliptics_tests_t(const std::string &script)
+	: m_script(script) {
+		std::system((script + " prepare").c_str());
+		nodes<start>();
+
+		elliptics_proxy_t::config elconf;
+		elconf.groups.push_back(1);
+		elconf.groups.push_back(2);
+		elconf.log_mask = 1;
+		//elconf.cocaine_config = std::string("/home/derikon/cocaine/cocaine_config.json");
+		elconf.remotes.push_back(elliptics_proxy_t::remote("localhost", 1025, 2));
+		elconf.success_copies_num = SUCCESS_COPIES_TYPE__ALL;
+
+		m_proxy.reset(new elliptics_proxy_t(elconf));
+		sleep(1);
+	}
+
+	~elliptics_tests_t() {
+		m_proxy.reset();
+		nodes<stop>();
+		std::system((m_script + " clear").c_str());
+	}
+
+	void test_lookup() {
+		elliptics::key_t k(std::string("key.txt"));
+
+		std::string data("data");
+
+		std::vector <int> g = {2};
+		std::vector<lookup_result_t> l = m_proxy->write(k, data/*, _groups = g*/);
+		std::cout << "written " << l.size() << " copies" << std::endl;
+		for (auto it = l.begin(); it != l.end(); ++it) {
+			std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+		}
+
+		auto l1 = m_proxy->lookup(k);
+		std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std::endl;
+	}
+private:
+	enum node_action { start, stop };
+
+	template<node_action na>
+	void node(size_t num) {
+		std::ostringstream oss;
+		oss << m_script;
+		if(na == start) oss << " start ";
+		else if (na == stop) oss << " stop ";
+		oss << num;
+		std::system(oss.str().c_str());
+	}
+
+	template<node_action na>
+	void nodes(std::initializer_list<size_t> nums) {
+		for(auto it = nums.begin(); it != nums.end(); ++it)
+			node<na>(*it);
+	}
+
+	template<node_action na>
+	void nodes() {
+		std::ostringstream oss;
+		oss << m_script;
+		if(na == start) oss << " start ";
+		else if (na == stop) oss << " stop ";
+		std::system(oss.str().c_str());
+	}
+
+	std::shared_ptr<elliptics_proxy_t> m_proxy;
+	std::string m_script;
+};
 
 void test_lookup (elliptics_proxy_t &proxy) {
 	std::cout << __func__ << std::endl;
@@ -283,35 +358,44 @@ private:
 
 int main(int argc, char* argv[])
 {
+	//elliptics_manager::script_path = argv[1];
+	//elliptics_manager::prepare_env();
 	// Create the event manager and test controller
-    TestResult controller;
+	TestResult controller;
 
-    // Add a listener that collects test result
-    TestResultCollector result;
-    controller.addListener(&result);
+	// Add a listener that collects test result
+	//TestResultCollector result;
+	//controller.addListener(&result);
 
-    // Add the top suite to the test runner
-    TestRunner runner;
-    runner.addTest(TestFactoryRegistry::getRegistry().makeTest());
+	// Add the top suite to the test runner
+	//TestRunner runner;
+	//runner.addTest(TestFactoryRegistry::getRegistry().makeTest());
 
 	// Listen to progress
-    TestListener *listener;
+	TestListener *listener;
 
-	if (JetBrains::underTeamcity()) {
-        // Add unique flowId parameter if you want to run test processes in parallel
-        // See http://confluence.jetbrains.net/display/TCD6/Build+Script+Interaction+with+TeamCity#BuildScriptInteractionwithTeamCity-MessageFlowId
-        listener = new JetBrains::TeamcityProgressListener();
-    } else {
-        listener = new BriefTestProgressListener();
-    }
-    controller.addListener(listener);
+//	if (JetBrains::underTeamcity()) {
+		// Add unique flowId parameter if you want to run test processes in parallel
+		// See http://confluence.jetbrains.net/display/TCD6/Build+Script+Interaction+with+TeamCity#BuildScriptInteractionwithTeamCity-MessageFlowId
+		listener = new JetBrains::TeamcityProgressListener();
+//	} else {
+//		listener = new BriefTestProgressListener();
+//	}
+	controller.addListener(listener);
 
 	// Run tests
-    runner.run(controller);
+	//runner.run(controller);
+	TestSuite suite;
+	elliptics_tests_t elliptcis_tests(std::string(argv[1]) + "/manager.sh");
+	typedef TestCaller<elliptics_tests_t> elliptics_caller_t;
+	suite.addTest(new elliptics_caller_t("test_lookup", &elliptics_tests_t::test_lookup, elliptcis_tests));
+	suite.run(&controller);
 
-    delete listener;
+	delete listener;
 
-	return result.wasSuccessful() ? 0 : 1;
+	//elliptics_manager::clear_env();
+//	return result.wasSuccessful() ? 0 : 1;
+	return 0;
 	std::cout << "##teamcity[testSuiteStarted name='suite.name']" << std::endl;
 	std::cout << "##teamcity[testStarted name='testname']" << std::endl;
 	//<here go all the test service messages with the same name>
