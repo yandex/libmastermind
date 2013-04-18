@@ -66,7 +66,7 @@ function prepare_env {
 		echo "client_net_prio = 6" >> $filename;
 		echo "flags = 8" >> $filename;
 		echo "backend = blob" >> $filename;
-		echo "blob_size = 10G" >> $filename;
+		echo "blob_size = 10M" >> $filename;
 		echo "records_in_blob = 5000000" >> $filename;
 		echo "blob_flags = 2" >> $filename;
 		echo "blob_cache_size = 0" >> $filename;
