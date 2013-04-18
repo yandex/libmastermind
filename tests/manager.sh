@@ -36,6 +36,9 @@ function stop_node {
 }
 
 function prepare_env {
+	echo pwd: `pwd`
+	echo whoami: `whoami`
+	echo who am i: `who am i`
 	apt-get install elliptics
 	for index in `seq 1 3`; do
 		path=$gpath/$index;
