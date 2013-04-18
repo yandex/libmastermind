@@ -69,10 +69,15 @@ INSTALL(
     COMPONENT development)
 
 set (TESTS_SOURCES
-	tests/test.cpp)
+	tests/test.cpp
+	tests/teamcity_cppunit.cpp
+	tests/teamcity_messages.cpp
+	tests/teamcity_cppunit.h
+	tests/teamcity_messages.h
+)
 set (TEST test_${LIB})
 add_executable (${TEST} ${TESTS_SOURCES})
-target_link_libraries (${TEST} ${LIB})
+target_link_libraries (${TEST} ${LIB} cppunit)
 #set_target_properties(${TEST} PROPERTIES
 #        BUILD_WITH_INSTALL_RPATH 1
 #        INSTALL_RPATH .)
