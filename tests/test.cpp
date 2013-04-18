@@ -71,9 +71,54 @@ public:
 		std::system((m_script + " clear").c_str());
 	}
 
+	void test_write_g4_scnALL() {
+		nodes<start>();
+		auto lrs = write(0, 0, 0, 0, {1, 2, 3, 4}, SUCCESS_COPIES_TYPE__ALL);
+		CPPUNIT_ASSERT(lrs.size() == 4);
+	}
+
+	void test_write_g3_scnALL() {
+		nodes<start>();
+		auto lrs = write(0, 0, 0, 0, {1, 2, 3}, SUCCESS_COPIES_TYPE__ALL);
+		CPPUNIT_ASSERT(lrs.size() == 3);
+	}
+
+	void test_write_g2_1_scnALL() {
+		nodes<start>();
+		node<stop>(3);
+		std::vector<lookup_result_t> lrs;
+		try { lrs = write(0, 0, 0, 0, {1, 2, 3}, SUCCESS_COPIES_TYPE__ALL); } catch (...) {}
+		node<start>(3);
+		CPPUNIT_ASSERT(lrs.size() == 0);
+	}
+
+	void test_write_g2_1_scnQUORUM() {
+		nodes<start>();
+		node<stop>(3);
+		auto lrs = write(0, 0, 0, 0, {1, 2, 3}, SUCCESS_COPIES_TYPE__QUORUM);
+		node<start>(3);
+		CPPUNIT_ASSERT(lrs.size() == 2);
+	}
+
+	void test_write_g1_2_scnQUORUM() {
+		nodes<start>();
+		nodes<stop>({2,3});
+		std::vector<lookup_result_t> lrs;
+		try { lrs = write(0, 0, 0, 0, {1, 2, 3}, SUCCESS_COPIES_TYPE__QUORUM); } catch (...) {}
+		nodes<start>({2,3});
+		CPPUNIT_ASSERT(lrs.size() == 0);
+	}
+
+	void test_write_g1_2_scnANY() {
+		nodes<start>();
+		nodes<stop>({2,3});
+		auto lrs = write(0, 0, 0, 0, {1, 2, 3}, SUCCESS_COPIES_TYPE__ANY);
+		nodes<start>({2,3});
+		CPPUNIT_ASSERT(lrs.size() == 1);
+	}
+
 	void test_lookup() {
 		elliptics::key_t k(std::string("key.txt"));
-
 		std::string data("data");
 
 		std::vector <int> g = {2};
@@ -87,6 +132,18 @@ public:
 		std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std::endl;
 	}
 private:
+	std::vector<lookup_result_t> write(uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> groups, int success_copies_num) {
+		//static size_t num = 0;
+		//num += 1;
+		//elliptics::key_t key(std::string("key_") + boost::lexical_cast<std::string>(num));
+		elliptics::key_t key(std::string("key"));
+		std::string data("data");
+
+		try { m_proxy->remove(key); } catch (...) {}
+
+		return m_proxy->write(key, data, _offset = offset, _size = size, _cflags = cflags, _ioflags = ioflags, _groups = groups, _success_copies_num = success_copies_num);
+	}
+
 	enum node_action { start, stop };
 
 	template<node_action na>
@@ -356,6 +413,8 @@ private:
 	std::shared_ptr<elliptics_proxy_t> proxy;
 };
 
+#define ADD_TEST(name, func) suite.addTest(new elliptics_caller_t(name, &elliptics_tests_t:: func, elliptics_tests))
+
 int main(int argc, char* argv[])
 {
 	//elliptics_manager::script_path = argv[1];
@@ -386,9 +445,15 @@ int main(int argc, char* argv[])
 	// Run tests
 	//runner.run(controller);
 	TestSuite suite;
-	elliptics_tests_t elliptcis_tests(std::string(argv[1]) + "/manager.sh");
+	elliptics_tests_t elliptics_tests(std::string(argv[1]) + "/manager.sh");
 	typedef TestCaller<elliptics_tests_t> elliptics_caller_t;
-	suite.addTest(new elliptics_caller_t("test_lookup", &elliptics_tests_t::test_lookup, elliptcis_tests));
+//	suite.addTest(new elliptics_caller_t("test_lookup", &elliptics_tests_t::test_lookup, elliptcis_tests));
+	ADD_TEST("test_write_g4_scnALL", test_write_g4_scnALL);
+	ADD_TEST("test_write_g3_scnALL", test_write_g3_scnALL);
+	ADD_TEST("test_write_g2_1_scnALL", test_write_g2_1_scnALL);
+	ADD_TEST("test_write_g2_1_scnQUORUM", test_write_g2_1_scnQUORUM);
+	ADD_TEST("test_write_g1_2_scnQUORUM", test_write_g1_2_scnQUORUM);
+	ADD_TEST("test_write_g1_2_scnANY", test_write_g1_2_scnANY);
 	suite.run(&controller);
 
 	delete listener;
