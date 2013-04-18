@@ -40,6 +40,9 @@ function prepare_env {
 		exit 3;
 	fi
 
+	mkdir $gpath;
+	echo $2 > $gpath/count;
+
 	for index in `seq 1 $2`; do
 		path=$gpath/$index;
 		rm -rf $path;
@@ -79,7 +82,8 @@ function prepare_env {
 
 function start_nodes {
 	if [ "$#" -eq 1 ]; then
-		for index in `seq 1 3`; do
+		c=`cat $gpath/count`;
+		for index in `seq 1 $c`; do
 			start_node $index;
 		done;
 	elif [ "$2" -ge 1 ] && [ "$2" -le 3 ]; then
@@ -89,7 +93,8 @@ function start_nodes {
 
 function stop_nodes {
 	if [ "$#" -eq 1 ]; then
-		for index in `seq 1 3`; do
+		c=`cat $gpath/count`;
+		for index in `seq 1 $c`; do
 			stop_node $index;
 		done;
 	elif [ "$2" -ge 1 ] && [ "$2" -le 3 ]; then
