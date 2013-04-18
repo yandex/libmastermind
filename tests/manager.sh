@@ -36,6 +36,7 @@ function stop_node {
 }
 
 function prepare_env {
+	apt-get install elliptics
 	for index in `seq 1 3`; do
 		path=$gpath/$index;
 		rm -rf $path;
