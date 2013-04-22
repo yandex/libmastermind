@@ -22,9 +22,7 @@
 
 using namespace elliptics;
 
-using namespace CppUnit;
-
-class elliptics_tests_t : public TestFixture {
+class elliptics_tests_t : public CppUnit::TestFixture {
 public:
 	elliptics_tests_t(const std::string &script)
 	: m_script(script) {
@@ -395,10 +393,10 @@ private:
 
 int main(int argc, char* argv[])
 {
-	TestResult controller;
+	CppUnit::TestResult controller;
 	std::unique_ptr<TestListener> listener(new JetBrains::TeamcityProgressListener());
 	controller.addListener(listener.get());
-	TestSuite suite;
+	CppUnit::TestSuite suite;
 
 	elliptics_tests_t elliptics_tests(std::string(argv[1]) + "/manager.sh");
 	typedef TestCaller<elliptics_tests_t> elliptics_caller_t;
