@@ -1460,10 +1460,13 @@ void elliptics_proxy_t::impl::collect_group_weights_loop()
 	std::unique_lock<std::mutex> lock(m_mutex);
 #if __GNUC_MINOR__ >= 6
 	auto no_timeout = std::cv_status::no_timeout;
+	auto timeout = std::cv_status::timeout;
+	auto tm = timeout;
 #else
 	bool no_timeout = false;
+	bool timeout = true;
+	bool tm = timeout;
 #endif
-	bool tm;
 	do {
 		try {
 			collect_group_weights();
@@ -1485,7 +1488,7 @@ void elliptics_proxy_t::impl::collect_group_weights_loop()
 			msg << "Error while updating cache: " << e.what();
 			m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
 		}
-		tm = true;
+		tm = timeout;
 		while(m_done == false)
 			tm = m_weight_cache_condition_variable.wait_for(lock,
 															std::chrono::seconds(
