@@ -508,26 +508,24 @@ int main(int argc, char* argv[])
 		elliptics_tests_t elliptics_tests(std::string(argv[1]) + "/manager.sh");
 		typedef CppUnit::TestCaller<elliptics_tests_t> elliptics_caller_t;
 
-		ADD_TEST1(remove);
-		ADD_TEST1(write_read);
-		ADD_TEST1(write_chunk_read);
-		ADD_TEST1(write_parts_read);
-		ADD_TEST1(bulk_write_read);
-		ADD_TEST1(async_write_read);
-		ADD_TEST1(lookup);
-		ADD_TEST1(write_read_with_embeds);
+		ADD_TEST("write and remove", remove);
+		ADD_TEST("simple write and read", write_read);
+		ADD_TEST("chunked write and read", write_chunk_read);
+		ADD_TEST("prepare-commit write and read", write_parts_read);
+		ADD_TEST("bulk write and bulk read", bulk_write_read);
+		ADD_TEST("async write and async read", async_write_read);
+		ADD_TEST("lookup", lookup);
+		ADD_TEST("write and read with embeds", write_read_with_embeds);
 
-		ADD_TEST1(write_g4_scnALL);
-		ADD_TEST("write into 3 groups", write_g3_scnALL);
-//		ADD_TEST1(write_g3_scnALL);
-		ADD_TEST("write into 3 groups, 1 group is shut down", write_g2_1_scnALL);
-//		ADD_TEST1(write_g2_1_scnALL);
-		ADD_TEST1(write_g3_scnQUORUM);
-		ADD_TEST1(write_g2_1_scnQUORUM);
-		ADD_TEST1(write_g1_2_scnQUORUM);
-		ADD_TEST1(write_g2_1_scnANY);
-		ADD_TEST1(write_g1_2_scnANY);
-		ADD_TEST1(write_g0_3_scnANY);
+		ADD_TEST("write into 4 groups; with SUCCESS_COPIES_TYPE__ALL", write_g4_scnALL);
+		ADD_TEST("write into 3 groups; with SUCCESS_COPIES_TYPE__ALL", write_g3_scnALL);
+		ADD_TEST("write into 3 groups, 1 group is shut down; with SUCCESS_COPIES_TYPE__ALL", write_g2_1_scnALL);
+		ADD_TEST("write into 3 groups; with SUCCESS_COPIES_TYPE__QUORUM", write_g3_scnQUORUM);
+		ADD_TEST("write into 3 groups, 1 group is shut down; with SUCCESS_COPIES_TYPE__QUORUM", write_g2_1_scnQUORUM);
+		ADD_TEST("write into 3 groups, 2 groups are shut down; with SUCCESS_COPIES_TYPE__QUORUM", write_g1_2_scnQUORUM);
+		ADD_TEST("write into 3 groups, 1 group is shut down; with SUCCESS_COPIES_TYPE__ANY", write_g2_1_scnANY);
+		ADD_TEST("write into 3 groups, 2 groups are shut down; with SUCCESS_COPIES_TYPE__ANY", write_g1_2_scnANY);
+		ADD_TEST("write into 3 groups, 3 groups are shut down; with SUCCESS_COPIES_TYPE__ANY", write_g0_3_scnANY);
 
 		suite.run(&controller);
 	} else {
