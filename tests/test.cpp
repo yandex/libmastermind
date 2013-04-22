@@ -23,28 +23,6 @@
 using namespace elliptics;
 
 using namespace CppUnit;
-using namespace std;
-
-class MyTest : public TestFixture {
-    CPPUNIT_TEST_SUITE(MyTest);
-    CPPUNIT_TEST(testHelloWorld);
-    CPPUNIT_TEST(testAssertEqual);
-    CPPUNIT_TEST(testNothing);
-    CPPUNIT_TEST_SUITE_END();
-
-public:
-    void testHelloWorld() {
-        cout << "Hello, world" << endl;
-    }
-
-    void testAssertEqual() {
-        CPPUNIT_ASSERT_EQUAL(2, 1);
-    }
-
-    void testNothing() {}
-};
-
-CPPUNIT_TEST_SUITE_REGISTRATION(MyTest);
 
 class elliptics_tests_t : public TestFixture {
 public:
@@ -417,50 +395,25 @@ private:
 
 int main(int argc, char* argv[])
 {
-	//elliptics_manager::script_path = argv[1];
-	//elliptics_manager::prepare_env();
-	// Create the event manager and test controller
 	TestResult controller;
-
-	// Add a listener that collects test result
-	//TestResultCollector result;
-	//controller.addListener(&result);
-
-	// Add the top suite to the test runner
-	//TestRunner runner;
-	//runner.addTest(TestFactoryRegistry::getRegistry().makeTest());
-
-	// Listen to progress
-	TestListener *listener;
-
-//	if (JetBrains::underTeamcity()) {
-		// Add unique flowId parameter if you want to run test processes in parallel
-		// See http://confluence.jetbrains.net/display/TCD6/Build+Script+Interaction+with+TeamCity#BuildScriptInteractionwithTeamCity-MessageFlowId
-		listener = new JetBrains::TeamcityProgressListener();
-//	} else {
-//		listener = new BriefTestProgressListener();
-//	}
+	TestListener *listener = new JetBrains::TeamcityProgressListener();
 	controller.addListener(listener);
-
-	// Run tests
-	//runner.run(controller);
 	TestSuite suite;
+
 	elliptics_tests_t elliptics_tests(std::string(argv[1]) + "/manager.sh");
 	typedef TestCaller<elliptics_tests_t> elliptics_caller_t;
-//	suite.addTest(new elliptics_caller_t("test_lookup", &elliptics_tests_t::test_lookup, elliptcis_tests));
+
 	ADD_TEST("test_write_g4_scnALL", test_write_g4_scnALL);
 	ADD_TEST("test_write_g3_scnALL", test_write_g3_scnALL);
 	ADD_TEST("test_write_g2_1_scnALL", test_write_g2_1_scnALL);
 	ADD_TEST("test_write_g2_1_scnQUORUM", test_write_g2_1_scnQUORUM);
 	ADD_TEST("test_write_g1_2_scnQUORUM", test_write_g1_2_scnQUORUM);
 	ADD_TEST("test_write_g1_2_scnANY", test_write_g1_2_scnANY);
+
 	suite.run(&controller);
-
 	delete listener;
-
-	//elliptics_manager::clear_env();
-//	return result.wasSuccessful() ? 0 : 1;
 	return 0;
+
 	std::cout << "##teamcity[testSuiteStarted name='suite.name']" << std::endl;
 	std::cout << "##teamcity[testStarted name='testname']" << std::endl;
 	//<here go all the test service messages with the same name>
