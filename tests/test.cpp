@@ -141,6 +141,28 @@ public:
 		CPPUNIT_ASSERT(dc.data.to_string() == data2);
 	}
 
+	void write_read_with_embeds() {
+		elliptics::key_t key("key_write_read_with_embeds");
+		std::string data("test data");
+		timespec ts;
+		ts.tv_sec = 123;
+		ts.tv_nsec = 456789;
+
+		{
+			data_container_t dc(data);
+			dc.set<DNET_FCGI_EMBED_TIMESTAMP>(ts);
+			auto lr = m_proxy->write(key, dc);
+			CPPUNIT_ASSERT(lr.size() == 2);
+		}
+		{
+			auto dc = m_proxy->read(key, _embeded = true);
+			CPPUNIT_ASSERT(data == dc.data.to_string());
+			timespec ts2 = *dc.get<DNET_FCGI_EMBED_TIMESTAMP>();
+			CPPUNIT_ASSERT(ts2.tv_sec == ts.tv_sec);
+			CPPUNIT_ASSERT(ts2.tv_nsec == ts.tv_nsec);
+		}
+	}
+
 	void lookup() {
 		elliptics::key_t key("key_lookup");
 		std::string data("data");
@@ -493,10 +515,13 @@ int main(int argc, char* argv[])
 		ADD_TEST1(bulk_write_read);
 		ADD_TEST1(async_write_read);
 		ADD_TEST1(lookup);
+		ADD_TEST1(write_read_with_embeds);
 
 		ADD_TEST1(write_g4_scnALL);
-		ADD_TEST1(write_g3_scnALL);
-		ADD_TEST1(write_g2_1_scnALL);
+		ADD_TEST("write into 3 groups", write_g3_scnALL);
+//		ADD_TEST1(write_g3_scnALL);
+		ADD_TEST("write into 3 groups, 1 group is shut down", write_g2_1_scnALL);
+//		ADD_TEST1(write_g2_1_scnALL);
 		ADD_TEST1(write_g3_scnQUORUM);
 		ADD_TEST1(write_g2_1_scnQUORUM);
 		ADD_TEST1(write_g1_2_scnQUORUM);
