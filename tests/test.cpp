@@ -396,8 +396,8 @@ private:
 int main(int argc, char* argv[])
 {
 	TestResult controller;
-	TestListener *listener = new JetBrains::TeamcityProgressListener();
-	controller.addListener(listener);
+	std::unique_ptr<TestListener> listener(new JetBrains::TeamcityProgressListener());
+	controller.addListener(listener.get());
 	TestSuite suite;
 
 	elliptics_tests_t elliptics_tests(std::string(argv[1]) + "/manager.sh");
@@ -411,7 +411,6 @@ int main(int argc, char* argv[])
 	ADD_TEST("test_write_g1_2_scnANY", test_write_g1_2_scnANY);
 
 	suite.run(&controller);
-	delete listener;
 	return 0;
 
 	std::cout << "##teamcity[testSuiteStarted name='suite.name']" << std::endl;
