@@ -7,7 +7,7 @@ function check_node {
 	while [ "$g" -eq 1 ]; do
 		dnet_ioclient -r localhost:$((1024 + $1)):2 2> manager.out
 		res=$?
-		echo $res
+		#echo $res
 		# starting
 		if [ "$2" -eq 1 ] && [ "$res" -eq 0 ]; then 
 			g=0;
@@ -20,18 +20,22 @@ function check_node {
 function start_node {
 	path=$gpath/$1
 	if ! [ -f $path/pid ]; then
+		echo starting node $1...
 		dnet_ioserv -c $path/elliptics.conf &
 		echo $! >  $path/pid
 		check_node $1 1;
+		echo " done"
 	fi
 }
 
 function stop_node {
 	path=$gpath/$1
 	if [ -f $path/pid ]; then
+		echo stopping node $1...
 		kill `cat $path/pid`
 		rm $path/pid
 		check_node $1 2;
+		echo " done"
 	fi
 }
 

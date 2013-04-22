@@ -3,20 +3,13 @@
 #include <functional>
 #include <cstdlib>
 #include <sstream>
+#include <cstring>
 
 #include <elliptics/proxy.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include <iostream>
-#include <stdexcept>
-
-#include <cppunit/TestRunner.h>
 #include <cppunit/TestResult.h>
-#include <cppunit/TestResultCollector.h>
 #include <cppunit/extensions/HelperMacros.h>
-#include <cppunit/BriefTestProgressListener.h>
-#include <cppunit/extensions/TestFactoryRegistry.h>
-
 #include "teamcity_cppunit.h"
 
 
@@ -25,7 +18,8 @@ using namespace elliptics;
 class elliptics_tests_t : public CppUnit::TestFixture {
 public:
 	elliptics_tests_t(const std::string &script)
-	: m_script(script) {
+		: m_script(script)
+	{
 		std::system((script + " prepare 4").c_str());
 		nodes<start>();
 
@@ -36,6 +30,7 @@ public:
 		//elconf.cocaine_config = std::string("/home/derikon/cocaine/cocaine_config.json");
 		elconf.remotes.push_back(elliptics_proxy_t::remote("localhost", 1025, 2));
 		elconf.success_copies_num = SUCCESS_COPIES_TYPE__ALL;
+		elconf.chunk_size = 16;
 
 		m_proxy.reset(new elliptics_proxy_t(elconf));
 		sleep(1);
@@ -43,82 +38,169 @@ public:
 
 	~elliptics_tests_t() {
 		m_proxy.reset();
-		nodes<stop>();
 		std::system((m_script + " clear").c_str());
 	}
 
-	void test_write_g4_scnALL() {
-		nodes<start>();
-		auto lrs = write(0, 0, 0, 0, {1, 2, 3, 4}, SUCCESS_COPIES_TYPE__ALL);
+	void remove() {
+		elliptics::key_t key("key_remove");
+		std::string data("test data");
+		std::vector<lookup_result_t> lr = m_proxy->write(key, data);
+		CPPUNIT_ASSERT(lr.size() == 2);
+		m_proxy->remove(key);
+	}
+
+	void write_read() {
+		elliptics::key_t key("key_write_read");
+		std::string data("test data");
+		std::vector<lookup_result_t> lr = m_proxy->write(key, data);
+		CPPUNIT_ASSERT(lr.size() == 2);
+		read_result_t rr = m_proxy->read(key);
+		CPPUNIT_ASSERT(rr.data == data);
+	}
+
+	void write_chunk_read() {
+		elliptics::key_t key("key_write_chunk_read");
+		std::string data("long data to be sure chunk write is used");
+		std::vector<lookup_result_t> lr = m_proxy->write(key, data);
+		CPPUNIT_ASSERT(lr.size() == 2);
+		read_result_t rr = m_proxy->read(key);
+		CPPUNIT_ASSERT(rr.data == data);
+	}
+
+	void write_parts_read() {
+		elliptics::key_t key("key_write_parts_read");
+		std::string data("test data");
+
+		std::vector<lookup_result_t> lr;
+
+		lr = m_proxy->write(key, data.substr(0, 3), _ioflags = DNET_IO_FLAGS_PREPARE, _size = data.size());
+		CPPUNIT_ASSERT(lr.size() == 2);
+
+		lr = m_proxy->write(key, data.substr(3, 3), _ioflags = DNET_IO_FLAGS_PLAIN_WRITE, _offset = 3);
+		CPPUNIT_ASSERT(lr.size() == 2);
+
+		lr = m_proxy->write(key, data.substr(6, 3), _ioflags = DNET_IO_FLAGS_COMMIT, _size = data.size(), _offset = 6);
+		CPPUNIT_ASSERT(lr.size() == 2);
+
+		read_result_t rr = m_proxy->read(key);
+		CPPUNIT_ASSERT(rr.data == data);
+	}
+
+	void bulk_write_read() {
+		std::vector <elliptics::key_t> keys = {std::string ("key_bulk_write_read_1"),
+												std::string ("key_bulk_write_read_2")};
+		std::vector <std::string> data = {"test data 1", "test data 2"};
+
+		{
+			auto results = m_proxy->bulk_write (keys, data);
+
+			CPPUNIT_ASSERT(results.size() == 2);
+
+			for (auto it = results.begin (), end = results.end (); it != end; ++it) {
+				CPPUNIT_ASSERT(it->second.size() == 2);
+			}
+		}
+
+		{
+			auto result = m_proxy->bulk_read (keys);
+
+			CPPUNIT_ASSERT(result.size() == 2);
+
+			for (size_t index = 0; index != 2; ++index) {
+				CPPUNIT_ASSERT(result[keys[index]].data == data[index]);
+			}
+		}
+	}
+
+	void async_write_read() {
+		elliptics::key_t key1("key_async_write_read_1");
+		elliptics::key_t key2("key_async_write_read_2");
+
+		std::string data1("test data 1");
+		std::string data2("test data 2");
+
+		std::vector<ioremap::elliptics::lookup_result_entry> l;
+		auto awr1 = m_proxy->write_async(key1, data1);
+		auto awr2 = m_proxy->write_async(key2, data2);
+
+		l = awr1.get ();
+		CPPUNIT_ASSERT(l.size() == 2);
+
+		l = awr2.get ();
+		CPPUNIT_ASSERT(l.size() == 2);
+
+		read_result_t r;
+		auto arr1 = m_proxy->read_async(key1);
+		auto arr2 = m_proxy->read_async(key2);
+
+		r = arr1.get();
+		CPPUNIT_ASSERT(r.data == data1);
+
+		r = arr2.get();
+		CPPUNIT_ASSERT(r.data == data2);
+	}
+
+	void lookup() {
+		elliptics::key_t key("key_lookup");
+		std::string data("data");
+		std::vector<int> groups = {2, 3};
+		auto lr = m_proxy->write(key, data, _groups = groups);
+		CPPUNIT_ASSERT(lr.size() == 2);
+		auto l = m_proxy->lookup(key);
+		CPPUNIT_ASSERT(l.port == 1026);
+	}
+
+	void write_g4_scnALL() {
+		auto lrs = write("write_g4_scnALL", 0, 0, 0, 0, {1, 2, 3, 4}, SUCCESS_COPIES_TYPE__ALL);
 		CPPUNIT_ASSERT(lrs.size() == 4);
 	}
 
-	void test_write_g3_scnALL() {
-		nodes<start>();
-		auto lrs = write(0, 0, 0, 0, {1, 2, 3}, SUCCESS_COPIES_TYPE__ALL);
+	void write_g3_scnALL() {
+		auto lrs = write("write_g3_scnALL", 0, 0, 0, 0, {1, 2, 3}, SUCCESS_COPIES_TYPE__ALL);
 		CPPUNIT_ASSERT(lrs.size() == 3);
 	}
 
-	void test_write_g2_1_scnALL() {
-		nodes<start>();
-		node<stop>(3);
+	void write_g2_1_scnALL() {
 		std::vector<lookup_result_t> lrs;
-		try { lrs = write(0, 0, 0, 0, {1, 2, 3}, SUCCESS_COPIES_TYPE__ALL); } catch (...) {}
-		node<start>(3);
+		try { lrs = write("write_g2_1_scnALL", 0, 0, 0, 0, {1, 2, 101}, SUCCESS_COPIES_TYPE__ALL); } catch (...) {}
 		CPPUNIT_ASSERT(lrs.size() == 0);
 	}
 
-	void test_write_g2_1_scnQUORUM() {
-		nodes<start>();
-		node<stop>(3);
-		auto lrs = write(0, 0, 0, 0, {1, 2, 3}, SUCCESS_COPIES_TYPE__QUORUM);
-		node<start>(3);
+	void write_g3_scnQUORUM() {
+		auto lrs = write("write_g3_scnQUORUM", 0, 0, 0, 0, {1, 2, 3}, SUCCESS_COPIES_TYPE__QUORUM);
+		CPPUNIT_ASSERT(lrs.size() == 3);
+	}
+
+	void write_g2_1_scnQUORUM() {
+		auto lrs = write("write_g2_1_scnQUORUM", 0, 0, 0, 0, {1, 2, 101}, SUCCESS_COPIES_TYPE__QUORUM);
 		CPPUNIT_ASSERT(lrs.size() == 2);
 	}
 
-	void test_write_g1_2_scnQUORUM() {
-		nodes<start>();
-		nodes<stop>({2,3});
+	void write_g1_2_scnQUORUM() {
 		std::vector<lookup_result_t> lrs;
-		try { lrs = write(0, 0, 0, 0, {1, 2, 3}, SUCCESS_COPIES_TYPE__QUORUM); } catch (...) {}
-		nodes<start>({2,3});
+		try { lrs = write("write_g1_2_scnQUORUM", 0, 0, 0, 0, {1, 101, 102}, SUCCESS_COPIES_TYPE__QUORUM); } catch (...) {}
 		CPPUNIT_ASSERT(lrs.size() == 0);
 	}
 
-	void test_write_g1_2_scnANY() {
-		nodes<start>();
-		nodes<stop>({2,3});
-		auto lrs = write(0, 0, 0, 0, {1, 2, 3}, SUCCESS_COPIES_TYPE__ANY);
-		nodes<start>({2,3});
+	void write_g2_1_scnANY() {
+		auto lrs = write("write_g2_1_scnANY", 0, 0, 0, 0, {1, 2, 102}, SUCCESS_COPIES_TYPE__ANY);
+		CPPUNIT_ASSERT(lrs.size() == 2);
+	}
+
+	void write_g1_2_scnANY() {
+		auto lrs = write("write_g1_2_scnANY", 0, 0, 0, 0, {1, 101, 102}, SUCCESS_COPIES_TYPE__ANY);
 		CPPUNIT_ASSERT(lrs.size() == 1);
 	}
 
-	void test_lookup() {
-		elliptics::key_t k(std::string("key.txt"));
-		std::string data("data");
-
-		std::vector <int> g = {2};
-		std::vector<lookup_result_t> l = m_proxy->write(k, data/*, _groups = g*/);
-		std::cout << "written " << l.size() << " copies" << std::endl;
-		for (auto it = l.begin(); it != l.end(); ++it) {
-			std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
-		}
-
-		auto l1 = m_proxy->lookup(k);
-		std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std::endl;
+	void write_g0_3_scnANY() {
+		std::vector<lookup_result_t> lrs;
+		try { lrs = write("write_g0_3_scnANY", 0, 0, 0, 0, {101, 102, 103}, SUCCESS_COPIES_TYPE__ANY); } catch (...) {}
+		CPPUNIT_ASSERT(lrs.size() == 0);
 	}
 private:
-	std::vector<lookup_result_t> write(uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> groups, int success_copies_num) {
-		//static size_t num = 0;
-		//num += 1;
-		//elliptics::key_t key(std::string("key_") + boost::lexical_cast<std::string>(num));
-		elliptics::key_t key(std::string("key"));
-		std::string data("data");
-
-		try { m_proxy->remove(key); } catch (...) {}
-
-		return m_proxy->write(key, data, _offset = offset, _size = size, _cflags = cflags, _ioflags = ioflags, _groups = groups, _success_copies_num = success_copies_num);
-	}
+	std::vector<lookup_result_t> write(const char *key, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> groups, int success_copies_num) {
+        return m_proxy->write(elliptics::key_t(key), "test data", _offset = offset, _size = size, _cflags = cflags, _ioflags = ioflags, _groups = groups, _success_copies_num = success_copies_num);
+    }
 
 	enum node_action { start, stop };
 
@@ -147,8 +229,8 @@ private:
 		std::system(oss.str().c_str());
 	}
 
-	std::shared_ptr<elliptics_proxy_t> m_proxy;
 	std::string m_script;
+	std::shared_ptr<elliptics_proxy_t> m_proxy;
 };
 
 void test_lookup (elliptics_proxy_t &proxy) {
@@ -390,60 +472,67 @@ private:
 };
 
 #define ADD_TEST(name, func) suite.addTest(new elliptics_caller_t(name, &elliptics_tests_t:: func, elliptics_tests))
+#define ADD_TEST1(func) ADD_TEST(#func, func)
 
 int main(int argc, char* argv[])
 {
-	CppUnit::TestResult controller;
-	std::unique_ptr<CppUnit::TestListener> listener(new JetBrains::TeamcityProgressListener());
-	controller.addListener(listener.get());
-	CppUnit::TestSuite suite;
+	if (strcmp(argv[1], "--local")) {
+		CppUnit::TestResult controller;
+		std::unique_ptr<CppUnit::TestListener> listener(new JetBrains::TeamcityProgressListener());
+		controller.addListener(listener.get());
+		CppUnit::TestSuite suite;
 
-	elliptics_tests_t elliptics_tests(std::string(argv[1]) + "/manager.sh");
-	typedef CppUnit::TestCaller<elliptics_tests_t> elliptics_caller_t;
+		elliptics_tests_t elliptics_tests(std::string(argv[1]) + "/manager.sh");
+		typedef CppUnit::TestCaller<elliptics_tests_t> elliptics_caller_t;
 
-	ADD_TEST("test_write_g4_scnALL", test_write_g4_scnALL);
-	ADD_TEST("test_write_g3_scnALL", test_write_g3_scnALL);
-	ADD_TEST("test_write_g2_1_scnALL", test_write_g2_1_scnALL);
-	ADD_TEST("test_write_g2_1_scnQUORUM", test_write_g2_1_scnQUORUM);
-	ADD_TEST("test_write_g1_2_scnQUORUM", test_write_g1_2_scnQUORUM);
-	ADD_TEST("test_write_g1_2_scnANY", test_write_g1_2_scnANY);
+		ADD_TEST1(remove);
+		ADD_TEST1(write_read);
+		ADD_TEST1(write_chunk_read);
+		ADD_TEST1(write_parts_read);
+		ADD_TEST1(bulk_write_read);
+		ADD_TEST1(async_write_read);
+		ADD_TEST1(lookup);
 
-	suite.run(&controller);
-	return 0;
+		ADD_TEST1(write_g4_scnALL);
+		ADD_TEST1(write_g3_scnALL);
+		ADD_TEST1(write_g2_1_scnALL);
+		ADD_TEST1(write_g3_scnQUORUM);
+		ADD_TEST1(write_g2_1_scnQUORUM);
+		ADD_TEST1(write_g1_2_scnQUORUM);
+		ADD_TEST1(write_g2_1_scnANY);
+		ADD_TEST1(write_g1_2_scnANY);
+		ADD_TEST1(write_g0_3_scnANY);
 
-	std::cout << "##teamcity[testSuiteStarted name='suite.name']" << std::endl;
-	std::cout << "##teamcity[testStarted name='testname']" << std::endl;
-	//<here go all the test service messages with the same name>
-	std::cout << "##teamcity[testFinished name='testname']" << std::endl;
-	std::cout << "##teamcity[testSuiteFinished name='suite.name']" << std::endl;
-	return 0;
-	std::string host = "localhost";
-	int port = 1025;
-	int family = 2;
-	switch (argc) {
-	case 4:
-		family = boost::lexical_cast<int>(argv[3]);
-	case 3:
-		port = boost::lexical_cast<int>(argv[2]);
-	case 2:
-		host.assign(argv[1]);
-		break;
-	default:
-		if (argc != 1) {
-			std::cout << "Usage:" << std::endl
-					  << std::cout << "name [host [port [family]]]" << std::endl;
+		suite.run(&controller);
+	} else {
+		std::string host = "localhost";
+		int port = 1025;
+		int family = 2;
+		switch (argc) {
+		case 5:
+			family = boost::lexical_cast<int>(argv[4]);
+		case 4:
+			port = boost::lexical_cast<int>(argv[3]);
+		case 3:
+			host.assign(argv[2]);
+			break;
+		default:
+			if (argc != 2) {
+				std::cout << "Usage:" << std::endl
+						  << std::cout << "name [host [port [family]]]" << std::endl;
+			}
+			return 0;
 		}
-		return 0;
-	}
 
-	tester t(host, port, family);
-	t.process({test_sync
+		tester t(host, port, family);
+		t.process({test_sync
 			  , test_sync_embeds
-			  , test_async
-			  , test_bulk_sync
-			  , test_lookup
-			  , test_mastermind_groups
-});
+				  , test_async
+				  , test_bulk_sync
+				  , test_lookup
+				  , test_mastermind_groups
+		});
+	}
 	return 0;
 #if 0
 	//test_lookup ();
