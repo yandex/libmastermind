@@ -54,8 +54,8 @@ public:
 		std::string data("test data");
 		std::vector<lookup_result_t> lr = m_proxy->write(key, data);
 		CPPUNIT_ASSERT(lr.size() == 2);
-		read_result_t rr = m_proxy->read(key);
-		CPPUNIT_ASSERT(rr.data == data);
+		data_container_t dc = m_proxy->read(key);
+		CPPUNIT_ASSERT(dc.data.to_string() == data);
 	}
 
 	void write_chunk_read() {
@@ -63,8 +63,8 @@ public:
 		std::string data("long data to be sure chunk write is used");
 		std::vector<lookup_result_t> lr = m_proxy->write(key, data);
 		CPPUNIT_ASSERT(lr.size() == 2);
-		read_result_t rr = m_proxy->read(key);
-		CPPUNIT_ASSERT(rr.data == data);
+		data_container_t dc = m_proxy->read(key);
+		CPPUNIT_ASSERT(dc.data.to_string() == data);
 	}
 
 	void write_parts_read() {
@@ -82,14 +82,15 @@ public:
 		lr = m_proxy->write(key, data.substr(6, 3), _ioflags = DNET_IO_FLAGS_COMMIT, _size = data.size(), _offset = 6);
 		CPPUNIT_ASSERT(lr.size() == 2);
 
-		read_result_t rr = m_proxy->read(key);
-		CPPUNIT_ASSERT(rr.data == data);
+		data_container_t dc = m_proxy->read(key);
+		CPPUNIT_ASSERT(dc.data.to_string() == data);
 	}
 
 	void bulk_write_read() {
-		std::vector <elliptics::key_t> keys = {std::string ("key_bulk_write_read_1"),
-												std::string ("key_bulk_write_read_2")};
-		std::vector <std::string> data = {"test data 1", "test data 2"};
+		std::vector <elliptics::key_t> keys = {std::string("key_bulk_write_read_1"),
+												std::string("key_bulk_write_read_2")};
+		std::vector <data_container_t> data = {std::string("test data 1"),
+												std::string("test data 2")};
 
 		{
 			auto results = m_proxy->bulk_write (keys, data);
@@ -107,7 +108,7 @@ public:
 			CPPUNIT_ASSERT(result.size() == 2);
 
 			for (size_t index = 0; index != 2; ++index) {
-				CPPUNIT_ASSERT(result[keys[index]].data == data[index]);
+				CPPUNIT_ASSERT(result[keys[index]].data.to_string() == data[index].data.to_string());
 			}
 		}
 	}
@@ -129,15 +130,15 @@ public:
 		l = awr2.get ();
 		CPPUNIT_ASSERT(l.size() == 2);
 
-		read_result_t r;
+		data_container_t dc;
 		auto arr1 = m_proxy->read_async(key1);
 		auto arr2 = m_proxy->read_async(key2);
 
-		r = arr1.get();
-		CPPUNIT_ASSERT(r.data == data1);
+		dc = arr1.get();
+		CPPUNIT_ASSERT(dc.data.to_string() == data1);
 
-		r = arr2.get();
-		CPPUNIT_ASSERT(r.data == data2);
+		dc = arr2.get();
+		CPPUNIT_ASSERT(dc.data.to_string() == data2);
 	}
 
 	void lookup() {
@@ -199,7 +200,7 @@ public:
 	}
 private:
 	std::vector<lookup_result_t> write(const char *key, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> groups, int success_copies_num) {
-        return m_proxy->write(elliptics::key_t(key), "test data", _offset = offset, _size = size, _cflags = cflags, _ioflags = ioflags, _groups = groups, _success_copies_num = success_copies_num);
+        return m_proxy->write(elliptics::key_t(key), std::string("test data"), _offset = offset, _size = size, _cflags = cflags, _ioflags = ioflags, _groups = groups, _success_copies_num = success_copies_num);
     }
 
 	enum node_action { start, stop };
@@ -526,7 +527,7 @@ int main(int argc, char* argv[])
 
 		tester t(host, port, family);
 		t.process({test_sync
-			  , test_sync_embeds
+				  , test_sync_embeds
 				  , test_async
 				  , test_bulk_sync
 				  , test_lookup
