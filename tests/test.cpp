@@ -394,12 +394,12 @@ private:
 int main(int argc, char* argv[])
 {
 	CppUnit::TestResult controller;
-	std::unique_ptr<TestListener> listener(new JetBrains::TeamcityProgressListener());
+	std::unique_ptr<CppUnit::TestListener> listener(new JetBrains::TeamcityProgressListener());
 	controller.addListener(listener.get());
 	CppUnit::TestSuite suite;
 
 	elliptics_tests_t elliptics_tests(std::string(argv[1]) + "/manager.sh");
-	typedef TestCaller<elliptics_tests_t> elliptics_caller_t;
+	typedef CppUnit::TestCaller<elliptics_tests_t> elliptics_caller_t;
 
 	ADD_TEST("test_write_g4_scnALL", test_write_g4_scnALL);
 	ADD_TEST("test_write_g3_scnALL", test_write_g3_scnALL);
