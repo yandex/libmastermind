@@ -85,6 +85,7 @@ public:
 		: m_hostname(hostname)
 		, m_port(port)
 		, m_family(family)
+		, m_groups(groups)
 	{
 	}
 
@@ -340,7 +341,8 @@ int main(int argc, char* argv[])
 		port = boost::lexical_cast<int>(*(++tit));
 		family = boost::lexical_cast<int>(*(++tit));
 
-		if (tit != tok.end()) {
+		if (++tit != tok.end()) {
+			std::cout << "Incorrect remote" << std::endl;
 			print_usage();
 			return 0;
 		}
