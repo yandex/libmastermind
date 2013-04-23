@@ -65,7 +65,7 @@ bool upload_is_good(size_t success_copies_num, size_t replication_count, size_t 
 	case elliptics::SUCCESS_COPIES_TYPE__ALL:
 		return size == replication_count;
 	default:
-		return size == success_copies_num;
+		return size >= success_copies_num;
 	}
 }
 
