@@ -10,10 +10,12 @@ Build-Depends: debhelper (>= 5),
  libboost-thread-dev,
  elliptics-dev (>= 2.23), elliptics-dev (<< 2.24),
  elliptics-client (>= 2.23), elliptics-client (<< 2.24),
+ elliptics (>=2.23),
  libcurl4-openssl-dev,
  libcocaine-dealer-dev (>= 0.9.10004),
  libmsgpack-dev,
- uuid-dev
+ uuid-dev,
+ libcppunit-dev
 Standards-Version: 3.9.1
 
 Package: libelliptics-proxy

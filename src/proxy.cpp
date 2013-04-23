@@ -238,11 +238,10 @@ public:
 
 	lookup_result_t lookup_impl(key_t &key, std::vector<int> &groups);
 
-	std::vector<lookup_result_t> write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
-				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-				int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
+	std::vector<lookup_result_t> write_impl(key_t &key, data_container_t &data, uint64_t offset, uint64_t size,
+				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, int success_copies_num);
 
-	read_result_t read_impl(key_t &key, uint64_t offset, uint64_t size,
+	data_container_t read_impl(key_t &key, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 				bool latest, bool embeded);
 
@@ -251,11 +250,11 @@ public:
 	std::vector<std::string> range_get_impl(key_t &from, key_t &to, uint64_t cflags, uint64_t ioflags,
 				uint64_t limit_start, uint64_t limit_num, const std::vector<int> &groups, key_t &key);
 
-	std::map<key_t, read_result_t> bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups);
+	std::map<key_t, data_container_t> bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups);
 
 		std::vector<elliptics_proxy_t::remote> lookup_addr_impl(key_t &key, std::vector<int> &groups);
 
-	std::map<key_t, std::vector<lookup_result_t> > bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
+	std::map<key_t, std::vector<lookup_result_t> > bulk_write_impl(std::vector<key_t> &keys, std::vector<data_container_t> &data, uint64_t cflags,
 															  std::vector<int> &groups, int success_copies_num);
 
 	std::string exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups);
@@ -283,6 +282,11 @@ public:
 #ifdef HAVE_METABASE
 	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, key_t &key);
 	group_info_response_t get_metabalancer_group_info_impl(int group);
+
+	std::vector<std::vector<int> > get_symmetric_groups();
+	std::map<int, std::vector<int> > get_bad_groups();
+	std::vector<int> get_all_groups();
+
 	bool collect_group_weights();
 	void collect_group_weights_loop();
 #endif /* HAVE_METABASE */
@@ -311,6 +315,8 @@ private:
 	const int                                          m_group_weights_update_period;
 	std::thread                                        m_weight_cache_update_thread;
 	std::condition_variable                            m_weight_cache_condition_variable;
+	std::mutex                                         m_mutex;
+	bool                                               m_done;
 #endif /* HAVE_METABASE */
 };
 
@@ -343,13 +349,12 @@ lookup_result_t elliptics_proxy_t::lookup_impl(key_t &key, std::vector<int> &gro
 	return pimpl->lookup_impl(key, groups);
 }
 
-std::vector<lookup_result_t> elliptics_proxy_t::write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
-			uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-			int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds) {
-	return pimpl->write_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num, embeds);
+std::vector<lookup_result_t> elliptics_proxy_t::write_impl(key_t &key, data_container_t &data, uint64_t offset, uint64_t size,
+			uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, int success_copies_num) {
+	return pimpl->write_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num);
 }
 
-read_result_t elliptics_proxy_t::read_impl(key_t &key, uint64_t offset, uint64_t size,
+data_container_t elliptics_proxy_t::read_impl(key_t &key, uint64_t offset, uint64_t size,
 			uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 			bool latest, bool embeded) {
 	return pimpl->read_impl(key, offset, size, cflags, ioflags, groups, latest, embeded);
@@ -364,7 +369,7 @@ std::vector<std::string> elliptics_proxy_t::range_get_impl(key_t &from, key_t &t
 	return pimpl->range_get_impl(from, to, cflags, ioflags, limit_start, limit_num, groups, key);
 }
 
-std::map<key_t, read_result_t> elliptics_proxy_t::bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups) {
+std::map<key_t, data_container_t> elliptics_proxy_t::bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups) {
 	return pimpl->bulk_read_impl(keys, cflags, groups);
 }
 
@@ -372,7 +377,7 @@ std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::lookup_addr_impl(key_t
 	return pimpl->lookup_addr_impl(key, groups);
 }
 
-std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
+std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::bulk_write_impl(std::vector<key_t> &keys, std::vector<data_container_t> &data, uint64_t cflags,
 														  std::vector<int> &groups, int success_copies_num) {
 	return pimpl->bulk_write_impl(keys, data, cflags, groups, success_copies_num);
 }
@@ -411,6 +416,18 @@ group_info_response_t elliptics_proxy_t::get_metabalancer_group_info_impl(int gr
 	return pimpl->get_metabalancer_group_info_impl(group);
 }
 
+std::vector<std::vector<int> > elliptics_proxy_t::get_symmetric_groups() {
+	return pimpl->get_symmetric_groups();
+}
+
+std::map<int, std::vector<int> > elliptics_proxy_t::get_bad_groups() {
+	return pimpl->get_bad_groups();
+}
+
+std::vector<int> elliptics_proxy_t::get_all_groups() {
+	return pimpl->get_all_groups();
+}
+
 #endif /* HAVE_METABASE */
 
 bool elliptics_proxy_t::ping() {
@@ -441,10 +458,14 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 	,m_metabase_usage(PROXY_META_NONE)
 	,m_weight_cache(get_group_weighs_cache())
 	,m_group_weights_update_period(c.group_weights_refresh_period)
+	,m_done(false)
 #endif /* HAVE_METABASE */
 {
 	if (m_replication_count == 0) {
 		m_replication_count = m_groups.size();
+	}
+	if (m_success_copies_num == 0) {
+		m_success_copies_num = SUCCESS_COPIES_TYPE__QUORUM;
 	}
 	if (!c.remotes.size()) {
 		throw std::runtime_error("Remotes can't be empty");
@@ -484,7 +505,12 @@ elliptics::elliptics_proxy_t::impl::impl(const elliptics_proxy_t::config &c) :
 elliptics::elliptics_proxy_t::impl::~impl() {
 #ifdef HAVE_METABASE
 	try {
-		m_weight_cache_condition_variable.notify_one();
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			(void)lock;
+			m_done = true;
+			m_weight_cache_condition_variable.notify_one();
+		}
 		m_weight_cache_update_thread.join();
 	} catch (std::system_error) {
 
@@ -645,7 +671,7 @@ lookup_result_t elliptics_proxy_t::impl::lookup_impl(key_t &key, std::vector<int
 	}
 }
 
-read_result_t elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset, uint64_t size,
+data_container_t elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset, uint64_t size,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 				bool latest, bool embeded)
 {
@@ -656,46 +682,13 @@ read_result_t elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset, ui
 	elliptics_session.set_cflags(cflags);
 	elliptics_session.set_ioflags(ioflags);
 
-	ioremap::elliptics::data_pointer result;
-	read_result_t ret;
-
 	try {
 		elliptics_session.set_groups(lgroups);
 
 		if (latest)
-			result = elliptics_session.read_latest(key, offset, size).get_one().file();
+			return data_container_t::unpack(elliptics_session.read_latest(key, offset, size).get_one().file(), embeded);
 		else
-			result = elliptics_session.read_data(key, offset, size).get_one().file();
-
-		if (embeded) {
-			while (result.size()) {
-				if (result.size() < sizeof(struct dnet_common_embed)) {
-					std::ostringstream str;
-					str << key.to_string() << ": offset: " << result.offset() << ", size: " << result.size() << ": invalid size";
-					throw std::runtime_error(str.str());
-				}
-
-				struct dnet_common_embed *e = result.data<struct dnet_common_embed>();
-
-				dnet_common_convert_embedded(e);
-
-				result = result.skip<struct dnet_common_embed>();
-
-				if (result.size() < e->size + sizeof (struct dnet_common_embed)) {
-					break;
-				}
-
-				if (e->type == DNET_PROXY_EMBED_DATA) {
-					break;
-				}
-
-				result = result.skip(e->size);
-			}
-			ret.data = result.to_string();
-		} else {
-			ret.data = result.to_string();
-		}
-
+			return data_container_t::unpack(elliptics_session.read_data(key, offset, size).get_one().file(), embeded);
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
@@ -709,13 +702,10 @@ read_result_t elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset, ui
 		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
-
-	return ret;
 }
 
-std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
-					uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-					int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds)
+std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, data_container_t &data, uint64_t offset, uint64_t size,
+					uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, int success_copies_num)
 {
 	unsigned int replication_count = groups.size();
 	session elliptics_session(*m_elliptics_node);
@@ -762,12 +752,7 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std
 
 		bool chunked = false;
 
-		std::string content;
-
-		for (std::vector<std::shared_ptr<embed_t> >::const_iterator it = embeds.begin(); it != embeds.end(); it++) {
-			content.append((*it)->pack());
-		}
-		content.append(data);
+		ioremap::elliptics::data_pointer content = data_container_t::pack(data);
 
 		if (m_chunk_size && content.size() > static_cast<size_t>(m_chunk_size) && !key.by_id()
 				&& !(ioflags & (DNET_IO_FLAGS_PREPARE | DNET_IO_FLAGS_COMMIT | DNET_IO_FLAGS_PLAIN_WRITE))) {
@@ -785,11 +770,11 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std
 				lookup = elliptics_session.write_plain(key, content, offset).get();
 			} else {
 				if (chunked) {
-					std::string write_content;
+					ioremap::elliptics::data_pointer write_content;
 					bool first_iter = true;
 					size_t size = content.size();
 
-					content.substr(offset, m_chunk_size).swap(write_content);
+					write_content = content.slice(offset, m_chunk_size);
 					lookup = elliptics_session.write_prepare(key, write_content, offset, content.size()).get();
 					helper.update_lookup(parse_lookup(lookup), false);
 
@@ -797,15 +782,18 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, std
 						do {
 							elliptics_session.set_groups(helper.get_upload_groups());
 							offset += m_chunk_size;
-							content.substr(offset, m_chunk_size).swap(write_content);
 
-							if (offset + m_chunk_size >= content.length())
-								lookup = elliptics_session.write_commit(key, write_content, offset, 0).get();
-							else
+							if (offset + m_chunk_size >= content.size()) {
+								write_content = content.slice(offset, content.size() - offset);
+								lookup = elliptics_session.write_commit(key, write_content, offset, content.size()).get();
+							}
+							else {
+								write_content = content.slice(offset, m_chunk_size);
 								lookup = elliptics_session.write_plain(key, write_content, offset).get();
+							}
 							helper.update_lookup(parse_lookup(lookup), first_iter);
 							first_iter = false;
-						} while (helper.upload_is_good() && (offset + m_chunk_size < content.length()));
+						} while (helper.upload_is_good() && (offset + m_chunk_size < content.size()));
 					}
 
 					helper.fix_size(size);
@@ -998,9 +986,9 @@ void elliptics_proxy_t::impl::remove_impl(key_t &key, std::vector<int> &groups)
 	}
 }
 
-std::map<key_t, read_result_t> elliptics_proxy_t::impl::bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups)
+std::map<key_t, data_container_t> elliptics_proxy_t::impl::bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups)
 {
-	std::map<key_t, read_result_t> ret;
+	std::map<key_t, data_container_t> ret;
 
 	if (!keys.size())
 		return ret;
@@ -1035,11 +1023,9 @@ std::map<key_t, read_result_t> elliptics_proxy_t::impl::bulk_read_impl(std::vect
 		auto result = elliptics_session.bulk_read(ios).get();
 
 		for (auto it = result.begin(), end = result.end(); it != end; ++it) {
-			read_result_entry entry = *it;
-			read_result_t tmp;
-			tmp.data = entry.file().to_string();
+			read_result_entry &entry = *it;
 
-			ret.insert(std::make_pair(keys_transformed[entry.command()->id], tmp));
+			ret.insert(std::make_pair(keys_transformed[entry.command()->id], data_container_t::unpack(entry.file())));
 		}
 
 
@@ -1089,7 +1075,7 @@ std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::impl::lookup_addr_impl
 	return addrs;
 }
 
-std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_write_impl(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags,
+std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_write_impl(std::vector<key_t> &keys, std::vector<data_container_t> &data, uint64_t cflags,
 																		   std::vector<int> &groups, int success_copies_num) {
 	unsigned int replication_count = groups.size();
 	std::map<key_t, std::vector<lookup_result_t> > res;
@@ -1114,9 +1100,13 @@ std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_wri
 		elliptics_session.set_groups(lgroups);
 
 		std::vector<struct dnet_io_attr> ios;
+		std::vector<ioremap::elliptics::data_pointer> data_pointers;
 		ios.reserve(keys.size());
+		data_pointers.reserve(keys.size());
 
 		for (size_t index = 0; index != keys.size(); ++index) {
+			data_pointers.push_back(data_container_t::pack(data[index]));
+
 			struct dnet_io_attr io;
 			memset(&io, 0, sizeof(io));
 
@@ -1126,12 +1116,12 @@ std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_wri
 			}
 
 			memcpy(io.id, tmp.id().id, sizeof(io.id));
-			io.size = data[index].size();
+			io.size = data_pointers[index].size();
 			ios.push_back(io);
 			keys_transformed.insert(std::make_pair(tmp.id(), keys [index]));
 		}
 
-		 auto result = elliptics_session.bulk_write(ios, data).get();
+		 auto result = elliptics_session.bulk_write(ios, data_pointers).get();
 
 		 //for (size_t i = 0; i != result.size(); ++i) {
 		 for (auto it = result.begin(), end = result.end(); it != end; ++it) {
@@ -1216,38 +1206,8 @@ std::string elliptics_proxy_t::impl::exec_script_impl(key_t &key, std::string &d
 	return res;
 }
 
-read_result_t read_parser(const ioremap::elliptics::read_result_entry &entry, bool embeded, const key_t &key) {
-	auto result = entry.file();
-	read_result_t ret;
-	if (embeded) {
-		while (result.size()) {
-			if (result.size() < sizeof(struct dnet_common_embed)) {
-				std::ostringstream str;
-				str << key.to_string() << ": offset: " << result.offset() << ", size: " << result.size() << ": invalid size";
-				throw std::runtime_error(str.str());
-			}
-
-			struct dnet_common_embed *e = result.data<struct dnet_common_embed>();
-
-			dnet_common_convert_embedded(e);
-
-			result = result.skip<struct dnet_common_embed>();
-
-			if (result.size() < e->size + sizeof (struct dnet_common_embed)) {
-				break;
-			}
-
-			if (e->type == DNET_PROXY_EMBED_DATA) {
-				break;
-			}
-
-			result = result.skip(e->size);
-		}
-		ret.data = result.to_string();
-	} else {
-		ret.data = result.to_string();
-	}
-	return ret;
+data_container_t read_parser(const ioremap::elliptics::read_result_entry &entry, bool embeded) {
+	return data_container_t::unpack(entry.file(), embeded);
 }
 
 async_read_result_t elliptics_proxy_t::impl::read_async_impl(key_t &key, uint64_t offset, uint64_t size,
@@ -1263,7 +1223,7 @@ async_read_result_t elliptics_proxy_t::impl::read_async_impl(key_t &key, uint64_
 	try {
 		elliptics_session.set_groups(lgroups);
 
-		auto parser = std::bind(read_parser, std::placeholders::_1, embeded, key);
+		auto parser = std::bind(read_parser, std::placeholders::_1, embeded);
 
 		if (latest)
 			return async_read_result_t(elliptics_session.read_latest(key, offset, size), parser);
@@ -1500,17 +1460,17 @@ bool elliptics_proxy_t::impl::collect_group_weights()
 
 void elliptics_proxy_t::impl::collect_group_weights_loop()
 {
-	std::mutex mutex;
-	std::unique_lock<std::mutex> lock(mutex);
+	std::unique_lock<std::mutex> lock(m_mutex);
 #if __GNUC_MINOR__ >= 6
 	auto no_timeout = std::cv_status::no_timeout;
+	auto timeout = std::cv_status::timeout;
+	auto tm = timeout;
 #else
 	bool no_timeout = false;
+	bool timeout = true;
+	bool tm = timeout;
 #endif
-	//while(!boost::this_thread::interruption_requested()) {
-	while(no_timeout == m_weight_cache_condition_variable.wait_for(lock,
-													 std::chrono::milliseconds(
-														 m_group_weights_update_period))) {
+	do {
 		try {
 			collect_group_weights();
 			m_elliptics_log->log(DNET_LOG_INFO, "Updated group weights");
@@ -1531,9 +1491,12 @@ void elliptics_proxy_t::impl::collect_group_weights_loop()
 			msg << "Error while updating cache: " << e.what();
 			m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
 		}
-		//boost::this_thread::sleep(boost::posix_time::seconds(m_group_weights_update_period));
-	}
-
+		tm = timeout;
+		while(m_done == false)
+			tm = m_weight_cache_condition_variable.wait_for(lock,
+															std::chrono::seconds(
+																m_group_weights_update_period));
+	} while(no_timeout == tm);
 }
 
 std::vector<int> elliptics_proxy_t::impl::get_metabalancer_groups_impl(uint64_t count, uint64_t size, key_t &key)
@@ -1625,6 +1588,100 @@ group_info_response_t elliptics_proxy_t::impl::get_metabalancer_group_info_impl(
 		
 
 	return resp;
+}
+
+std::vector<std::vector<int> > elliptics_proxy_t::impl::get_symmetric_groups() {
+	std::vector<std::vector<int> > res;
+	try {
+		cocaine::dealer::message_path_t path("mastermind", "get_symmetric_groups");
+
+		boost::shared_ptr<cocaine::dealer::response_t> future;
+		future = m_cocaine_dealer->send_message(std::string(), path, m_cocaine_default_policy);
+
+		cocaine::dealer::data_container chunk;
+		future->get(&chunk);
+
+		msgpack::unpacked unpacked;
+		msgpack::unpack(&unpacked, static_cast<const char*>(chunk.data()), chunk.size());
+
+		unpacked.get().convert(&res);
+		return res;
+
+	} catch (const msgpack::unpack_error &e) {
+		std::stringstream msg;
+		msg << "Error while unpacking message: " << e.what();
+		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	} catch (const cocaine::dealer::dealer_error &e) {
+		std::stringstream msg;
+		msg << "Cocaine dealer error: " << e.what();
+		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	} catch (const cocaine::dealer::internal_error &e) {
+		std::stringstream msg;
+		msg << "Cocaine internal error: " << e.what();
+		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+}
+
+std::map<int, std::vector<int> > elliptics_proxy_t::impl::get_bad_groups() {
+	std::map<int, std::vector<int> > res;
+	try {
+		cocaine::dealer::message_path_t path("mastermind", "get_bad_groups");
+
+		boost::shared_ptr<cocaine::dealer::response_t> future;
+		future = m_cocaine_dealer->send_message(std::string(), path, m_cocaine_default_policy);
+
+		cocaine::dealer::data_container chunk;
+		future->get(&chunk);
+
+		msgpack::unpacked unpacked;
+		msgpack::unpack(&unpacked, static_cast<const char*>(chunk.data()), chunk.size());
+
+		//std::vector<std::vector<int> > r;
+		unpacked.get().convert(&res);
+		return res;
+
+	} catch (const msgpack::unpack_error &e) {
+		std::stringstream msg;
+		msg << "Error while unpacking message: " << e.what();
+		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	} catch (const cocaine::dealer::dealer_error &e) {
+		std::stringstream msg;
+		msg << "Cocaine dealer error: " << e.what();
+		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	} catch (const cocaine::dealer::internal_error &e) {
+		std::stringstream msg;
+		msg << "Cocaine internal error: " << e.what();
+		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
+		throw;
+	}
+}
+
+std::vector<int> elliptics_proxy_t::impl::get_all_groups() {
+	std::vector<int> res;
+
+	{
+		std::vector<std::vector<int> > r1 = get_symmetric_groups();
+		for (auto it = r1.begin(); it != r1.end(); ++it) {
+			res.insert(res.end(), it->begin(), it->end());
+		}
+	}
+
+	{
+		std::map<int, std::vector<int> > r2 = get_bad_groups();
+		for (auto it = r2.begin(); it != r2.end(); ++it) {
+			res.insert(res.end(), it->second.begin(), it->second.end());
+		}
+	}
+
+	std::sort(res.begin(), res.end());
+	res.erase(std::unique(res.begin(), res.end()), res.end());
+
+	return res;
 }
 #endif /* HAVE_METABASE */
 
