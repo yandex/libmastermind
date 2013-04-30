@@ -263,9 +263,9 @@ public:
 									  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 									  bool latest, bool embeded);
 
-	async_write_result write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
+	async_write_result write_async_impl(key_t &key, data_container_t &data, uint64_t offset, uint64_t size,
 										  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-										  int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
+										  int success_copies_num);
 
 	async_remove_result remove_async_impl(key_t &key, std::vector<int> &groups);
 
@@ -392,10 +392,10 @@ async_read_result_t elliptics_proxy_t::read_async_impl(key_t &key, uint64_t offs
 	return pimpl->read_async_impl(key, offset, size, cflags, ioflags, groups, latest, embeded);
 }
 
-async_write_result elliptics_proxy_t::write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
+async_write_result elliptics_proxy_t::write_async_impl(key_t &key, data_container_t &data, uint64_t offset, uint64_t size,
 									  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-									  int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds) {
-	return pimpl->write_async_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num, embeds);
+									  int success_copies_num) {
+	return pimpl->write_async_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num);
 }
 
 async_remove_result elliptics_proxy_t::remove_async_impl(key_t &key, std::vector<int> &groups) {
@@ -1244,9 +1244,9 @@ async_read_result_t elliptics_proxy_t::impl::read_async_impl(key_t &key, uint64_
 	}
 }
 
-async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
+async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, data_container_t &data, uint64_t offset, uint64_t size,
 													  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-													  int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds)
+													  int success_copies_num)
 {
 	unsigned int replication_count = groups.size();
 	session elliptics_session(*m_elliptics_node);
@@ -1288,12 +1288,7 @@ async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, std::
 	try {
 		elliptics_session.set_groups(lgroups);
 
-		std::string content;
-
-		for (std::vector<std::shared_ptr<embed_t> >::const_iterator it = embeds.begin(); it != embeds.end(); it++) {
-			content.append((*it)->pack());
-		}
-		content.append(data);
+		ioremap::elliptics::data_pointer content = data_container_t::pack(data);
 
 		if (ioflags & DNET_IO_FLAGS_PREPARE) {
 			return elliptics_session.write_prepare(key, content, offset, size);

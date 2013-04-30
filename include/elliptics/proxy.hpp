@@ -411,7 +411,7 @@ public:
 		(async_write_result_t), write_async, tag,
 		(required
 			(key, (key_t))
-			(data, (std::string))
+			(data, (data_container_t))
 		)
 		(optional
 			(offset, (uint64_t), 0)
@@ -420,11 +420,10 @@ public:
 			(ioflags, (uint64_t), 0)
 			(groups, (const std::vector<int>), std::vector<int>())
 			(success_copies_num, (int), 0)
-			(embeds, (std::vector<std::shared_ptr<embed_t> >), std::vector<std::shared_ptr<embed_t> >())
 		)
 	)
 	{
-		return write_async_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num, embeds);
+		return write_async_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num);
 	}
 
 	BOOST_PARAMETER_MEMBER_FUNCTION(
@@ -506,9 +505,9 @@ private:
 									  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 									  bool latest, bool embeded);
 
-	async_write_result_t write_async_impl(key_t &key, std::string &data, uint64_t offset, uint64_t size,
+	async_write_result_t write_async_impl(key_t &key, data_container_t &data, uint64_t offset, uint64_t size,
 										  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
-										  int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
+										  int success_copies_num);
 
 	async_remove_result_t remove_async_impl(key_t &key, std::vector<int> &groups);
 
