@@ -329,6 +329,80 @@ public:
 											_groups = groups,
 											_latest = latest, _embeded = embeded));
 	}
+
+	python_async_write_result_t write_async(const elliptics::key_t &key,
+			const python_data_container_t &dc,
+			const uint64_t &offset = 0, const uint64_t &size = 0,
+			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
+			const std::vector<int> &groups = std::vector<int>(),
+			int success_copies_num = 0) {
+		return std::move(base::write_async(key, dc,
+											_offset = offset, _size = size,
+											_cflags = cflags, _ioflags = ioflags,
+											_groups = groups,
+											_success_copies_num = success_copies_num));
+	}
+
+	python_async_remove_result_t remove_async(const elliptics::key_t &key,
+			const std::vector<int> &groups = std::vector<int>()) {
+		return std::move(base::remove_async(key, _groups = groups));
+	}
+
+	bool ping() {
+		return base::ping();
+	}
+
+	list stat_log() {
+		auto sls = base::stat_log();
+		list res;
+
+		for (auto it = sls.begin(); it != sls.end(); ++it)
+			res.append(*it);
+
+		return res;
+	}
+
+	list get_symmetric_groups() {
+		auto v = base::get_symmetric_groups();
+		list res;
+
+		for (auto it = v.begin(); it != v.end(); ++it) {
+			list tl;
+
+			for (auto it2 = it->begin(); it2 != it->end(); ++it2)
+				tl.append(*it2);
+
+			res.append(tl);
+		}
+
+		return res;
+	}
+
+	dict get_bad_groups() {
+		auto m = base::get_bad_groups();
+		dict res;
+
+		for (auto it = m.begin(); it != m.end(); ++it) {
+			list tl;
+
+			for (auto it2 = it->second.begin(); it2 != it->second.end(); ++it)
+				tl.append(*it2);
+
+			res[it->first] = tl;
+		}
+
+		return res;
+	}
+
+	list get_all_groups() {
+		auto v = base::get_all_groups();
+		list res;
+
+		for (auto it = v.begin(); it != v.end(); ++it)
+			res.append(*it);
+
+		return res;
+	}
 };
 
 BOOST_PYTHON_MODULE(elliptics_proxy)
@@ -384,7 +458,7 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 	;
 
 	class_<dnet_id>("dnet_id")
-		.add_property("id", make_getter(&dnet_id::id))
+//		.add_property("id", make_getter(&dnet_id::id)) // TODO: boost python cannot convert raw array
 		.def_readwrite("group_id", &dnet_id::group_id)
 		.def_readwrite("type", &dnet_id::type)
 	;
@@ -420,6 +494,21 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 		.def_readwrite("status", &lookup_result_t::status)
 		.def_readwrite("addr", &lookup_result_t::addr)
 		.def_readwrite("short_path", &lookup_result_t::short_path)
+	;
+
+	class_<status_result_t>("status_result_t")
+//		.def("__str__", status_result_str)
+//		.def("__repr__", status_result_repr)
+		.def_readwrite("addr", &status_result_t::addr)
+		.def_readwrite("id", &status_result_t::id)
+//		.def_readwrite("la", &status_result_t::la)
+		.def_readwrite("vm_total", &status_result_t::vm_total)
+		.def_readwrite("vm_free", &status_result_t::vm_free)
+		.def_readwrite("vm_cached", &status_result_t::vm_cached)
+		.def_readwrite("storage_size", &status_result_t::storage_size)
+		.def_readwrite("available_size", &status_result_t::available_size)
+		.def_readwrite("files", &status_result_t::files)
+		.def_readwrite("fsid", &status_result_t::fsid)
 	;
 
 	class_<python_data_container_t>("data_container_t")
@@ -488,5 +577,19 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 			arg("cflags") = 0, arg("ioflags") = 0,
 			arg("groups") = std::vector<int>(),
 			arg("latest") = false, arg("embeded") = false))
+		.def("write_async", &python_elliptics_proxy_t::write_async,
+			(arg("key"), arg("dc"),
+			arg("offset") = 0, arg("size") = 0,
+			arg("cflags") = 0, arg("ioflags") = 0,
+			arg("groups") = std::vector<int>(),
+			arg("success_copies_num") = 0))
+		.def("remove_async", &python_elliptics_proxy_t::remove_async,
+			(arg("key"),
+			arg("groups") = std::vector<int>()))
+		.def("ping", &python_elliptics_proxy_t::ping)
+		.def("stat_log", &python_elliptics_proxy_t::stat_log)
+		.def("get_symmetric_groups", &python_elliptics_proxy_t::get_symmetric_groups)
+		.def("get_bad_groups", &python_elliptics_proxy_t::get_bad_groups)
+		.def("get_all_groups", &python_elliptics_proxy_t::get_all_groups)
 	;
 }
