@@ -602,6 +602,12 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 		.def("get_one", &python_async_remove_result_t::get_one)
 	;
 
+	enum_<SUCCESS_COPIES_TYPE>("success_copies_type")
+		.value("any", SUCCESS_COPIES_TYPE__ANY)
+		.value("quorum", SUCCESS_COPIES_TYPE__QUORUM)
+		.value("all", SUCCESS_COPIES_TYPE__ALL)
+	;
+
 	class_<python_elliptics_proxy_t, boost::noncopyable>("elliptics_proxy_t", init<python_config &>())
 		.def("lookup", &python_elliptics_proxy_t::lookup,
 			(arg("key"), arg("groups") = std::vector<int>()))
