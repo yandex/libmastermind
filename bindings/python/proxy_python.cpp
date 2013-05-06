@@ -1,6 +1,8 @@
 #include "elliptics/proxy.hpp"
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+#include <boost/optional.hpp>
+#include <boost/none.hpp>
 
 #include <sstream>
 #include <memory>
@@ -184,6 +186,65 @@ private:
 	std::shared_ptr<async_read_result_t> m_async_read_result;
 };
 
+namespace details {
+
+template<typename... Args>
+struct extract;
+
+template<typename R, typename T, typename... Args>
+struct extract <R, T, Args...> {
+	static boost::optional<R> process(const object &p) {
+		::extract<T> e(p);
+
+		if (e.check())
+			return R(e());
+
+		return extract<R, Args...>::process(p);
+	}
+};
+
+template<typename R>
+struct extract <R> {
+	static boost::optional<R> process(const object &p) {
+		(void)p;
+		return boost::none;
+	}
+};
+
+void convert_error(const std::string &field, const std::string &type) {
+		std::ostringstream oss;
+		oss << "Cannot convert \'" << field << "\' to " << type;
+		throw std::runtime_error(oss.str());
+}
+
+template<typename T, typename... U>
+boost::optional<T> convert(const object &p) {
+	if (p.ptr() == 0)
+		return T();
+
+	return extract<T, T, U...>::process(p);
+}
+
+template<typename T, typename... U>
+T convert(const object &p, const std::string &field, const std::string &type) {
+	auto res = convert<T, U...>(p);
+
+	if (!res)
+		convert_error(field, type);
+
+	return *res;
+}
+
+} // namespace details
+
+elliptics::key_t get_key(const object &p, const std::string &field = "key") {
+	return details::convert<elliptics::key_t, std::string>(p, field, "key_t");
+}
+
+python_data_container_t get_data_container(const object &p, const std::string &field = "dc") {
+	return details::convert<python_data_container_t, std::string>(p, field, "data_container_t");
+}
+
 class python_elliptics_proxy_t : public elliptics_proxy_t {
 public:
 	typedef elliptics_proxy_t base;
@@ -193,29 +254,30 @@ public:
 	{
 	}
 
-	lookup_result_t lookup(const elliptics::key_t &key,
+	lookup_result_t lookup(const object &key,
 			const std::vector<int> &groups = std::vector<int>()) {
-		return base::lookup(key, _groups = groups);
+		return base::lookup(get_key(key), _groups = groups);
 	}
 
-	python_data_container_t read(const elliptics::key_t &key,
+	python_data_container_t read(const object &key,
 			const uint64_t &offset = 0, const uint64_t &size = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
 			const std::vector<int> &groups = std::vector<int>(),
 			bool latest = false, bool embeded = false) {
-		return base::read(key,
+		return base::read(get_key(key),
 							_offset = offset, _size = size,
 							_cflags = cflags, _ioflags = ioflags,
 							_groups = groups,
 							_latest = latest, _embeded = embeded);
 	}
 
-	list write(const elliptics::key_t &key, const python_data_container_t &dc,
+	list write(const object &key, const object &dc,
 			const uint64_t &offset = 0, const uint64_t &size = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
 			const std::vector<int> &groups = std::vector<int>(),
 			int success_copies_num = 0) {
-		auto lrs = base::write(key, dc,
+
+		auto lrs = base::write(get_key(key), get_data_container(dc),
 								_offset = offset, _size = size,
 								_cflags = cflags, _ioflags = ioflags,
 								_groups = groups,
@@ -226,22 +288,22 @@ public:
 		return res;
 	}
 
-	void remove(const elliptics::key_t &key,
+	void remove(const object &key,
 			const std::vector<int> &groups = std::vector<int>()) {
-		base::remove(key, _groups = groups);
+		base::remove(get_key(key), _groups = groups);
 	}
 
 	std::vector<std::string> range_get(
-			const elliptics::key_t &from, const elliptics::key_t &to,
+			const object &from, const object &to,
 			const uint64_t &limit_start = 0, const uint64_t &limit_num = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
 			const std::vector<int> &groups = std::vector<int>(),
-			const elliptics::key_t &key = elliptics::key_t()) {
-		return base::range_get(from, to,
+			const object &key = object()) {
+		return base::range_get(get_key(from, "from"), get_key(to, "to"),
 								_limit_start = limit_start, _limit_num = limit_num,
 								_cflags = cflags, _ioflags = ioflags,
 								_groups = groups,
-								_key = key);
+								_key = get_key(key));
 	}
 
 	dict bulk_read(const list &keys,
@@ -250,8 +312,11 @@ public:
 		std::vector<elliptics::key_t> ks;
 		size_t l = len(keys);
 		ks.reserve(l);
-		for (size_t index = 0; index != l; ++index)
-			ks.push_back(extract<elliptics::key_t>(keys[index]));
+		for (size_t index = 0; index != l; ++index) {
+			std::ostringstream oss;
+			oss << "keys[" << index << ']';
+			ks.push_back(get_key(keys[index], oss.str()));
+		}
 
 		auto dcs = base::bulk_read(ks, _cflags = cflags, _groups = groups);
 
@@ -264,9 +329,9 @@ public:
 		return res;
 	}
 
-	list lookup_addr(const elliptics::key_t &key,
+	list lookup_addr(const object &key,
 						const std::vector<int> &groups = std::vector<int>()) {
-		auto rs = base::lookup_addr(key, _groups = groups);
+		auto rs = base::lookup_addr(get_key(key), _groups = groups);
 
 		list res;
 
@@ -289,8 +354,12 @@ public:
 		dcs.reserve(l);
 
 		for (size_t index = 0; index != l; ++index) {
-			ks.push_back(extract<elliptics::key_t>(keys[index]));
-			dcs.push_back(extract<python_data_container_t>(data[index]));
+			std::ostringstream oss_k;
+			std::ostringstream oss_d;
+			oss_k << "keys[" << index << ']';
+			oss_d << "data[" << index << ']';
+			ks.push_back(get_key(keys[index], oss_k.str()));
+			dcs.push_back(get_data_container(data[index], oss_d.str()));
 		}
 
 		auto lrs = base::bulk_write(ks, dcs,
@@ -312,40 +381,40 @@ public:
 		return res;
 	}
 
-	std::string exec_script(const elliptics::key_t &key,
+	std::string exec_script(const object &key,
 								const std::string &script, const std::string &data,
 								const std::vector<int> &groups = std::vector<int>()) {
-		return base::exec_script(key, script, data, _groups = groups);
+		return base::exec_script(get_key(key), script, data, _groups = groups);
 	}
 
-	python_async_read_result_t read_async(const elliptics::key_t &key,
+	python_async_read_result_t read_async(const object &key,
 			const uint64_t &offset = 0, const uint64_t &size = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
 			const std::vector<int> &groups = std::vector<int>(),
 			bool latest = false, bool embeded = false) {
-		return std::move(base::read_async(key,
+		return std::move(base::read_async(get_key(key),
 											_offset = offset, _size = size,
 											_cflags = cflags, _ioflags = ioflags,
 											_groups = groups,
 											_latest = latest, _embeded = embeded));
 	}
 
-	python_async_write_result_t write_async(const elliptics::key_t &key,
-			const python_data_container_t &dc,
+	python_async_write_result_t write_async(const object &key,
+			const object &dc,
 			const uint64_t &offset = 0, const uint64_t &size = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
 			const std::vector<int> &groups = std::vector<int>(),
 			int success_copies_num = 0) {
-		return std::move(base::write_async(key, dc,
+		return std::move(base::write_async(get_key(key), get_data_container(dc),
 											_offset = offset, _size = size,
 											_cflags = cflags, _ioflags = ioflags,
 											_groups = groups,
 											_success_copies_num = success_copies_num));
 	}
 
-	python_async_remove_result_t remove_async(const elliptics::key_t &key,
+	python_async_remove_result_t remove_async(const object &key,
 			const std::vector<int> &groups = std::vector<int>()) {
-		return std::move(base::remove_async(key, _groups = groups));
+		return std::move(base::remove_async(get_key(key), _groups = groups));
 	}
 
 	bool ping() {
@@ -556,7 +625,7 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 			arg("limit_start") = 0, arg("limit_num") = 0,
 			arg("cflags") = 0, arg("ioflags") = 0,
 			arg("groups") = std::vector<int>(),
-			arg("key") = elliptics::key_t()))
+			arg("key") = object()))
 		.def("bulk_read", &python_elliptics_proxy_t::bulk_read,
 			(arg("keys"),
 			arg("cflags") = 0,
