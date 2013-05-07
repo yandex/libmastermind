@@ -40,6 +40,7 @@
 #include <elliptics/cppdef.h>
 
 #include "elliptics/data_container.hpp"
+#include "elliptics/lookup_result.hpp"
 
 namespace elliptics {
 
@@ -58,17 +59,6 @@ struct group_info_response_t {
 #endif /* HAVE_METABASE */
 
 typedef ioremap::elliptics::key key_t;
-
-class lookup_result_t {
-public:
-	std::string hostname;
-	uint16_t port;
-	std::string path;
-	int group;
-	int status;
-	std::string addr;
-	std::string short_path;
-};
 
 class embed_t {
 public:
@@ -119,7 +109,43 @@ private:
 	parser_t parser;
 };
 
-typedef ioremap::elliptics::async_write_result async_write_result_t;
+struct async_write_result_t {
+	typedef ioremap::elliptics::async_write_result inner_result_t;
+	typedef elliptics::lookup_result_t outer_result_t;
+
+	async_write_result_t(inner_result_t &&inner_result, bool eblob_style_path, int base_port)
+		: m_inner_result(std::move(inner_result))
+		, m_eblob_style_path(eblob_style_path)
+		, m_base_port(base_port)
+	{
+	}
+
+	async_write_result_t(async_write_result_t &&ob)
+		: m_inner_result(std::move(ob.m_inner_result))
+		, m_eblob_style_path(ob.m_eblob_style_path)
+		, m_base_port(ob.m_base_port)
+	{
+	}
+
+	std::vector<outer_result_t> get() {
+		auto v = m_inner_result.get();
+		std::vector<outer_result_t> res;
+		for (auto it = v.begin(); it != v.end(); ++it)
+			res.push_back(lookup_result_t(*it, m_eblob_style_path, m_base_port));
+		return res;
+	}
+
+	outer_result_t get_one() {
+		auto l = m_inner_result.get_one();
+		return lookup_result_t(l, m_eblob_style_path, m_base_port);
+	}
+
+private:
+	inner_result_t m_inner_result;
+	bool m_eblob_style_path;
+	int m_base_port;
+};
+
 typedef ioremap::elliptics::async_remove_result async_remove_result_t;
 
 BOOST_PARAMETER_NAME(key)

@@ -87,23 +87,16 @@ public:
 		groups.reserve(size);
 
 		if (update_ret) {
-			ret.reserve(ret.size() + size);
+			ret.clear();
+			ret.reserve(size);
 			ret.insert(ret.end(), tmp.begin(), tmp.end());
 		}
 
 		for (auto it = tmp.begin(), end = tmp.end(); it != end; ++it) {
-			groups.push_back(it->group);
+			groups.push_back(it->group());
 		}
 
 		upload_groups.swap(groups);
-	}
-
-	void fix_size(size_t size) {
-		std::string str_size = boost::lexical_cast<std::string>(size);
-		for (auto it = ret.begin(), end = ret.end(); it != end; ++it) {
-			std::string &path = it->path;
-			path.replace(path.begin() + path.rfind(':') + 1, path.end(), str_size);
-		}
 	}
 
 	const groups_t &get_upload_groups() const {
@@ -263,7 +256,7 @@ public:
 									  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 									  bool latest, bool embeded);
 
-	async_write_result write_async_impl(key_t &key, data_container_t &data, uint64_t offset, uint64_t size,
+	async_write_result_t write_async_impl(key_t &key, data_container_t &data, uint64_t offset, uint64_t size,
 										  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 										  int success_copies_num);
 
@@ -392,7 +385,7 @@ async_read_result_t elliptics_proxy_t::read_async_impl(key_t &key, uint64_t offs
 	return pimpl->read_async_impl(key, offset, size, cflags, ioflags, groups, latest, embeded);
 }
 
-async_write_result elliptics_proxy_t::write_async_impl(key_t &key, data_container_t &data, uint64_t offset, uint64_t size,
+async_write_result_t elliptics_proxy_t::write_async_impl(key_t &key, data_container_t &data, uint64_t offset, uint64_t size,
 									  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 									  int success_copies_num) {
 	return pimpl->write_async_impl(key, data, offset, size, cflags, ioflags, groups, success_copies_num);
@@ -521,44 +514,7 @@ elliptics::elliptics_proxy_t::impl::~impl() {
 
 lookup_result_t parse_lookup(const ioremap::elliptics::lookup_result_entry &l, bool eblob_style_path, int base_port)
 {
-	lookup_result_t result;
-
-	struct dnet_cmd *cmd = l.command();
-	struct dnet_addr *addr = l.storage_address();
-	struct dnet_file_info *info = l.file_info();
-	dnet_convert_file_info(info);
-
-	char hbuf[NI_MAXHOST];
-	memset(hbuf, 0, NI_MAXHOST);
-
-	if (getnameinfo((const sockaddr*)addr, addr->addr_len, hbuf, sizeof(hbuf), NULL, 0, 0) != 0) {
-		throw std::runtime_error("can not make dns lookup");
-	}
-	result.hostname.assign(hbuf);
-
-	result.port = dnet_server_convert_port((struct sockaddr *)addr->addr, addr->addr_len);
-	result.group = cmd->id.group_id;
-	result.status = cmd->status;
-	result.short_path.assign((char *)(info + 1));
-	char addr_dst[512];
-	dnet_server_convert_dnet_addr_raw(addr, addr_dst, sizeof (addr_dst) - 1);
-	result.addr.assign(addr_dst);
-
-	if (eblob_style_path) {
-		result.path = l.file_path();
-		result.path = result.path.substr(result.path.find_last_of("/\\") + 1);
-		std::ostringstream oss;
-		oss << '/' << (result.port - base_port) << '/'
-			<< result.path << ':' << info->offset
-			<< ':' << info->size;
-		oss.str().swap(result.path);
-	} else {
-		//struct dnet_id id;
-		//elliptics_node_->transform(key.filename(), id);
-		//result.path = "/" + boost::lexical_cast<std::string>(port - base_port_) + '/' + hex_dir + '/' + id;
-	}
-
-	return result;
+	return lookup_result_t(l, eblob_style_path, base_port);
 }
 
 std::vector<lookup_result_t> parse_lookup(const std::vector<lookup_result_entry> &l, bool eblob_style_path, int base_port)
@@ -771,8 +727,7 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, dat
 			} else {
 				if (chunked) {
 					ioremap::elliptics::data_pointer write_content;
-					bool first_iter = true;
-					size_t size = content.size();
+					bool last_iter = false;
 
 					write_content = content.slice(offset, m_chunk_size);
 					lookup = elliptics_session.write_prepare(key, write_content, offset, content.size()).get();
@@ -786,17 +741,15 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, dat
 							if (offset + m_chunk_size >= content.size()) {
 								write_content = content.slice(offset, content.size() - offset);
 								lookup = elliptics_session.write_commit(key, write_content, offset, content.size()).get();
+								last_iter = true;
 							}
 							else {
 								write_content = content.slice(offset, m_chunk_size);
 								lookup = elliptics_session.write_plain(key, write_content, offset).get();
 							}
-							helper.update_lookup(parse_lookup(lookup), first_iter);
-							first_iter = false;
+							helper.update_lookup(parse_lookup(lookup), last_iter);
 						} while (helper.upload_is_good() && (offset + m_chunk_size < content.size()));
 					}
-
-					helper.fix_size(size);
 
 				} else {
 					lookup = elliptics_session.write_data(key, content, offset).get();
@@ -1130,7 +1083,7 @@ std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_wri
 			 //ID ell_id(lr->command()->id);
 			 key_t key = keys_transformed [lr.command()->id];
 			 res [key].push_back(r);
-			 res_groups [key].push_back(r.group);
+			 res_groups [key].push_back(r.group());
 		 }
 
 		 unsigned int replication_need =  uploads_need(success_copies_num != 0 ? success_copies_num : m_success_copies_num,
@@ -1291,13 +1244,13 @@ async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, data_
 		ioremap::elliptics::data_pointer content = data_container_t::pack(data);
 
 		if (ioflags & DNET_IO_FLAGS_PREPARE) {
-			return elliptics_session.write_prepare(key, content, offset, size);
+			return async_write_result_t(elliptics_session.write_prepare(key, content, offset, size), m_eblob_style_path, m_base_port);
 		} else if (ioflags & DNET_IO_FLAGS_COMMIT) {
-			return elliptics_session.write_commit(key, content, offset, size);
+			return async_write_result_t(elliptics_session.write_commit(key, content, offset, size), m_eblob_style_path, m_base_port);
 		} else if (ioflags & DNET_IO_FLAGS_PLAIN_WRITE) {
-			return elliptics_session.write_plain(key, content, offset);
+			return async_write_result_t(elliptics_session.write_plain(key, content, offset), m_eblob_style_path, m_base_port);
 		} else {
-			return elliptics_session.write_data(key, content, offset);
+			return async_write_result_t(elliptics_session.write_data(key, content, offset), m_eblob_style_path, m_base_port);
 		}
 	}
 	catch (const std::exception &e) {

@@ -200,7 +200,7 @@ public:
 		std::string data1("test data 1");
 		std::string data2("test data 2");
 
-		std::vector<ioremap::elliptics::lookup_result_entry> l;
+		std::vector<elliptics::lookup_result_t> l;
 		auto awr1 = m_proxy->write_async(key1, data1);
 		auto awr2 = m_proxy->write_async(key2, data2);
 
@@ -250,7 +250,7 @@ public:
 		auto lr = m_proxy->write(key, data, _groups = groups);
 		CPPUNIT_ASSERT(lr.size() == 2);
 		auto l = m_proxy->lookup(key);
-		CPPUNIT_ASSERT(l.port == 1026);
+		CPPUNIT_ASSERT(l.port() == 1026);
 	}
 
 	void write_g4_scnALL() {
