@@ -148,10 +148,14 @@ private:
 
 typedef ioremap::elliptics::async_remove_result async_remove_result_t;
 
+typedef ioremap::elliptics::find_indexes_result find_indexes_result_t;
+typedef ioremap::elliptics::check_indexes_result check_indexes_result_t;
+
 BOOST_PARAMETER_NAME(key)
 BOOST_PARAMETER_NAME(keys)
 BOOST_PARAMETER_NAME(data)
 BOOST_PARAMETER_NAME(entry)
+BOOST_PARAMETER_NAME(indexes)
 
 BOOST_PARAMETER_NAME(from)
 BOOST_PARAMETER_NAME(to)
@@ -470,6 +474,23 @@ public:
 
 	std::string id_str(const key_t &key);
 
+	BOOST_PARAMETER_MEMBER_FUNCTION(
+		(void), update_indexes, tag,
+		(required
+			(key, (key_t))
+			(indexes, (std::vector<std::string>))
+		)
+		(optional
+			(data, (std::vector<ioremap::elliptics::data_pointer>), std::vector<ioremap::elliptics::data_pointer>())
+		)
+	)
+	{
+		update_indexes_impl(key, indexes, data);
+	}
+
+	find_indexes_result_t find_indexes(const std::vector<std::string> &indexes);
+	check_indexes_result_t check_indexes(const key_t &key);
+
 #ifdef HAVE_METABASE
 	BOOST_PARAMETER_MEMBER_FUNCTION(
 		(std::vector<int>), get_metabalancer_groups, tag,
@@ -542,6 +563,8 @@ private:
 	//std::vector<lookup_result_t> parse_lookup(const ioremap::elliptics::write_result &l);
 
 	std::vector<int> get_groups(key_t &key, const std::vector<int> &groups, int count = 0) const;
+
+	void update_indexes_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data);
 
 #ifdef HAVE_METABASE
 	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, key_t &key);

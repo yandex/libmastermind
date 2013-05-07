@@ -272,6 +272,11 @@ public:
 
 	std::vector<int> get_groups(key_t &key, const std::vector<int> &groups, int count = 0) const;
 
+	void update_indexes_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data);
+	find_indexes_result_t find_indexes(const std::vector<std::string> &indexes);
+	check_indexes_result_t check_indexes(const key_t &key);
+
+
 #ifdef HAVE_METABASE
 	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, key_t &key);
 	group_info_response_t get_metabalancer_group_info_impl(int group);
@@ -433,6 +438,18 @@ std::vector<status_result_t> elliptics_proxy_t::stat_log() {
 
 std::string elliptics_proxy_t::id_str(const key_t &key) {
 	return pimpl->id_str(key);
+}
+
+void elliptics_proxy_t::update_indexes_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data) {
+	pimpl->update_indexes_impl(key, indexes, data);
+}
+
+find_indexes_result_t elliptics_proxy_t::find_indexes(const std::vector<std::string> &indexes) {
+	return pimpl->find_indexes(indexes);
+}
+
+check_indexes_result_t elliptics_proxy_t::check_indexes(const key_t &key) {
+	return pimpl->check_indexes(key);
 }
 
 // pimpl
@@ -1377,6 +1394,18 @@ std::vector<int> elliptics_proxy_t::impl::get_groups(key_t &key, const std::vect
 	return lgroups;
 }
 
+void elliptics_proxy_t::impl::update_indexes_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data) {
+}
+
+find_indexes_result_t elliptics_proxy_t::impl::find_indexes(const std::vector<std::string> &indexes) {
+	find_indexes_result_t res;
+	return res;
+}
+
+check_indexes_result_t elliptics_proxy_t::impl::check_indexes(const key_t &key) {
+	check_indexes_result_t res;
+	return res;
+}
 
 #ifdef HAVE_METABASE
 bool elliptics_proxy_t::impl::collect_group_weights()
