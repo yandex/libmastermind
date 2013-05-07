@@ -127,6 +127,9 @@ public:
 	}
 
 	list get() {
+		if (!m_async_write_result)
+			throw std::runtime_error("No async result is related");
+
 		auto v = m_async_write_result->get();
 
 		list res;
@@ -139,6 +142,8 @@ public:
 	}
 
 	lookup_result_t get_one() {
+		if (!m_async_write_result)
+			throw std::runtime_error("No async result is related");
 		return m_async_write_result->get_one();
 	}
 
