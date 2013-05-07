@@ -10,15 +10,6 @@
 using namespace elliptics;
 using namespace boost::python;
 
-std::string remote_str(const elliptics_proxy_t::remote &ob) {
-	std::ostringstream oss;
-	oss << ob.host << ':' << ob.port << ':' << ob.family;
-	return oss.str();
-}
-
-std::string remote_repr(const elliptics_proxy_t::remote &ob) {
-	return std::string("remote: ") + remote_str(ob);
-}
 
 class python_config : public elliptics_proxy_t::config {
 public:
@@ -35,67 +26,6 @@ public:
 
 	list remotes_list;
 };
-
-std::string config_str(const python_config &ob) {
-	std::ostringstream oss;
-
-	oss << "remotes = [";
-	size_t l = len(ob.remotes_list);
-	for (size_t index = 0; index != l; ++index) {
-		if (index != 0) oss << ' ';
-		oss << remote_str(extract<elliptics_proxy_t::remote>(ob.remotes_list[index]));
-	}
-	oss << "] ";
-	
-	oss << "groups = [";
-	for (auto it = ob.groups.begin(); it != ob.groups.end(); ++it) {
-		if (it != ob.groups.begin()) oss << ' ';
-		oss << *it;
-	}
-	oss << "] ";
-
-	return oss.str();
-}
-
-std::string config_repr(const python_config &ob) {
-	return std::string("config: ") + config_str(ob);
-}
-
-template<typename T>
-std::string vector_str(const std::vector<T> &v) {
-	std::ostringstream oss;
-	oss << "[";
-	for (auto it = v.begin(); it != v.end(); ++it) {
-		if (it != v.begin()) oss << ", ";
-		oss << *it;
-	}
-	oss << "]";
-	return oss.str();
-}
-
-template<typename T>
-std::string vector_repr(const std::vector<T> &v) {
-	return std::string("list: ").append(vector_str(v));
-}
-
-std::string key_str(const elliptics::key_t &key) {
-	return key.to_string();
-}
-
-std::string key_repr(const elliptics::key_t &key) {
-//	return std::string("key_t: ").append(key_str(key));
-	return key_str(key);
-}
-
-std::string lookup_result_str(const lookup_result_t &lr) {
-	std::ostringstream oss;
-	oss << "groups: " << lr.group << "\tpath: " << lr.hostname << ":" << lr.port << lr.path;
-	return oss.str();
-}
-
-std::string lookup_result_repr(const lookup_result_t &lr) {
-	return lookup_result_str(lr);
-}
 
 class python_data_container_t : public data_container_t {
 public:
@@ -163,7 +93,6 @@ private:
 	std::shared_ptr<async_result_t> m_async_result;
 };
 
-typedef python_async_result_t<ioremap::elliptics::write_result_entry> python_async_write_result_t;
 typedef python_async_result_t<ioremap::elliptics::callback_result_entry> python_async_remove_result_t;
 
 class python_async_read_result_t {
@@ -184,6 +113,37 @@ public:
 	}
 private:
 	std::shared_ptr<async_read_result_t> m_async_read_result;
+};
+
+class python_async_write_result_t {
+public:
+	python_async_write_result_t()
+	{
+	}
+
+	python_async_write_result_t(async_write_result_t &&async_write_result)
+		: m_async_write_result(new async_write_result_t(std::move(async_write_result)))
+	{
+	}
+
+	list get() {
+		auto v = m_async_write_result->get();
+
+		list res;
+
+		for (auto it = v.begin(); it != v.end(); ++it) {
+			res.append(*it);
+		}
+
+		return res;
+	}
+
+	lookup_result_t get_one() {
+		return m_async_write_result->get_one();
+	}
+
+private:
+	std::shared_ptr<async_write_result_t> m_async_write_result;
 };
 
 namespace details {
@@ -474,6 +434,77 @@ public:
 	}
 };
 
+template<typename T>
+std::string vector_str(const std::vector<T> &v) {
+	std::ostringstream oss;
+	oss << "[";
+	for (auto it = v.begin(); it != v.end(); ++it) {
+		if (it != v.begin()) oss << ", ";
+		oss << *it;
+	}
+	oss << "]";
+	return oss.str();
+}
+
+template<typename T>
+std::string vector_repr(const std::vector<T> &v) {
+	return std::string("list: ").append(vector_str(v));
+}
+
+std::string remote_str(const elliptics_proxy_t::remote &ob) {
+	std::ostringstream oss;
+	oss << ob.host << ':' << ob.port << ':' << ob.family;
+	return oss.str();
+}
+
+std::string remote_repr(const elliptics_proxy_t::remote &ob) {
+	return std::string("remote: ") + remote_str(ob);
+}
+
+std::string config_str(const python_config &ob) {
+	std::ostringstream oss;
+
+	oss << "remotes = [";
+	size_t l = len(ob.remotes_list);
+	for (size_t index = 0; index != l; ++index) {
+		if (index != 0) oss << ' ';
+		oss << remote_str(extract<elliptics_proxy_t::remote>(ob.remotes_list[index]));
+	}
+	oss << "] ";
+
+	oss << "groups = [";
+	for (auto it = ob.groups.begin(); it != ob.groups.end(); ++it) {
+		if (it != ob.groups.begin()) oss << ' ';
+		oss << *it;
+	}
+	oss << "] ";
+
+	return oss.str();
+}
+
+std::string config_repr(const python_config &ob) {
+	return std::string("config: ") + config_str(ob);
+}
+
+std::string key_str(const elliptics::key_t &key) {
+	return key.to_string();
+}
+
+std::string key_repr(const elliptics::key_t &key) {
+//	return std::string("key_t: ").append(key_str(key));
+	return key_str(key);
+}
+
+std::string lookup_result_str(const lookup_result_t &lr) {
+	std::ostringstream oss;
+	oss << "group: " << lr.group() << "\tpath: " << lr.host() << ":" << lr.port() << lr.path();
+	return oss.str();
+}
+
+std::string lookup_result_repr(const lookup_result_t &lr) {
+	return lookup_result_str(lr);
+}
+
 BOOST_PYTHON_MODULE(elliptics_proxy)
 {
 	class_<std::vector<int> >("VecInt")
@@ -553,16 +584,16 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 				)
 			)
 	;
-	class_<lookup_result_t>("lookup_result_t")
+	class_<lookup_result_t>("lookup_result_t", init<const ioremap::elliptics::lookup_result_entry &, bool, int>())
 		.def("__str__", lookup_result_str)
 		.def("__repr__", lookup_result_repr)
-		.def_readwrite("hostname", &lookup_result_t::hostname)
-		.def_readwrite("port", &lookup_result_t::port)
-		.def_readwrite("path", &lookup_result_t::path)
-		.def_readwrite("group", &lookup_result_t::group)
-		.def_readwrite("status", &lookup_result_t::status)
-		.def_readwrite("addr", &lookup_result_t::addr)
-		.def_readwrite("short_path", &lookup_result_t::short_path)
+		.add_property("host", make_function(&lookup_result_t::host, return_value_policy<copy_const_reference>()))
+		.def_readonly("port", &lookup_result_t::port)
+		.add_property("path", make_function(&lookup_result_t::path, return_value_policy<copy_const_reference>()))
+		.def_readonly("group", &lookup_result_t::group)
+		.def_readonly("status", &lookup_result_t::status)
+		.add_property("addr", make_function(&lookup_result_t::addr, return_value_policy<copy_const_reference>()))
+		.add_property("full_path", make_function(&lookup_result_t::full_path, return_value_policy<copy_const_reference>()))
 	;
 
 	class_<status_result_t>("status_result_t")
