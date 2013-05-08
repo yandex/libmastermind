@@ -4,12 +4,79 @@
 #include <boost/optional.hpp>
 #include <boost/none.hpp>
 
+#include <boost/preprocessor/repetition.hpp>
+
 #include <sstream>
 #include <memory>
+#include <cstring>
 
 using namespace elliptics;
 using namespace boost::python;
 
+#define MAX_TOUPLE_SIZE 4
+
+#define GET_ARG_FROM_ARR(ignored, index, arr)			\
+	BOOST_PP_COMMA_IF(index) arr[index]
+
+#define GEN_ARRAY_CONVERTER(ignored, size, ignored2)	\
+template<typename T>									\
+tuple array_to_boost_tuple(const T (&arr)[size]) {		\
+	return make_tuple(									\
+		BOOST_PP_REPEAT(size, GET_ARG_FROM_ARR, arr)	\
+	);													\
+}
+
+BOOST_PP_REPEAT_FROM_TO(1, MAX_TOUPLE_SIZE, GEN_ARRAY_CONVERTER, ~)
+
+#undef GEN_ARRAY_CONVERTER
+#undef GET_ARG_FROM_ARR
+#undef MAX_TOUPLE_SIZE
+
+struct python_dnet_id : public dnet_id {
+public:
+	python_dnet_id()
+	{
+		group_id = 0;
+		type = 0;
+		memset(id, 0, DNET_ID_SIZE);
+		bytearray = object(handle<>(PyByteArray_FromStringAndSize(
+										reinterpret_cast<char *>(id)
+										, DNET_ID_SIZE)));
+	}
+
+	dnet_id &convert() {
+		auto size = PyByteArray_Size(bytearray.ptr());
+		if (size != DNET_ID_SIZE)
+			throw std::runtime_error("Incorrect size of dnet_id.id");
+
+		char *s = PyByteArray_AsString(bytearray.ptr());
+		memcpy(id, s, DNET_ID_SIZE);
+		return *this;
+	}
+
+	object bytearray;
+};
+
+class python_key_t : public elliptics::key_t {
+public:
+	typedef elliptics::key_t base;
+	python_key_t(const std::string &remote, int type = 0)
+		: base(remote, type)
+	{
+	}
+
+	python_key_t(python_dnet_id &id)
+		: base(id.convert())
+		, m_p_id(id)
+	{
+	}
+
+	const python_dnet_id &id() const {
+		return m_p_id;
+	}
+
+	python_dnet_id m_p_id;
+};
 
 class python_config : public elliptics_proxy_t::config {
 public:
@@ -491,11 +558,11 @@ std::string config_repr(const python_config &ob) {
 	return std::string("config: ") + config_str(ob);
 }
 
-std::string key_str(const elliptics::key_t &key) {
+std::string key_str(const python_key_t &key) {
 	return key.to_string();
 }
 
-std::string key_repr(const elliptics::key_t &key) {
+std::string key_repr(const python_key_t &key) {
 //	return std::string("key_t: ").append(key_str(key));
 	return key_str(key);
 }
@@ -508,6 +575,10 @@ std::string lookup_result_str(const lookup_result_t &lr) {
 
 std::string lookup_result_repr(const lookup_result_t &lr) {
 	return lookup_result_str(lr);
+}
+
+tuple get_la_from_status_result_t(const status_result_t &s) {
+	return array_to_boost_tuple(s.la);
 }
 
 BOOST_PYTHON_MODULE(elliptics_proxy)
@@ -562,14 +633,14 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 #endif /* HAVE_METABASE */
 	;
 
-	class_<dnet_id>("dnet_id")
-//		.add_property("id", make_getter(&dnet_id::id)) // TODO: boost python cannot convert raw array
+	class_<python_dnet_id>("dnet_id")
+		.def_readwrite("id", &python_dnet_id::bytearray)
 		.def_readwrite("group_id", &dnet_id::group_id)
 		.def_readwrite("type", &dnet_id::type)
 	;
 
-	class_<elliptics::key_t>("key_t", init<const std::string &, optional<int> >())
-		.def(init<const dnet_id &>())
+	class_<python_key_t>("key_t", init<const std::string &, optional<int> >())
+		.def(init<python_dnet_id &>())
 		.def("__str__", key_str)
 		.def("__repr__", key_repr)
 		.def_readonly("by_id", &elliptics::key_t::by_id)
@@ -581,14 +652,9 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 				)
 			)
 		.def_readonly("type", &elliptics::key_t::type)
-		.def_readonly("id",
-			make_function(
-				static_cast<const dnet_id &(elliptics::key_t::*)() const>(
-					&elliptics::key_t::id),
-				return_value_policy<copy_const_reference>()
-				)
-			)
+		.add_property("id", make_function(static_cast<const python_dnet_id &(python_key_t::*)() const>(&python_key_t::id), return_value_policy<copy_const_reference>()))
 	;
+
 	class_<lookup_result_t>("lookup_result_t", init<const ioremap::elliptics::lookup_result_entry &, bool, int>())
 		.def("__str__", lookup_result_str)
 		.def("__repr__", lookup_result_repr)
@@ -604,16 +670,16 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 	class_<status_result_t>("status_result_t")
 //		.def("__str__", status_result_str)
 //		.def("__repr__", status_result_repr)
-		.def_readwrite("addr", &status_result_t::addr)
-		.def_readwrite("id", &status_result_t::id)
-//		.def_readwrite("la", &status_result_t::la)
-		.def_readwrite("vm_total", &status_result_t::vm_total)
-		.def_readwrite("vm_free", &status_result_t::vm_free)
-		.def_readwrite("vm_cached", &status_result_t::vm_cached)
-		.def_readwrite("storage_size", &status_result_t::storage_size)
-		.def_readwrite("available_size", &status_result_t::available_size)
-		.def_readwrite("files", &status_result_t::files)
-		.def_readwrite("fsid", &status_result_t::fsid)
+		.def_readonly("addr", &status_result_t::addr)
+		.def_readonly("id", &status_result_t::id)
+		.add_property("la", get_la_from_status_result_t)
+		.def_readonly("vm_total", &status_result_t::vm_total)
+		.def_readonly("vm_free", &status_result_t::vm_free)
+		.def_readonly("vm_cached", &status_result_t::vm_cached)
+		.def_readonly("storage_size", &status_result_t::storage_size)
+		.def_readonly("available_size", &status_result_t::available_size)
+		.def_readonly("files", &status_result_t::files)
+		.def_readonly("fsid", &status_result_t::fsid)
 	;
 
 	class_<python_data_container_t>("data_container_t")
