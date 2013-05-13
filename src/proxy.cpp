@@ -272,9 +272,11 @@ public:
 
 	std::vector<int> get_groups(key_t &key, const std::vector<int> &groups, int count = 0) const;
 
-	void update_indexes_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data);
-	find_indexes_result_t find_indexes(const std::vector<std::string> &indexes);
-	check_indexes_result_t check_indexes(const key_t &key);
+	async_update_indexes_result_t update_indexes_async_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data);
+	async_update_indexes_result_t update_indexes_async(const key_t &key, const std::vector<index_entry_t> &indexes);
+	async_find_indexes_result_t find_indexes_async(const std::vector<dnet_raw_id> &indexes);
+	async_find_indexes_result_t find_indexes_async(const std::vector<std::string> &indexes);
+	async_check_indexes_result_t check_indexes_async(const key_t &key);
 
 
 #ifdef HAVE_METABASE
@@ -440,16 +442,24 @@ std::string elliptics_proxy_t::id_str(const key_t &key) {
 	return pimpl->id_str(key);
 }
 
-void elliptics_proxy_t::update_indexes_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data) {
-	pimpl->update_indexes_impl(key, indexes, data);
+async_update_indexes_result_t elliptics_proxy_t::update_indexes_async_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data) {
+	return pimpl->update_indexes_async_impl(key, indexes, data);
 }
 
-find_indexes_result_t elliptics_proxy_t::find_indexes(const std::vector<std::string> &indexes) {
-	return pimpl->find_indexes(indexes);
+async_update_indexes_result_t elliptics_proxy_t::update_indexes_async(const key_t &key, const std::vector<index_entry_t> &indexes) {
+	return pimpl->update_indexes_async(key, indexes);
 }
 
-check_indexes_result_t elliptics_proxy_t::check_indexes(const key_t &key) {
-	return pimpl->check_indexes(key);
+async_find_indexes_result_t elliptics_proxy_t::find_indexes_async(const std::vector<dnet_raw_id> &indexes) {
+	return pimpl->find_indexes_async(indexes);
+}
+
+async_find_indexes_result_t elliptics_proxy_t::find_indexes_async(const std::vector<std::string> &indexes) {
+	return pimpl->find_indexes_async(indexes);
+}
+
+async_check_indexes_result_t elliptics_proxy_t::check_indexes_async(const key_t &key) {
+	return pimpl->check_indexes_async(key);
 }
 
 // pimpl
@@ -1394,17 +1404,29 @@ std::vector<int> elliptics_proxy_t::impl::get_groups(key_t &key, const std::vect
 	return lgroups;
 }
 
-void elliptics_proxy_t::impl::update_indexes_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data) {
+async_update_indexes_result_t elliptics_proxy_t::impl::update_indexes_async_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data) {
+	ioremap::elliptics::session sess(*m_elliptics_node);
+	return sess.update_indexes(key, indexes, data);
 }
 
-find_indexes_result_t elliptics_proxy_t::impl::find_indexes(const std::vector<std::string> &indexes) {
-	find_indexes_result_t res;
-	return res;
+async_update_indexes_result_t elliptics_proxy_t::impl::update_indexes_async(const key_t &key, const std::vector<index_entry_t> &indexes) {
+	ioremap::elliptics::session sess(*m_elliptics_node);
+	return sess.update_indexes(key, indexes);
 }
 
-check_indexes_result_t elliptics_proxy_t::impl::check_indexes(const key_t &key) {
-	check_indexes_result_t res;
-	return res;
+async_find_indexes_result_t elliptics_proxy_t::impl::find_indexes_async(const std::vector<dnet_raw_id> &indexes) {
+	ioremap::elliptics::session sess(*m_elliptics_node);
+	return sess.find_indexes(indexes);
+}
+
+async_find_indexes_result_t elliptics_proxy_t::impl::find_indexes_async(const std::vector<std::string> &indexes) {
+	ioremap::elliptics::session sess(*m_elliptics_node);
+	return sess.find_indexes(indexes);
+}
+
+async_check_indexes_result_t elliptics_proxy_t::impl::check_indexes_async(const key_t &key) {
+	ioremap::elliptics::session sess(*m_elliptics_node);
+	return sess.check_indexes(key);
 }
 
 #ifdef HAVE_METABASE
