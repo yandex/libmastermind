@@ -129,10 +129,6 @@ class python_async_result_t {
 public:
 	typedef ioremap::elliptics::async_result<T> async_result_t;
 
-	python_async_result_t()
-	{
-	}
-
 	python_async_result_t(async_result_t &&async_result)
 		: m_async_result(new async_result_t(std::move(async_result)))
 	{
@@ -140,9 +136,6 @@ public:
 
 	list get() {
 		list res;
-
-		if (!m_async_result)
-			throw std::runtime_error("No async result is related");
 
 		auto v = m_async_result->get();
 		for (auto it = v.begin(); it != v.end(); ++it)
@@ -152,8 +145,6 @@ public:
 	}
 
 	T get_one() {
-		if (!m_async_result)
-			throw std::runtime_error("No async result is related");
 		return m_async_result->get_one();
 	}
 private:
@@ -164,18 +155,12 @@ typedef python_async_result_t<ioremap::elliptics::callback_result_entry> python_
 
 class python_async_read_result_t {
 public:
-	python_async_read_result_t()
-	{
-	}
-
 	python_async_read_result_t(async_read_result_t &&async_read_result)
 		: m_async_read_result(new async_read_result_t(std::move(async_read_result)))
 	{
 	}
 
 	python_data_container_t get() {
-		if (!m_async_read_result)
-			throw std::runtime_error("No async result is related");
 		return m_async_read_result->get();
 	}
 private:
@@ -184,19 +169,12 @@ private:
 
 class python_async_write_result_t {
 public:
-	python_async_write_result_t()
-	{
-	}
-
 	python_async_write_result_t(async_write_result_t &&async_write_result)
 		: m_async_write_result(new async_write_result_t(std::move(async_write_result)))
 	{
 	}
 
 	list get() {
-		if (!m_async_write_result)
-			throw std::runtime_error("No async result is related");
-
 		auto v = m_async_write_result->get();
 
 		list res;
@@ -209,8 +187,6 @@ public:
 	}
 
 	lookup_result_t get_one() {
-		if (!m_async_write_result)
-			throw std::runtime_error("No async result is related");
 		return m_async_write_result->get_one();
 	}
 
@@ -690,16 +666,16 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 								&python_data_container_t::set_timestamp)
 	;
 
-	class_<python_async_read_result_t>("async_read_result_t")
+	class_<python_async_read_result_t>("async_read_result_t", no_init)
 		.def("get", &python_async_read_result_t::get)
 	;
 
-	class_<python_async_write_result_t>("async_write_result_t")
+	class_<python_async_write_result_t>("async_write_result_t", no_init)
 		.def("get", &python_async_write_result_t::get)
 		.def("get_one", &python_async_write_result_t::get_one)
 	;
 
-	class_<python_async_remove_result_t>("async_remove_result_t")
+	class_<python_async_remove_result_t>("async_remove_result_t", no_init)
 		.def("get", &python_async_remove_result_t::get)
 		.def("get_one", &python_async_remove_result_t::get_one)
 	;
