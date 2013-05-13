@@ -6,7 +6,7 @@ Libelliptics-proxy provides you usefull development kit to communicate with elli
 	- [config](#-config)
 	- key_t
 	- [data_container_t](#-data_container_t)
-	- lookup_result_t
+	- [lookup_result_t](#-lookup_result_t)
 	- status_result_t
 	- async_read_result_t
 	- async_write_result_t
@@ -154,7 +154,24 @@ if (ob) {
 }
 ```
 
-## <a id="lookup_result_t"/> lookup\_result\_t
+## <a id="lookup_result_t"/> lookup_result_t
+This class provides information about written replica.
+All methods use "lazy" semmantic - inforamtion will resolved only if you call a corresponding method.
+Example:
+```cpp
+lookup_result_t lr = proxy->lookup(key);
+uint16_t port = lr.port();
+```
+Only port will be resolved in this case.
+
+Methods list:
+- host
+- port
+- group
+- status
+- addr
+- path
+- full_path
 
 ## <a id="status_result_t"/> status\_result\_t
 
