@@ -5,7 +5,7 @@ Libelliptics-proxy provides you usefull development kit to communicate with elli
 	- [remote](#-remote)
 	- [config](#-config)
 	- key_t
-	- data_container_t
+	- [data_container_t](#-data_container_t)
 	- lookup_result_t
 	- status_result_t
 	- async_read_result_t
@@ -85,6 +85,74 @@ Fields:
 ## <a id="key_t"/> key_t
 
 ## <a id="data_container_t"/> data_container_t
+This class provides useful way to store data with additional (embedded) information.  
+Example:  
+```cpp
+std::string data("test data");
+timespec ts;
+ts.tv_sec = 123;
+ts.tv_nsec = 456789;
+data_container_t dc;
+dc.set(data);
+dc.set<DNET_FCGI_EMBED_TIMESTAMP>(ts);
+```
+Stores some data and additional timestamp in data container, then `dc` can be written.  
+You can write a std::string if you do not need embeded information - `data_container_t` has implicit constructor of std::string.  
+Also you can register your own types for additional inforamtion:
+```cpp
+enum my_embed_types {
+	  met_simple_type = 1025
+	, met_complex_type = 1026
+};
+
+template<> struct type_traits<met_simple_type> : type_traits_base<simple_type> {};
+
+template<> struct type_traits<met_complex_type> : type_traits_base<complex_type> {
+	static ioremap::elliptics::data_pointer convert(const type &ob) {
+		/*
+		You can write own converter type -> raw-data
+		*/
+		ioremap::elliptics::data_buffer data_buffer(sizeof(ob.field_size) * 2);
+		data_buffer.write(ob.field1);
+		data_buffer.write(std::abs(ob.field2));
+		return std::move(data_buffer);
+	}
+
+	static type convert(ioremap::elliptics::data_pointer data_pointer) {
+		/*
+		You can write own converter raw-data -> data
+		*/
+		type res;
+		
+		read(data_pointer, res.field1);
+		read(data_pointer, res.field2);
+
+		return res;
+	}
+};
+```
+You can either use standart packing system (msgpack) for simple types or reimplement own converter methods for complex types.
+Then you can add embedded information with your type:
+```cpp
+simple_type ob1;
+complex_type ob2;
+dc.set<met_simple_type>(ob1);
+dc.set<met_complex_type>(ob2);
+```
+Use get method to extract data:
+```cpp
+std::string data = dc.get();
+```
+To extract additional information use:
+```cpp
+boost::optional<simple_type> ob = dc.get<met_simple_type>();
+if (ob) {
+	// met_simple_type exists in dc
+	// to get data use either operator * or operator ->
+} else {
+	// met_simple_typy does not exist in dc
+}
+```
 
 ## <a id="lookup_result_t"/> lookup\_result\_t
 
@@ -462,4 +530,5 @@ std::cout << "Read result: " << r.data << std::endl;
 try { proxy.remove_async (k1).get (); } catch (...) {}
 try { proxy.remove_async (k2).get (); } catch (...) {}
 ```
+
 
