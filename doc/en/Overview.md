@@ -38,7 +38,7 @@ Libelliptics-proxy provides you usefull development kit to communicate with elli
 		- [remove_async](#-remove_async)
 - [Examples](#-examples)
 	- [Initialization](#-initialization)
-	- Synchronous write/read
+	- [Synchronous write/lookup](#-synchronous-writelookup)
 	- Asynchronous write/read
 
 # <a id="support-structures"/> Support structures
@@ -475,19 +475,19 @@ elliptics_proxy_t proxy(elconf);
 ```
 In this case proxy will communicate with elliptcis node (localhost:1025) and gain remote table from that. Proxy will use groups 1 and 2 to write a data if it does not specify another by relate optional parameter. Only record is needed to consider a write as successful (also if it does not specify another by relate optional parameter). Only error messages will appear in /dev/stderr.
 
-## <a id="syncexample"/> Synchronous write/read
+## <a id="synchronous-writelookup"/> Synchronous write/lookup
 ```cpp
-key_t k(std::string("filename.txt"));
+elliptics::key_t k(std::string("filename.txt"));
 proxy.remove (k);
 std::string data("some data");
 std::vector <int> g = {2};
 std::vector<lookup_result_t> l = proxy.write(k, data, _groups = g);
 std::cout << "written " << l.size() << " copies" << std::endl;
 for (auto it = l.begin(); it != l.end(); ++it) {
-    std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
-}
+        std::cout << "\tpath: " << it->host() << ":" << it->port() << it-       >path() << std::endl;
+}       
 lookup_result_t l1 = proxy.lookup(k);
-std::cout << "lookup path: " << l1.hostname << ":" << l1.port << l1.path << std::endl;
+std::cout << "lookup path: " << l1.host() << ":" << l1.port() << l1.path() <<   std::endl;
 ```
 
 ## <a id="asyncexample"/> Asynchronous write/read
@@ -547,5 +547,6 @@ std::cout << "Read result: " << r.data << std::endl;
 try { proxy.remove_async (k1).get (); } catch (...) {}
 try { proxy.remove_async (k2).get (); } catch (...) {}
 ```
+
 
 
