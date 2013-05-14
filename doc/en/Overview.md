@@ -477,17 +477,16 @@ In this case proxy will communicate with elliptcis node (localhost:1025) and gai
 
 ## <a id="synchronous-writelookup"/> Synchronous write/lookup
 ```cpp
-elliptics::key_t k(std::string("filename.txt"));
-proxy.remove (k);
+elliptics::key_t k("filename.txt");
 std::string data("some data");
 std::vector <int> g = {2};
 std::vector<lookup_result_t> l = proxy.write(k, data, _groups = g);
 std::cout << "written " << l.size() << " copies" << std::endl;
 for (auto it = l.begin(); it != l.end(); ++it) {
-        std::cout << "\tpath: " << it->host() << ":" << it->port() << it-       >path() << std::endl;
-}       
+	std::cout << "\tpath: " << it->host() << ':' << it->port() << it->path() << std::endl;
+}
 lookup_result_t l1 = proxy.lookup(k);
-std::cout << "lookup path: " << l1.host() << ":" << l1.port() << l1.path() <<   std::endl;
+std::cout << "lookup path: " << l1.host() << ':' << l1.port() << l1.path()  << std::endl;
 ```
 
 ## <a id="asyncexample"/> Asynchronous write/read
