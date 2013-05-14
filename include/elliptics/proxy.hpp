@@ -519,7 +519,7 @@ public:
 		)
 	)
 	{
-		update_indexes_async_impl(key, indexes, data);
+		return update_indexes_async_impl(key, indexes, data);
 	}
 
 	async_update_indexes_result_t update_indexes_async(const key_t &key, const std::vector<index_entry_t> &indexes);

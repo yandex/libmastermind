@@ -1406,6 +1406,9 @@ std::vector<int> elliptics_proxy_t::impl::get_groups(key_t &key, const std::vect
 
 async_update_indexes_result_t elliptics_proxy_t::impl::update_indexes_async_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data) {
 	ioremap::elliptics::session sess(*m_elliptics_node);
+	if (data.empty()) {
+		data.resize(indexes.size());
+	}
 	return sess.update_indexes(key, indexes, data);
 }
 
