@@ -73,9 +73,9 @@ Fields:
 |long|check_timeout|Wait until transaction acknowledge is received. Default value: 0|
 |std::vector<int>|groups|List of groups which will be used to store a data if you do not specify another with relate optional parameter. Default value: empty vector.|
 |int|base_port|Default value: 1024.|
-|int|directory_bit_num|Maximum valid number of inaccessible dnet backends. Default value: 32.|
+|int|directory_bit_num|Default value: 32.|
 |int|success_copies_num|Specify a number how many good recording is needed to consider write call as successful. <br> - Positive value <br> count of good recording must be greater than or equal to this value. <br> - SUCCESS_COPIES_TYPE__ANY <br> a successful recording is enough. <br> - SUCCESS_COPIES_TYPE__QUORUM <br> requires [replication_count div 2 plus 1] successful records. <br> - SUCCESS_COPIES_TYPE__ALL <br> exactly replication_count successful records are needed. <br> Default value: 2.|
-|int|die_limit|Default value: 0.|
+|int|die_limit|Maximum valid number of inaccessible dnet backends. Default value: 0.|
 |int|replication_count|How many replicas should be stored. Default value: 0.|
 |int|chunk_size|Data will be sent in packs of chunk_size bytes if chunk_size greater than zero. Is not used when either DNET_IO_FLAGS_PREPARE or DNET_IO_FLAGS_COMMIT or DNET_IO_FLAGS_PLAIN_WRITE is set into ioflags. Default value: 0.|
 |bool|eblob_style_path|Determines a representation of path to data. Default value: true.|
