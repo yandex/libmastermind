@@ -313,7 +313,7 @@ Returns vector of [`lookup_result_t`](#-lookup_result_t).
 ### <a id="read"/> read
 
 ```cpp
-read_result_t read(key_t &key, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, bool latest, bool embeded);
+data_container_t read(key_t &key, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, bool latest, bool embeded);
 ```
 
 Try to find record with [key](#-required) in [groups](#-optional).  
@@ -322,7 +322,7 @@ Throws std::exception if failure occurs.
 
 **Return value**
 
-Returns [`read_result_t`](#-lookup_result_t).
+Returns [`data_container_t`](#-data_container_t).
 
 <!-- [Methods](#-methods) -->
 
@@ -359,7 +359,7 @@ Returns vector of std::strings.
 ### <a id="bulk_read"/> bulk_read
 
 ```cpp
-std::map<key_t, read_result_t> bulk_read(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups);
+std::map<key_t, data_container_t> bulk_read(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups);
 ```
 
 Try to read records pack for the set of [keys](#-required).
@@ -368,7 +368,7 @@ Throws std::exception if failure occurs.
 
 **Return value**
 
-Returns maps of [`key_t`](#-key_t) and [`read_result_t`](#-read_result_t).
+Returns maps of [`key_t`](#-key_t) and [`data_container_t`](#-data_container_t).
 
 <!-- [Methods](#-methods) -->
 
