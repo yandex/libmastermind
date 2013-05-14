@@ -7,7 +7,7 @@ Libelliptics-proxy provides you usefull development kit to communicate with elli
 	- [key_t](#-key_t)
 	- [data_container_t](#-data_container_t)
 	- [lookup_result_t](#-lookup_result_t)
-	- status_result_t
+	- [status_result_t](#-status_result_t)
 	- [async_read_result_t](#-async_read_result_t)
 	- [async_write_result_t](#-async_write_result_t)
 	- [async_remove_result_t](#-async_remove_result_t)
@@ -207,6 +207,19 @@ Methods list:
 - full_path
 
 ## <a id="status_result_t"/> status\_result\_t
+This structure consists following fields:  
+
+|Type|Name|Description|
+|----|----|-----------|
+|std::string|addr|Internet address of the elliptcis node.|
+|float [3]|la|Load average from the target system multiplied by 100.|
+|uint64_t|vm_total|System information about total virtual memory.|
+|uint64_t|vm_free|System information about free virtual memory.|
+|uint64_t|vm_cached|System information about cached virtual memory.|
+|uint64_t|storage_size|Filesystem size in MB.|
+|uint64_t|available_size|Available size in MB.|
+|uint64_t|files|Number of files.|
+|uint64_t|fsid|File system ID.|
 
 ## <a id="async_read_result_t"/> async\_read\_result\_t
 This class implements a 'future' semantics for read_async.
