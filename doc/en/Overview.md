@@ -192,8 +192,8 @@ Is used to identify data or the name of the application.
 Is used to identidy a set of data.
 - `key_t from, to;`  
 Are used together to identidy a set of data.
-- `std::string data;`  
-Keeps a binary data which should be stored or should be send to the script.
+- `std::string data;` or `data_container_t data;`
+Keeps a binary data which should be stored or should be sent to the script.
 - `std::string script;`  
 Is the name of the script of the application.
 
