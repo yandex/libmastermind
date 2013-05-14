@@ -27,11 +27,11 @@ Libelliptics-proxy provides you usefull development kit to communicate with elli
 		- [exec_script](#-exec_script)
 		- [ping](#-ping)
 		- [stat_log](#-stat_log)
-		- get_metabalancer_groups
-		- get_metabalancer_group_info
-		- get_symmetric_groups
-		- get_bad_groups
-		- get_all_groups
+		- [get_metabalancer_groups](#-get_metabalancer_groups)
+		- [get_metabalancer_group_info](#-get_metabalancer_group_info)
+		- [get_symmetric_groups](#-get_symmetric_groups)
+		- [get_bad_groups](#-get_bad_groups)
+		- [get_all_groups](#-get_all_groups)
 	- [Asynchronous](#-asynchronous)
 		- [read_async](#-read_async)
 		- [write_async](#-write_async)
@@ -244,7 +244,7 @@ Specify a number how many good recording is needed to consider write call as suc
 
 ### <a id="lookup"/> lookup
 
-```
+```cpp
 lookup_result_t lookup(key_t &[key](#-key), std::vector<int> &groups);
 ```
 
@@ -258,8 +258,8 @@ Returns [`lookup_result_t`](#-lookup_result_t).
 
 ### <a id="write"/> write
 
-```
-std::vector<lookup_result_t> write(key_t &key, std::string &data, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
+```cpp
+std::vector<lookup_result_t> write(key_t &key, data_container_t &data, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, unsigned int success_copies_num);
 ```
 
 Try to write [data](#-required) by [key](#-required) into [groups](#-optional). Remove written records if their number does not relate with [success_copies_num](#-optional).  
@@ -273,7 +273,7 @@ Returns vector of [`lookup_result_t`](#-lookup_result_t).
 
 ### <a id="read"/> read
 
-```
+```cpp
 read_result_t read(key_t &key, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, bool latest, bool embeded);
 ```
 
@@ -289,7 +289,7 @@ Returns [`read_result_t`](#-lookup_result_t).
 
 ### <a id="remove"/> remove
 
-```
+```cpp
 void remove(key_t &key, std::vector<int> &groups);
 ```
 
@@ -304,7 +304,7 @@ None.
 
 ### <a id="range_get"/> range_get
 
-```
+```cpp
 std::vector<std::string> range_get(key_t &from, key_t &to, uint64_t cflags, uint64_t ioflags, uint64_t limit_start, uint64_t limit_num, const std::vector<int> &groups, key_t &key);
 ```
 
@@ -319,7 +319,7 @@ Returns vector of std::strings.
 
 ### <a id="bulk_read"/> bulk_read
 
-```
+```cpp
 std::map<key_t, read_result_t> bulk_read(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups);
 ```
 
@@ -335,7 +335,7 @@ Returns maps of [`key_t`](#-key_t) and [`read_result_t`](#-read_result_t).
 
 ### <a id="lookup_addr"/> lookup_addr
 
-```
+```cpp
 std::vector<elliptics_proxy_t::remote> lookup_addr(key_t &key, std::vector<int> &groups);
 ```
 
@@ -347,8 +347,8 @@ Returns vector of maps of [`elliptics_proxy_t::remote`](#-remote).
 
 ### <a id="bulk_write"/> bulk_write
 
-```
-std::map<key_t, std::vector<lookup_result_t> > bulk_write(std::vector<key_t> &keys, std::vector<std::string> &data, uint64_t cflags, std::vector<int> &groups, unsigned int success_copies_num);
+```cpp
+std::map<key_t, std::vector<lookup_result_t> > bulk_write(std::vector<key_t> &keys, std::vector<data_container_t> &data, uint64_t cflags, std::vector<int> &groups, unsigned int success_copies_num);
 ```
 
 Try to write a set of [data](#-required) with the set of [keys](#-required).  
@@ -363,7 +363,7 @@ Returns maps of [`key_t`](#-key_t) and vector of [`lookup_result_t`](#-lookup_re
 
 ### <a id="exec_script"/> exec_script
 
-```
+```cpp
 std::string exec_script(key_t &key, std::string &data, std::string &script, std::vector<int> &groups);
 ```
 
@@ -375,7 +375,7 @@ Returns string.
 
 ### <a id="ping"/> ping
 
-```
+```cpp
 bool ping();
 ```
 
@@ -389,7 +389,7 @@ Returns boolean.
 
 ### <a id="stat_log"/> stat_log
 
-```
+```cpp
 std::vector<status_result_t> stat_log();
 ```
 
@@ -401,6 +401,32 @@ Returns vector of [`status_result_t`](#-status_result_t).
 
 <!-- [Methods](#-methods) -->
 
+### <a id="get_metabalancer_groups"/> get_metabalancer_groups
+```cpp
+std::vector<int> get_metabalancer_groups(uint64_t count, uint64_t size, key_t &key);
+```
+
+### <a id="get_metabalancer_group_info"/> get_metabalancer_group_info
+```cpp
+group_info_response_t get_metabalancer_group_info(int group);
+```
+
+### <a id="get_symmetric_groups"/> get_symmetric_groups
+```cpp
+std::vector<std::vector<int> > get_symmetric_groups();
+```
+
+### <a id="get_bad_groups"/> get_bad_groups
+```cpp
+std::map<int, std::vector<int> > get_bad_groups();
+```
+
+### <a id="get_all_groups"/> get_all_groups
+```cpp
+std::vector<int> get_all_groups();
+```
+
+
 ## <a id="asynchronous"/> Asynchronous
 
 
@@ -408,7 +434,7 @@ Returns vector of [`status_result_t`](#-status_result_t).
 
 ### <a id="read_async"/> read_async
 
-```
+```cpp
 async_read_result_t read_async(key_t &key, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, bool latest, bool embeded);
 ```
 
@@ -423,8 +449,8 @@ Returns [`async_result`](#-async_result).
 
 ### <a id="write_async"/> write_async
 
-```
-async_write_result_t write_async(key_t &key, std::string &data, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
+```cpp
+async_write_result_t write_async(key_t &key, data_container_t &data, uint64_t offset, uint64_t size, uint64_t cflags, uint64_t ioflags, std::vector<int> &groups, unsigned int success_copies_num, std::vector<std::shared_ptr<embed_t> > embeds);
 ```
 
 Sends request for [`write`](#-write) to elliptics and returns control to your thread immediately.  
@@ -438,7 +464,7 @@ Returns [`async_result`](#-async_result).
 
 ### <a id="remove_async"/> remove_async
 
-```
+```cpp
 async_remove_result_t remove_async(key_t &key, std::vector<int> &groups);
 ```
 
@@ -543,6 +569,4 @@ try {
 }
 std::cout << "Read result: " << dc.data.to_string() << std::endl;
 ```
-
-
 
