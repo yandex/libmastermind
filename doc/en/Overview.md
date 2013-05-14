@@ -4,7 +4,7 @@ Libelliptics-proxy provides you usefull development kit to communicate with elli
 - [Support structures](#-support-structures)
 	- [remote](#-remote)
 	- [config](#-config)
-	- key_t
+	- [key_t](#-key_t)
 	- [data_container_t](#-data_container_t)
 	- [lookup_result_t](#-lookup_result_t)
 	- status_result_t
@@ -83,6 +83,39 @@ Fields:
 |int|group_weights_refresh_period|Time in seconds. Is used to wait between requests to mastermind. Default value: 60.|
 
 ## <a id="key_t"/> key_t
+Is used to identify a written data.  
+There are two ways to construct a key_t:
+- name (std::string) and type (int, default = 0)
+- dnet_id  
+
+Example for first way:  
+```cpp
+elliptcis::key_t key("filename.txt");
+```
+
+dnet_id is identifier which is used in elliptcis:
+```cpp
+struct dnet_id {
+	uint8_t id[DNET_ID_SIZE];
+	uint32_t group_id;
+	int type;
+} __attribute__ ((packed));
+```
+Example for second way:
+```cpp
+ioremap::elliptics::dnet_id id;
+// fill fields of id here
+elliptics::key_t key(id);
+```
+Methods of key_t:  
+
+|Declaration|Description|
+|-----------|-----------|
+|`bool by_id() const;`|Returns true if key was constructed by dnet_id.|
+|`const std::string &remote() const;`|Returns name of key if it was constructed by first way.|
+|`int type() const;`|Returns of key if it was constructed by first way.|
+|`const dnet_id &id() const;`|Returns dnet_id of key if it was constructed by second way.|
+|`std::string to_string() const;`|Returns string representation of key.|
 
 ## <a id="data_container_t"/> data_container_t
 This class provides useful way to store data with additional (embedded) information.  
@@ -192,7 +225,7 @@ Is used to identify data or the name of the application.
 Is used to identidy a set of data.
 - `key_t from, to;`  
 Are used together to identidy a set of data.
-- `std::string data;` or `data_container_t data;`
+- `std::string data;` or `data_container_t data;`  
 Keeps a binary data which should be stored or should be sent to the script.
 - `std::string script;`  
 Is the name of the script of the application.
