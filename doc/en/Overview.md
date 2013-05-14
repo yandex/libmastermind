@@ -8,9 +8,9 @@ Libelliptics-proxy provides you usefull development kit to communicate with elli
 	- [data_container_t](#-data_container_t)
 	- [lookup_result_t](#-lookup_result_t)
 	- status_result_t
-	- async_read_result_t
-	- async_write_result_t
-	- async_remove_result_t
+	- [async_read_result_t](#-async_read_result_t)
+	- [async_write_result_t](#-async_write_result_t)
+	- [async_remove_result_t](#-async_remove_result_t)
 - [Parameters](#-parameters)
 	- [Required](#-required)
 	- [Optional](#-optional)
@@ -208,11 +208,17 @@ Methods list:
 
 ## <a id="status_result_t"/> status\_result\_t
 
-## <a id="async-read-result-t"/> async\_read\_result\_t
+## <a id="async_read_result_t"/> async\_read\_result\_t
+This class implements a 'future' semantics for read_async.
+You can gain result (data_container_t) by method `get()`. This method will wait result until it is not ready to read.
 
-## <a id="async-write-result-t"/> async\_write\_result\_t
+## <a id="async_write_result_t"/> async\_write\_result\_t
+This class implements a 'future' semantics for write_async.
+You can gain result: either std::vector<lookup_result_t> by method `get()` or first lookup_result_t by method `get_one()`. These methods will wait result until it is not ready to read.
 
-## <a id="async-remove-result-t"/> async\_remove\_result\_t
+## <a id="async_remove_result_t"/> async\_remove\_result\_t
+This class implements a 'future' semantics for remove_async.
+You can wait until the method is not done by `wait()`.
 
 # <a id="parameters"/> Parameters
 
