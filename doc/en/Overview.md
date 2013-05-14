@@ -39,7 +39,7 @@ Libelliptics-proxy provides you usefull development kit to communicate with elli
 - [Examples](#-examples)
 	- [Initialization](#-initialization)
 	- [Synchronous write/lookup](#-synchronous-writelookup)
-	- Asynchronous write/read
+	- [Asynchronous write/read](#-asynchronous-writeread)
 
 # <a id="support-structures"/> Support structures
 
@@ -489,10 +489,10 @@ lookup_result_t l1 = proxy.lookup(k);
 std::cout << "lookup path: " << l1.host() << ':' << l1.port() << l1.path()  << std::endl;
 ```
 
-## <a id="asyncexample"/> Asynchronous write/read
+## <a id="asynchronous-writeread"/> Asynchronous write/read
 ```cpp
-key_t k1(std::string("key1.txt"));
-key_t k2(std::string("key2.txt"));
+elliptics::key_t k1("key1.txt");
+elliptics::key_t k2("key2.txt");
 
 std::string data1("data1");
 std::string data2("data2");
@@ -502,49 +502,46 @@ auto awr1 = proxy.write_async(k1, data1);
 auto awr2 = proxy.write_async(k2, data2);
 
 try {
-       l = awr1.get ();
+	l = awr1.get ();
 } catch (...) {
-        std::cout << "Exception during get write result" << std::endl;
-        return;
+	std::cout << "Exception during get write result" << std::endl;
+	return;
 }
 std::cout << "written " << l.size() << " copies" << std::endl;
 for (auto it = l.begin(); it != l.end(); ++it) {
-    std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+	std::cout << "\tpath: " << it->host() << ':' << it->port() << it-   >path() << std::endl;
 }
 
 try {
-    l = awr2.get ();
+	l = awr2.get ();
 } catch (...) {
-    std::cout << "Exception during get write2 result" << std::endl;
-    return;
+	std::cout << "Exception during get write2 result" << std::endl;
+	return;
 }
 std::cout << "written " << l.size() << " copies" << std::endl;
 for (auto it = l.begin(); it != l.end(); ++it) {
-    std::cout << "\tpath: " << it->hostname << ":" << it->port << it->path << std::endl;
+	std::cout << "\tpath: " << it->host() << ':' << it->port() << it-   >path() << std::endl;
 }
 
 async_read_result_t arr1 = proxy.read_async(k1);
 async_read_result_t arr2 = proxy.read_async(k2);
-read_result_t r;
+data_container_t dc;
 
 try {
-    r = arr1.get ();
+	dc = arr1.get ();
 } catch (...) {
-    std::cout << "Exception during get read result" << std::endl;
-    return;
+	std::cout << "Exception during get read result" << std::endl;
+	return;
 }
-std::cout << "Read result: " << r.data << std::endl;
+std::cout << "Read result: " << dc.data.to_string() << std::endl;
 
 try {
-    r = arr2.get ();
+	dc = arr2.get ();
 } catch (...) {
-    std::cout << "Exception during get read result" << std::endl;
-    return;
+	std::cout << "Exception during get read result" << std::endl;
+	return;
 }
-std::cout << "Read result: " << r.data << std::endl;
-
-try { proxy.remove_async (k1).get (); } catch (...) {}
-try { proxy.remove_async (k2).get (); } catch (...) {}
+std::cout << "Read result: " << dc.data.to_string() << std::endl;
 ```
 
 
