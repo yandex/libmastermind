@@ -151,7 +151,6 @@ typedef ioremap::elliptics::async_remove_result async_remove_result_t;
 BOOST_PARAMETER_NAME(key)
 BOOST_PARAMETER_NAME(keys)
 BOOST_PARAMETER_NAME(data)
-BOOST_PARAMETER_NAME(entry)
 
 BOOST_PARAMETER_NAME(from)
 BOOST_PARAMETER_NAME(to)
