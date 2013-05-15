@@ -266,6 +266,13 @@ public:
 
 	std::vector<int> get_groups(key_t &key, const std::vector<int> &groups, int count = 0) const;
 
+	async_update_indexes_result_t update_indexes_async_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data);
+	async_update_indexes_result_t update_indexes_async(const key_t &key, const std::vector<index_entry_t> &indexes);
+	async_find_indexes_result_t find_indexes_async(const std::vector<dnet_raw_id> &indexes);
+	async_find_indexes_result_t find_indexes_async(const std::vector<std::string> &indexes);
+	async_check_indexes_result_t check_indexes_async(const key_t &key);
+
+
 #ifdef HAVE_METABASE
 	std::vector<int> get_metabalancer_groups_impl(uint64_t count, uint64_t size, key_t &key);
 	group_info_response_t get_metabalancer_group_info_impl(int group);
@@ -411,6 +418,26 @@ std::vector<status_result_t> elliptics_proxy_t::stat_log() {
 
 std::string elliptics_proxy_t::id_str(const key_t &key) {
 	return pimpl->id_str(key);
+}
+
+async_update_indexes_result_t elliptics_proxy_t::update_indexes_async_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data) {
+	return pimpl->update_indexes_async_impl(key, indexes, data);
+}
+
+async_update_indexes_result_t elliptics_proxy_t::update_indexes_async(const key_t &key, const std::vector<index_entry_t> &indexes) {
+	return pimpl->update_indexes_async(key, indexes);
+}
+
+async_find_indexes_result_t elliptics_proxy_t::find_indexes_async(const std::vector<dnet_raw_id> &indexes) {
+	return pimpl->find_indexes_async(indexes);
+}
+
+async_find_indexes_result_t elliptics_proxy_t::find_indexes_async(const std::vector<std::string> &indexes) {
+	return pimpl->find_indexes_async(indexes);
+}
+
+async_check_indexes_result_t elliptics_proxy_t::check_indexes_async(const key_t &key) {
+	return pimpl->check_indexes_async(key);
 }
 
 // pimpl
@@ -1299,6 +1326,33 @@ std::vector<int> elliptics_proxy_t::impl::get_groups(key_t &key, const std::vect
 	return lgroups;
 }
 
+async_update_indexes_result_t elliptics_proxy_t::impl::update_indexes_async_impl(key_t &key, std::vector<std::string> &indexes, std::vector<ioremap::elliptics::data_pointer> &data) {
+	ioremap::elliptics::session sess(*m_elliptics_node);
+	if (data.empty()) {
+		data.resize(indexes.size());
+	}
+	return sess.update_indexes(key, indexes, data);
+}
+
+async_update_indexes_result_t elliptics_proxy_t::impl::update_indexes_async(const key_t &key, const std::vector<index_entry_t> &indexes) {
+	ioremap::elliptics::session sess(*m_elliptics_node);
+	return sess.update_indexes(key, indexes);
+}
+
+async_find_indexes_result_t elliptics_proxy_t::impl::find_indexes_async(const std::vector<dnet_raw_id> &indexes) {
+	ioremap::elliptics::session sess(*m_elliptics_node);
+	return sess.find_indexes(indexes);
+}
+
+async_find_indexes_result_t elliptics_proxy_t::impl::find_indexes_async(const std::vector<std::string> &indexes) {
+	ioremap::elliptics::session sess(*m_elliptics_node);
+	return sess.find_indexes(indexes);
+}
+
+async_check_indexes_result_t elliptics_proxy_t::impl::check_indexes_async(const key_t &key) {
+	ioremap::elliptics::session sess(*m_elliptics_node);
+	return sess.check_indexes(key);
+}
 
 #ifdef HAVE_METABASE
 bool elliptics_proxy_t::impl::collect_group_weights()
