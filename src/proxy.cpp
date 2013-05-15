@@ -223,12 +223,6 @@ public:
 	impl(const elliptics_proxy_t::config &c);
 	~impl();
 
-	std::string get_path_impl(const ioremap::elliptics::lookup_result_entry &l);
-	std::vector<std::string> get_path_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l);
-
-	elliptics_proxy_t::remote get_host_impl(const ioremap::elliptics::lookup_result_entry &l);
-	std::vector<elliptics_proxy_t::remote> get_host_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l);
-
 	lookup_result_t lookup_impl(key_t &key, std::vector<int> &groups);
 
 	std::vector<lookup_result_t> write_impl(key_t &key, data_container_t &data, uint64_t offset, uint64_t size,
@@ -320,22 +314,6 @@ elliptics_proxy_t::elliptics_proxy_t(const elliptics_proxy_t::config &c)
 }
 
 elliptics_proxy_t::~elliptics_proxy_t() {
-}
-
-std::string elliptics_proxy_t::get_path_impl(const ioremap::elliptics::lookup_result_entry &l) {
-	return pimpl->get_path_impl(l);
-}
-
-std::vector<std::string> elliptics_proxy_t::get_path_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l) {
-	return pimpl->get_path_impl(l);
-}
-
-elliptics_proxy_t::remote elliptics_proxy_t::get_host_impl(const ioremap::elliptics::lookup_result_entry &l) {
-	return pimpl->get_host_impl(l);
-}
-
-std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::get_host_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l) {
-	return pimpl->get_host_impl(l);
 }
 
 lookup_result_t elliptics_proxy_t::lookup_impl(key_t &key, std::vector<int> &groups) {
@@ -535,62 +513,6 @@ lookup_result_t elliptics_proxy_t::impl::parse_lookup(const ioremap::elliptics::
 std::vector<lookup_result_t> elliptics_proxy_t::impl::parse_lookup(const std::vector<lookup_result_entry> &l)
 {
 	return elliptics::parse_lookup(l, m_eblob_style_path, m_base_port);
-}
-
-
-std::string elliptics_proxy_t::impl::get_path_impl(const ioremap::elliptics::lookup_result_entry &l) {
-	std::string path;
-	struct dnet_addr *addr = l.storage_address();
-	struct dnet_file_info *info = l.file_info();
-	dnet_convert_file_info(info);
-	uint16_t port = dnet_server_convert_port((struct sockaddr *)addr->addr, addr->addr_len);
-	if (m_eblob_style_path) {
-		path = l.file_path();
-		path = path.substr(path.find_last_of("/\\") + 1);
-		std::ostringstream oss;
-		oss << '/' << (port - m_base_port) << '/'
-			<< path << ':' << info->offset
-			<< ':' << info->size;
-		oss.str().swap(path);
-	} else {
-		//struct dnet_id id;
-		//elliptics_node_->transform(key.filename(), id);
-		//result.path = "/" + boost::lexical_cast<std::string>(port - base_port_) + '/' + hex_dir + '/' + id;
-	}
-	return path;
-}
-
-std::vector<std::string> elliptics_proxy_t::impl::get_path_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l) {
-	std::vector<std::string> ret;
-	for (auto it = l.begin(), end = l.end(); it != end; ++it) {
-		ret.push_back(get_path_impl(*it));
-	}
-	return ret;
-}
-
-elliptics_proxy_t::remote elliptics_proxy_t::impl::get_host_impl(const ioremap::elliptics::lookup_result_entry &l) {
-	struct dnet_addr *addr = l.storage_address();
-	struct dnet_file_info *info = l.file_info();
-	dnet_convert_file_info(info);
-
-	char hbuf[NI_MAXHOST];
-	memset(hbuf, 0, NI_MAXHOST);
-
-	if (getnameinfo((const sockaddr*)addr, addr->addr_len, hbuf, sizeof(hbuf), NULL, 0, 0) != 0) {
-		throw std::runtime_error("can not make dns lookup");
-	}
-	std::string host(hbuf);
-
-	uint16_t port = dnet_server_convert_port((struct sockaddr *)addr->addr, addr->addr_len);
-	return elliptics_proxy_t::remote(host, port);
-}
-
-std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::impl::get_host_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l) {
-	std::vector<elliptics_proxy_t::remote> ret;
-	for (auto it = l.begin(), end = l.end(); it != end; ++it) {
-		ret.push_back(get_host_impl(*it));
-	}
-	return ret;
 }
 
 lookup_result_t elliptics_proxy_t::impl::lookup_impl(key_t &key, std::vector<int> &groups)

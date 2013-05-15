@@ -151,7 +151,6 @@ typedef ioremap::elliptics::async_remove_result async_remove_result_t;
 BOOST_PARAMETER_NAME(key)
 BOOST_PARAMETER_NAME(keys)
 BOOST_PARAMETER_NAME(data)
-BOOST_PARAMETER_NAME(entry)
 
 BOOST_PARAMETER_NAME(from)
 BOOST_PARAMETER_NAME(to)
@@ -233,46 +232,6 @@ public:
 	virtual ~elliptics_proxy_t();
 
 public:
-	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(std::string), get_path, tag,
-		(required
-			(entry, (ioremap::elliptics::lookup_result_entry))
-		)
-	)
-	{
-		return get_path_impl(entry);
-	}
-
-	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(std::vector<std::string>), get_paths, tag,
-		(required
-			(entry, (std::vector<ioremap::elliptics::lookup_result_entry>))
-		)
-	)
-	{
-		return get_path_impl(entry);
-	}
-
-	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(remote), get_host, tag,
-		(required
-			(entry, (ioremap::elliptics::lookup_result_entry))
-		)
-	)
-	{
-		return get_host_impl(entry);
-	}
-
-	BOOST_PARAMETER_MEMBER_FUNCTION(
-		(std::vector<remote>), get_hosts, tag,
-		(required
-			(entry, (std::vector<ioremap::elliptics::lookup_result_entry>))
-		)
-	)
-	{
-		return get_host_impl(entry);
-	}
-
 	BOOST_PARAMETER_MEMBER_FUNCTION(
 		(lookup_result_t), lookup, tag,
 		(required
@@ -496,12 +455,6 @@ private:
 	class impl;
 	typedef std::auto_ptr<impl> impl_ptr;
 	impl_ptr pimpl;
-
-	std::string get_path_impl(const ioremap::elliptics::lookup_result_entry &l);
-	std::vector<std::string> get_path_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l);
-
-	remote get_host_impl(const ioremap::elliptics::lookup_result_entry &l);
-	std::vector<remote> get_host_impl(const std::vector<ioremap::elliptics::lookup_result_entry> &l);
 
 	lookup_result_t lookup_impl(key_t &key, std::vector<int> &groups);
 
