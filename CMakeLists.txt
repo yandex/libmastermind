@@ -57,6 +57,8 @@ SET_TARGET_PROPERTIES(${LIB} PROPERTIES
 TARGET_LINK_LIBRARIES(${LIB}
                       ${REQUIRED_LIBRARIES})
 
+add_subdirectory(bindings)
+
 INSTALL(TARGETS ${LIB}
             RUNTIME DESTINATION bin COMPONENT runtime
             LIBRARY DESTINATION lib COMPONENT runtime
