@@ -160,8 +160,8 @@ public:
 	{
 	}
 
-	python_data_container_t get() {
-		return m_async_read_result->get();
+	python_data_container_t get_one() {
+		return m_async_read_result->get_one();
 	}
 private:
 	std::shared_ptr<async_read_result_t> m_async_read_result;
@@ -667,7 +667,7 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 	;
 
 	class_<python_async_read_result_t>("async_read_result_t", no_init)
-		.def("get", &python_async_read_result_t::get)
+		.def("get_one", &python_async_read_result_t::get_one)
 	;
 
 	class_<python_async_write_result_t>("async_write_result_t", no_init)

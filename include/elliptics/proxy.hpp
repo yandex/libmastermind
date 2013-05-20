@@ -41,6 +41,7 @@
 
 #include "elliptics/data_container.hpp"
 #include "elliptics/lookup_result.hpp"
+#include "elliptics/async_results.hpp"
 
 namespace elliptics {
 
@@ -60,14 +61,6 @@ struct group_info_response_t {
 
 typedef ioremap::elliptics::key key_t;
 
-class embed_t {
-public:
-	uint32_t type;
-	uint32_t flags;
-	std::string data;
-	virtual const std::string pack() const = 0;
-};
-
 class status_result_t {
 public:
 	std::string addr;
@@ -81,72 +74,6 @@ public:
 	uint64_t files;
 	uint64_t fsid;
 };
-
-struct async_read_result_t {
-	typedef ioremap::elliptics::read_result_entry inner_result_entry_t;
-	typedef ioremap::elliptics::async_result<inner_result_entry_t> inner_result_t;
-	typedef data_container_t outer_result_t;
-	typedef std::function<outer_result_t (const inner_result_entry_t &)> parser_t;
-
-	async_read_result_t(inner_result_t &&inner_result, const parser_t &parser)
-		: inner_result(std::move(inner_result))
-		, parser (parser)
-	{
-	}
-
-	async_read_result_t(async_read_result_t &&ob)
-		: inner_result(std::move(ob.inner_result))
-		, parser(std::move(ob.parser))
-	{
-	}
-
-	outer_result_t get() {
-		return parser(inner_result.get_one());
-	}
-
-private:
-	inner_result_t inner_result;
-	parser_t parser;
-};
-
-struct async_write_result_t {
-	typedef ioremap::elliptics::async_write_result inner_result_t;
-	typedef elliptics::lookup_result_t outer_result_t;
-
-	async_write_result_t(inner_result_t &&inner_result, bool eblob_style_path, int base_port)
-		: m_inner_result(std::move(inner_result))
-		, m_eblob_style_path(eblob_style_path)
-		, m_base_port(base_port)
-	{
-	}
-
-	async_write_result_t(async_write_result_t &&ob)
-		: m_inner_result(std::move(ob.m_inner_result))
-		, m_eblob_style_path(ob.m_eblob_style_path)
-		, m_base_port(ob.m_base_port)
-	{
-	}
-
-	std::vector<outer_result_t> get() {
-		auto v = m_inner_result.get();
-		std::vector<outer_result_t> res;
-		for (auto it = v.begin(); it != v.end(); ++it)
-			res.push_back(lookup_result_t(*it, m_eblob_style_path, m_base_port));
-		return res;
-	}
-
-	outer_result_t get_one() {
-		auto l = m_inner_result.get_one();
-		return lookup_result_t(l, m_eblob_style_path, m_base_port);
-	}
-
-private:
-	inner_result_t m_inner_result;
-	bool m_eblob_style_path;
-	int m_base_port;
-};
-
-typedef ioremap::elliptics::async_remove_result async_remove_result_t;
 
 typedef ioremap::elliptics::find_indexes_result_entry find_indexes_result_entry_t;
 typedef ioremap::elliptics::index_entry index_entry_t;
@@ -546,10 +473,6 @@ private:
 										  int success_copies_num);
 
 	async_remove_result_t remove_async_impl(key_t &key, std::vector<int> &groups);
-
-
-	//lookup_result_t parse_lookup(const ioremap::elliptics::lookup_result_entry &l);
-	//std::vector<lookup_result_t> parse_lookup(const ioremap::elliptics::write_result &l);
 
 	std::vector<int> get_groups(key_t &key, const std::vector<int> &groups, int count = 0) const;
 

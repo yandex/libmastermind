@@ -12,6 +12,7 @@
 #include <boost/tokenizer.hpp>
 
 #include <cppunit/TestResult.h>
+#include <cppunit/TestResultCollector.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "teamcity_cppunit.h"
 
@@ -214,10 +215,10 @@ public:
 		auto arr1 = m_proxy->read_async(key1);
 		auto arr2 = m_proxy->read_async(key2);
 
-		dc = arr1.get();
+		dc = arr1.get_one();
 		CPPUNIT_ASSERT(dc.data.to_string() == data1);
 
-		dc = arr2.get();
+		dc = arr2.get_one();
 		CPPUNIT_ASSERT(dc.data.to_string() == data2);
 	}
 
@@ -360,6 +361,10 @@ int main(int argc, char* argv[])
 	}
 
 	CppUnit::TestResult controller;
+
+	CppUnit::TestResultCollector result;
+	controller.addListener(&result);
+
 	std::unique_ptr<CppUnit::TestListener> listener(new JetBrains::TeamcityProgressListener());
 	controller.addListener(listener.get());
 	CppUnit::TestSuite suite;
@@ -387,7 +392,7 @@ int main(int argc, char* argv[])
 	ADD_TEST("write into 3 groups, 3 groups are shut down; with SUCCESS_COPIES_TYPE__ANY", write_g0_3_scnANY);
 
 	suite.run(&controller);
-	return 0;
+	return result.wasSuccessful() ? 0 : 1;;
 #if 0
 	//test_lookup ();
 	//test_read_async ();

@@ -580,33 +580,7 @@ data_container_t elliptics_proxy_t::impl::read_impl(key_t &key, uint64_t offset,
 				uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 				bool latest, bool embeded)
 {
-	session elliptics_session(*m_elliptics_node);
-	std::vector<int> lgroups;
-	lgroups = get_groups(key, groups);
-
-	elliptics_session.set_cflags(cflags);
-	elliptics_session.set_ioflags(ioflags);
-
-	try {
-		elliptics_session.set_groups(lgroups);
-
-		if (latest)
-			return data_container_t::unpack(elliptics_session.read_latest(key, offset, size).get_one().file(), embeded);
-		else
-			return data_container_t::unpack(elliptics_session.read_data(key, offset, size).get_one().file(), embeded);
-	}
-	catch (const std::exception &e) {
-		std::stringstream msg;
-		msg << "can not get data for key " << key.to_string() << " " << e.what() << std::endl;
-		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
-		throw;
-	}
-	catch (...) {
-		std::stringstream msg;
-		msg << "can not get data for key " << key.to_string() << std::endl;
-		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
-		throw;
-	}
+	return read_async_impl(key, offset, size, cflags, ioflags, groups, latest, embeded).get_one();
 }
 
 std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, data_container_t &data, uint64_t offset, uint64_t size,
@@ -840,52 +814,7 @@ std::vector<std::string> elliptics_proxy_t::impl::range_get_impl(key_t &from, ke
 
 void elliptics_proxy_t::impl::remove_impl(key_t &key, std::vector<int> &groups)
 {
-	session elliptics_session(*m_elliptics_node);
-	std::vector<int> lgroups;
-
-	lgroups = get_groups(key, groups);
-	try {
-		elliptics_session.set_groups(lgroups);
-		std::string l;
-		if (key.by_id()) {
-			struct dnet_id id = key.id();
-			int error = -1;
-
-			for (size_t i = 0; i < lgroups.size(); ++i) {
-				id.group_id = lgroups[i];
-				try {
-					elliptics_session.set_filter(ioremap::elliptics::filters::all);
-					elliptics_session.remove(id);
-					error = 0;
-				} catch (const std::exception &e) {
-					std::stringstream msg;
-					msg << "Can't remove object " << key.to_string() << " in group " << groups[i] << ": " << e.what();
-					m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
-				}
-			}
-
-			if (error) {
-				std::ostringstream str;
-				str << dnet_dump_id(&id) << ": REMOVE failed";
-				throw std::runtime_error(str.str());
-			}
-		} else {
-			elliptics_session.remove(key.remote());
-		}
-
-	}
-	catch (const std::exception &e) {
-		std::stringstream msg;
-		msg << "Can't remove object " << key.to_string() << " " << e.what();
-		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
-		throw;
-	}
-	catch (...) {
-		std::stringstream msg;
-		msg << "Can't remove object " << key.to_string();
-		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
-		throw;
-	}
+	remove_async_impl(key, groups).wait();
 }
 
 std::map<key_t, data_container_t> elliptics_proxy_t::impl::bulk_read_impl(std::vector<key_t> &keys, uint64_t cflags, std::vector<int> &groups)
@@ -1108,10 +1037,6 @@ std::string elliptics_proxy_t::impl::exec_script_impl(key_t &key, std::string &d
 	return res;
 }
 
-data_container_t read_parser(const ioremap::elliptics::read_result_entry &entry, bool embeded) {
-	return data_container_t::unpack(entry.file(), embeded);
-}
-
 async_read_result_t elliptics_proxy_t::impl::read_async_impl(key_t &key, uint64_t offset, uint64_t size,
 												  uint64_t cflags, uint64_t ioflags, std::vector<int> &groups,
 												  bool latest, bool embeded) {
@@ -1125,12 +1050,10 @@ async_read_result_t elliptics_proxy_t::impl::read_async_impl(key_t &key, uint64_
 	try {
 		elliptics_session.set_groups(lgroups);
 
-		auto parser = std::bind(read_parser, std::placeholders::_1, embeded);
-
 		if (latest)
-			return async_read_result_t(elliptics_session.read_latest(key, offset, size), parser);
+			return async_read_result_t(elliptics_session.read_latest(key, offset, size), embeded);
 		else
-			return async_read_result_t(elliptics_session.read_data(key, offset, size), parser);
+			return async_read_result_t(elliptics_session.read_data(key, offset, size), embeded);
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
@@ -1223,6 +1146,7 @@ async_remove_result_t elliptics_proxy_t::impl::remove_async_impl(key_t &key, std
 	lgroups = get_groups(key, groups);
 	try {
 		elliptics_session.set_groups(lgroups);
+		elliptics_session.set_filter(ioremap::elliptics::filters::all);
 		return elliptics_session.remove(key);
 	}
 	catch (const std::exception &e) {
