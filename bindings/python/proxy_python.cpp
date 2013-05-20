@@ -124,10 +124,10 @@ public:
 	}
 };
 
-template<typename T>
+template<typename T, typename U>
 class python_async_result_t {
 public:
-	typedef ioremap::elliptics::async_result<T> async_result_t;
+	typedef T async_result_t;
 
 	python_async_result_t(async_result_t &&async_result)
 		: m_async_result(new async_result_t(std::move(async_result)))
@@ -135,64 +135,31 @@ public:
 	}
 
 	list get() {
-		list res;
-
 		auto v = m_async_result->get();
-		for (auto it = v.begin(); it != v.end(); ++it)
-			res.append(*it);
-
-		return res;
-	}
-
-	T get_one() {
-		return m_async_result->get_one();
-	}
-private:
-	std::shared_ptr<async_result_t> m_async_result;
-};
-
-typedef python_async_result_t<ioremap::elliptics::callback_result_entry> python_async_remove_result_t;
-
-class python_async_read_result_t {
-public:
-	python_async_read_result_t(async_read_result_t &&async_read_result)
-		: m_async_read_result(new async_read_result_t(std::move(async_read_result)))
-	{
-	}
-
-	python_data_container_t get_one() {
-		return m_async_read_result->get_one();
-	}
-private:
-	std::shared_ptr<async_read_result_t> m_async_read_result;
-};
-
-class python_async_write_result_t {
-public:
-	python_async_write_result_t(async_write_result_t &&async_write_result)
-		: m_async_write_result(new async_write_result_t(std::move(async_write_result)))
-	{
-	}
-
-	list get() {
-		auto v = m_async_write_result->get();
-
 		list res;
 
 		for (auto it = v.begin(); it != v.end(); ++it) {
-			res.append(*it);
+			res.append(U(*it));
 		}
 
 		return res;
 	}
 
-	lookup_result_t get_one() {
-		return m_async_write_result->get_one();
+	U get_one() {
+		return U(m_async_result->get_one());
+	}
+
+	void wait() {
+		m_async_result->wait();
 	}
 
 private:
-	std::shared_ptr<async_write_result_t> m_async_write_result;
+	std::shared_ptr<async_result_t> m_async_result;
 };
+
+typedef python_async_result_t<elliptics::async_read_result_t, python_data_container_t> python_async_read_result_t;
+typedef python_async_result_t<elliptics::async_write_result_t, elliptics::lookup_result_t> python_async_write_result_t;
+typedef python_async_result_t<elliptics::async_remove_result_t, ioremap::elliptics::callback_result_entry> python_async_remove_result_t;
 
 namespace details {
 
@@ -667,17 +634,21 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 	;
 
 	class_<python_async_read_result_t>("async_read_result_t", no_init)
+		.def("get", &python_async_read_result_t::get)
 		.def("get_one", &python_async_read_result_t::get_one)
+		.def("wait", &python_async_read_result_t::wait)
 	;
 
 	class_<python_async_write_result_t>("async_write_result_t", no_init)
 		.def("get", &python_async_write_result_t::get)
 		.def("get_one", &python_async_write_result_t::get_one)
+		.def("wait", &python_async_write_result_t::wait)
 	;
 
 	class_<python_async_remove_result_t>("async_remove_result_t", no_init)
-		.def("get", &python_async_remove_result_t::get)
-		.def("get_one", &python_async_remove_result_t::get_one)
+//		.def("get", &python_async_remove_result_t::get)
+//		.def("get_one", &python_async_remove_result_t::get_one)
+		.def("wait", &python_async_remove_result_t::wait)
 	;
 
 	enum_<SUCCESS_COPIES_TYPE>("success_copies_type")
