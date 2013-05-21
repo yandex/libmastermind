@@ -32,6 +32,28 @@ BOOST_PP_REPEAT_FROM_TO(1, MAX_TOUPLE_SIZE, GEN_ARRAY_CONVERTER, ~)
 #undef GET_ARG_FROM_ARR
 #undef MAX_TOUPLE_SIZE
 
+class scoped_gil_release
+{
+public:
+	scoped_gil_release() {
+		m_thread_state = PyEval_SaveThread();
+	}
+
+	void acquire() {
+		if (m_thread_state) {
+			PyEval_RestoreThread(m_thread_state);
+			m_thread_state = 0;
+		}
+	}
+
+	~scoped_gil_release() {
+		acquire();
+	}
+
+private:
+	PyThreadState * m_thread_state;
+};
+
 struct python_dnet_id : public dnet_id {
 public:
 	python_dnet_id()
@@ -229,56 +251,76 @@ public:
 	{
 	}
 
-	lookup_result_t lookup(const object &key,
+	lookup_result_t lookup(const object &py_key,
 			const std::vector<int> &groups = std::vector<int>()) {
-		return base::lookup(get_key(key), _groups = groups);
+		auto key = get_key(py_key);
+		scoped_gil_release sgr;
+		(void)sgr;
+		return base::lookup(key, _groups = groups);
 	}
 
-	python_data_container_t read(const object &key,
+	python_data_container_t read(const object &py_key,
 			const uint64_t &offset = 0, const uint64_t &size = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
 			const std::vector<int> &groups = std::vector<int>(),
 			bool latest = false, bool embeded = false) {
-		return base::read(get_key(key),
+		auto key = get_key(py_key);
+		scoped_gil_release sgr;
+		(void)sgr;
+		return base::read(key,
 							_offset = offset, _size = size,
 							_cflags = cflags, _ioflags = ioflags,
 							_groups = groups,
 							_latest = latest, _embeded = embeded);
 	}
 
-	list write(const object &key, const object &dc,
+	list write(const object &py_key, const object &py_dc,
 			const uint64_t &offset = 0, const uint64_t &size = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
 			const std::vector<int> &groups = std::vector<int>(),
 			int success_copies_num = 0) {
+		auto key = get_key(py_key);
+		auto dc = get_data_container(py_dc);
 
-		auto lrs = base::write(get_key(key), get_data_container(dc),
+		scoped_gil_release sgr;
+		auto lrs = base::write(key, dc,
 								_offset = offset, _size = size,
 								_cflags = cflags, _ioflags = ioflags,
 								_groups = groups,
 								_success_copies_num = success_copies_num);
+		sgr.acquire();
+
 		list res;
 		for (auto it = lrs.begin(); it != lrs.end(); ++it)
 			res.append(*it);
 		return res;
 	}
 
-	void remove(const object &key,
+	void remove(const object &py_key,
 			const std::vector<int> &groups = std::vector<int>()) {
-		base::remove(get_key(key), _groups = groups);
+		auto key = get_key(py_key);
+		scoped_gil_release sgr;
+		(void)sgr;
+		base::remove(key, _groups = groups);
 	}
 
 	std::vector<std::string> range_get(
-			const object &from, const object &to,
+			const object &py_from, const object &py_to,
 			const uint64_t &limit_start = 0, const uint64_t &limit_num = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
 			const std::vector<int> &groups = std::vector<int>(),
-			const object &key = object()) {
-		return base::range_get(get_key(from, "from"), get_key(to, "to"),
+			const object &py_key = object()) {
+		auto from = get_key(py_from, "from");
+		auto to = get_key(py_to, "to");
+		auto key = get_key(py_key);
+
+		scoped_gil_release sgr;
+		(void)sgr;
+		return base::range_get(from, to,
 								_limit_start = limit_start, _limit_num = limit_num,
 								_cflags = cflags, _ioflags = ioflags,
 								_groups = groups,
-								_key = get_key(key));
+								_key = key);
 	}
 
 	dict bulk_read(const list &keys,
@@ -293,7 +335,9 @@ public:
 			ks.push_back(get_key(keys[index], oss.str()));
 		}
 
+		scoped_gil_release sgr;
 		auto dcs = base::bulk_read(ks, _cflags = cflags, _groups = groups);
+		sgr.acquire();
 
 		dict res;
 
@@ -304,9 +348,13 @@ public:
 		return res;
 	}
 
-	list lookup_addr(const object &key,
+	list lookup_addr(const object &py_key,
 						const std::vector<int> &groups = std::vector<int>()) {
-		auto rs = base::lookup_addr(get_key(key), _groups = groups);
+		auto key = get_key(py_key);
+
+		scoped_gil_release sgr;
+		auto rs = base::lookup_addr(key, _groups = groups);
+		sgr.acquire();
 
 		list res;
 
@@ -337,9 +385,11 @@ public:
 			dcs.push_back(get_data_container(data[index], oss_d.str()));
 		}
 
+		scoped_gil_release sgr;
 		auto lrs = base::bulk_write(ks, dcs,
 										_cflags = cflags, _groups = groups,
 										_success_copies_num = success_copies_num);
+		sgr.acquire();
 
 		dict res;
 
@@ -356,40 +406,57 @@ public:
 		return res;
 	}
 
-	std::string exec_script(const object &key,
+	std::string exec_script(const object &py_key,
 								const std::string &script, const std::string &data,
 								const std::vector<int> &groups = std::vector<int>()) {
-		return base::exec_script(get_key(key), script, data, _groups = groups);
+		auto key = get_key(py_key);
+
+		scoped_gil_release sgr;
+		(void)sgr;
+		return base::exec_script(key, script, data, _groups = groups);
 	}
 
-	python_async_read_result_t read_async(const object &key,
+	python_async_read_result_t read_async(const object &py_key,
 			const uint64_t &offset = 0, const uint64_t &size = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
 			const std::vector<int> &groups = std::vector<int>(),
 			bool latest = false, bool embeded = false) {
-		return std::move(base::read_async(get_key(key),
+		auto key = get_key(py_key);
+
+		scoped_gil_release sgr;
+		(void)sgr;
+		return std::move(base::read_async(key,
 											_offset = offset, _size = size,
 											_cflags = cflags, _ioflags = ioflags,
 											_groups = groups,
 											_latest = latest, _embeded = embeded));
 	}
 
-	python_async_write_result_t write_async(const object &key,
-			const object &dc,
+	python_async_write_result_t write_async(const object &py_key,
+			const object &py_dc,
 			const uint64_t &offset = 0, const uint64_t &size = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
 			const std::vector<int> &groups = std::vector<int>(),
 			int success_copies_num = 0) {
-		return std::move(base::write_async(get_key(key), get_data_container(dc),
+		auto key = get_key(py_key);
+		auto dc = get_data_container(py_dc);
+
+		scoped_gil_release sgr;
+		(void)sgr;
+		return std::move(base::write_async(key, dc,
 											_offset = offset, _size = size,
 											_cflags = cflags, _ioflags = ioflags,
 											_groups = groups,
 											_success_copies_num = success_copies_num));
 	}
 
-	python_async_remove_result_t remove_async(const object &key,
+	python_async_remove_result_t remove_async(const object &py_key,
 			const std::vector<int> &groups = std::vector<int>()) {
-		return std::move(base::remove_async(get_key(key), _groups = groups));
+		auto key = get_key(py_key);
+
+		scoped_gil_release sgr;
+		(void)sgr;
+		return std::move(base::remove_async(key, _groups = groups));
 	}
 
 	bool ping() {
