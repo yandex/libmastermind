@@ -3,7 +3,6 @@
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <boost/optional.hpp>
 #include <boost/none.hpp>
-
 #include <boost/preprocessor/repetition.hpp>
 
 #include <sstream>
@@ -517,6 +516,33 @@ public:
 };
 
 template<typename T>
+std::vector<T> pylist_to_vector(const list &l) {
+	std::vector<T> res;
+	size_t size = len(l);
+	res.reserve(size);
+
+	for (size_t index = 0; index != size; ++index) {
+		res.push_back(extract<T>(l[index]));
+	}
+
+	return res;
+}
+
+std::string remote_str(const elliptics_proxy_t::remote &ob) {
+	std::ostringstream oss;
+	oss << "<host: " << ob.host << ", port: " << ob.port << ", family: " << ob.family << '>';
+	return oss.str();
+}
+
+std::string remote_repr(const elliptics_proxy_t::remote &ob) {
+	return remote_str(ob);
+}
+
+std::ostream &operator << (std::ostream & stream, const elliptics::elliptics_proxy_t::remote &r) {
+	return stream << remote_str(r);
+}
+
+template<typename T>
 std::string vector_str(const std::vector<T> &v) {
 	std::ostringstream oss;
 	oss << "[";
@@ -530,42 +556,77 @@ std::string vector_str(const std::vector<T> &v) {
 
 template<typename T>
 std::string vector_repr(const std::vector<T> &v) {
-	return std::string("list: ").append(vector_str(v));
+	return vector_str(v);
 }
 
-std::string remote_str(const elliptics_proxy_t::remote &ob) {
+std::string timespec_str(const timespec &ts) {
 	std::ostringstream oss;
-	oss << ob.host << ':' << ob.port << ':' << ob.family;
+
+	oss << "<tv_sec: " << ts.tv_sec
+		<< ", tv_nsec: " << ts.tv_nsec
+		<< '>';
+
 	return oss.str();
 }
 
-std::string remote_repr(const elliptics_proxy_t::remote &ob) {
-	return std::string("remote: ") + remote_str(ob);
+std::string timespec_repr(const timespec &ts) {
+	return timespec_str(ts);
 }
 
 std::string config_str(const python_config &ob) {
 	std::ostringstream oss;
 
-	oss << "remotes = [";
-	size_t l = len(ob.remotes_list);
-	for (size_t index = 0; index != l; ++index) {
-		if (index != 0) oss << ' ';
-		oss << remote_str(extract<elliptics_proxy_t::remote>(ob.remotes_list[index]));
-	}
-	oss << "] ";
-
-	oss << "groups = [";
-	for (auto it = ob.groups.begin(); it != ob.groups.end(); ++it) {
-		if (it != ob.groups.begin()) oss << ' ';
-		oss << *it;
-	}
-	oss << "] ";
+	oss << "<log_path: " << ob.log_path
+		<< ", log_mask: " << ob.log_mask
+		<< ", remotes: " << vector_str(pylist_to_vector<elliptics_proxy_t::remote>(ob.remotes_list))
+		<< ", flags: " << ob.flags
+		<< ", ns: " << ob.ns
+		<< ", wait_timeout: " << ob.wait_timeout
+		<< ", check_timeout: " << ob.check_timeout
+		<< ", groups: " << vector_str(ob.groups)
+		<< ", base_port: " << ob.base_port
+		<< ", directory_bit_num: " << ob.directory_bit_num
+		<< ", success_copies_num: " << ob.success_copies_num
+		<< ", die_limit: " << ob.die_limit
+		<< ", replication_count: " << ob.replication_count
+		<< ", chunk_size: " << ob.chunk_size
+		<< ", eblob_style_path: " << ob.eblob_style_path
+#ifdef HAVE_METABASE
+		<< ", cocaine_config" << ob.cocaine_config
+		<< ", group_weights_refresh_period: " << ob.group_weights_refresh_period
+#endif /* HAVE_METABASE */
+		<< '>';
 
 	return oss.str();
 }
 
 std::string config_repr(const python_config &ob) {
-	return std::string("config: ") + config_str(ob);
+	return config_str(ob);
+}
+
+std::string dnet_id_str(const python_dnet_id &ob) {
+	std::ostringstream oss;
+
+	oss << "<id: ";
+
+	auto size = PyByteArray_Size(ob.bytearray.ptr());
+	char *s = PyByteArray_AsString(ob.bytearray.ptr());
+
+	std::vector<char> buf;
+	buf.resize(size * 2 + 1);
+	dnet_dump_id_len_raw(reinterpret_cast<const unsigned char *>(s), size, buf.data());
+
+	oss << buf.data();
+
+	oss << ", group_id: " << ob.group_id
+		<< ", type: " << ob.type
+		<< '>';
+
+	return oss.str();
+}
+
+std::string dnet_id_repr(const python_dnet_id &ob) {
+	return dnet_id_str(ob);
 }
 
 std::string key_str(const python_key_t &key) {
@@ -573,18 +634,54 @@ std::string key_str(const python_key_t &key) {
 }
 
 std::string key_repr(const python_key_t &key) {
-//	return std::string("key_t: ").append(key_str(key));
 	return key_str(key);
 }
 
 std::string lookup_result_str(const lookup_result_t &lr) {
 	std::ostringstream oss;
-	oss << "group: " << lr.group() << "\tpath: " << lr.host() << ":" << lr.port() << lr.path();
+
+	oss << "<host: " << lr.host()
+		<< ", port: " << lr.port()
+		<< ", path: " << lr.path()
+		<< ", group: "  << lr.group()
+		<< ", status: " << lr.status()
+		<< ", addr: " << lr.addr()
+		<< ", full_path: " << lr.full_path()
+		<< '>';
+
 	return oss.str();
 }
 
 std::string lookup_result_repr(const lookup_result_t &lr) {
 	return lookup_result_str(lr);
+}
+
+std::string status_result_str(const status_result_t &sr) {
+	std::ostringstream oss;
+
+	oss <<"<addr: " << sr.addr
+		<< ", id: " << sr.id
+		<< ", la: <";
+	for (size_t index = 0; index != 3; ++index) {
+		if (index != 0)
+			oss << ", ";
+		oss << sr.la[index];
+	}
+
+	oss << ">, vm_total: " << sr.vm_total
+		<< ", vm_free: " << sr.vm_free
+		<< ", vm_cached: " << sr.vm_cached
+		<< ", storage_size: " << sr.storage_size
+		<< ", available_size: " << sr.available_size
+		<< ", files: " << sr.files
+		<< ", fsid: " << sr.fsid
+		<< '>';
+
+	return oss.str();
+}
+
+std::string status_result_repr(const status_result_t &sr) {
+	return status_result_str(sr);
 }
 
 tuple get_la_from_status_result_t(const status_result_t &s) {
@@ -606,6 +703,8 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 	;
 
 	class_<timespec>("timespec")
+		.def("__str__", timespec_str)
+		.def("__repr__", timespec_repr)
 		.def_readwrite("tv_sec", &timespec::tv_sec)
 		.def_readwrite("tv_nsec", &timespec::tv_nsec)
 	;
@@ -644,6 +743,8 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 	;
 
 	class_<python_dnet_id>("dnet_id")
+		.def("__str__", dnet_id_str)
+		.def("__repr__", dnet_id_repr)
 		.def_readwrite("id", &python_dnet_id::bytearray)
 		.def_readwrite("group_id", &dnet_id::group_id)
 		.def_readwrite("type", &dnet_id::type)
@@ -678,8 +779,8 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 	;
 
 	class_<status_result_t>("status_result_t")
-//		.def("__str__", status_result_str)
-//		.def("__repr__", status_result_repr)
+		.def("__str__", status_result_str)
+		.def("__repr__", status_result_repr)
 		.def_readonly("addr", &status_result_t::addr)
 		.def_readonly("id", &status_result_t::id)
 		.add_property("la", get_la_from_status_result_t)
