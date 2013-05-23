@@ -8,6 +8,7 @@ elliptics::async_read_result_t::async_read_result_t(elliptics::async_read_result
 
 elliptics::async_read_result_t::async_read_result_t(async_read_result_t &&ob)
 	: m_inner_result(std::move(ob.m_inner_result))
+	, m_embeded(ob.m_embeded)
 {
 }
 
