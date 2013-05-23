@@ -31,6 +31,20 @@ BOOST_PP_REPEAT_FROM_TO(1, MAX_TOUPLE_SIZE, GEN_ARRAY_CONVERTER, ~)
 #undef GET_ARG_FROM_ARR
 #undef MAX_TOUPLE_SIZE
 
+
+template<typename T>
+std::vector<T> pylist_to_vector(const list &l) {
+	std::vector<T> res;
+	size_t size = len(l);
+	res.reserve(size);
+
+	for (size_t index = 0; index != size; ++index) {
+		res.push_back(extract<T>(l[index]));
+	}
+
+	return res;
+}
+
 class scoped_gil_release
 {
 public:
@@ -51,6 +65,20 @@ public:
 
 private:
 	PyThreadState * m_thread_state;
+};
+
+struct python_timespec : public timespec {
+	python_timespec(__time_t sec = 0, long int nsec = 0)
+	{
+		tv_sec = sec;
+		tv_nsec = nsec;
+	}
+
+	python_timespec(const timespec &ts)
+	{
+		tv_sec = ts.tv_sec;
+		tv_nsec = ts.tv_nsec;
+	}
 };
 
 struct python_dnet_id : public dnet_id {
@@ -109,9 +137,12 @@ public:
 		for (size_t index = 0; index != l; ++index) {
 			remotes.push_back(extract<elliptics_proxy_t::remote>(remotes_list[index]));
 		}
+
+		groups = pylist_to_vector<int>(groups_list);
 		return *this;
 	}
 
+	list groups_list;
 	list remotes_list;
 };
 
@@ -136,13 +167,35 @@ public:
 		data = std::move(ioremap::elliptics::data_buffer(message.data(), message.size()));
 	}
 
-	timespec get_timestamp() {
-		return *get<DNET_FCGI_EMBED_TIMESTAMP>();
+	python_timespec &get_timestamp() {
+		if (m_timespec)
+			return *m_timespec;
+
+		auto ts = get<DNET_FCGI_EMBED_TIMESTAMP>();
+		if (ts) {
+			m_timespec.reset(python_timespec(*ts));
+		} else {
+			timespec ts;
+			ts.tv_sec = 0;
+			ts.tv_nsec = 0;
+			m_timespec.reset(python_timespec(ts));
+		}
+		return *m_timespec;
 	}
 
-	void set_timestamp(const timespec &ts) {
-		set<DNET_FCGI_EMBED_TIMESTAMP>(ts);
+	void set_timestamp(const python_timespec &ts) {
+		m_timespec.reset(ts);
 	}
+
+	data_container_t convert() {
+		if (m_timespec) {
+			set<DNET_FCGI_EMBED_TIMESTAMP>(*m_timespec);
+		}
+		return *this;
+	}
+
+private:
+	boost::optional<python_timespec> m_timespec;
 };
 
 template<typename T, typename U>
@@ -216,7 +269,7 @@ void convert_error(const std::string &field, const std::string &type) {
 template<typename T, typename... U>
 boost::optional<T> convert(const object &p) {
 	if (p.ptr() == 0)
-		return T();
+		return boost::none;
 
 	return extract<T, T, U...>::process(p);
 }
@@ -234,11 +287,11 @@ T convert(const object &p, const std::string &field, const std::string &type) {
 } // namespace details
 
 elliptics::key_t get_key(const object &p, const std::string &field = "key") {
-	return details::convert<elliptics::key_t, std::string>(p, field, "key_t");
+	return details::convert<python_key_t, std::string>(p, field, "key_t");
 }
 
-python_data_container_t get_data_container(const object &p, const std::string &field = "dc") {
-	return details::convert<python_data_container_t, std::string>(p, field, "data_container_t");
+data_container_t get_data_container(const object &p, const std::string &field = "dc") {
+	return details::convert<python_data_container_t, std::string>(p, field, "data_container_t").convert();
 }
 
 class python_elliptics_proxy_t : public elliptics_proxy_t {
@@ -251,8 +304,10 @@ public:
 	}
 
 	lookup_result_t lookup(const object &py_key,
-			const std::vector<int> &groups = std::vector<int>()) {
+			const list &py_groups = list()) {
 		auto key = get_key(py_key);
+		auto groups = pylist_to_vector<int>(py_groups);
+
 		scoped_gil_release sgr;
 		(void)sgr;
 		return base::lookup(key, _groups = groups);
@@ -261,9 +316,11 @@ public:
 	python_data_container_t read(const object &py_key,
 			const uint64_t &offset = 0, const uint64_t &size = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
-			const std::vector<int> &groups = std::vector<int>(),
+			const list &py_groups = list(),
 			bool latest = false, bool embeded = false) {
 		auto key = get_key(py_key);
+		auto groups = pylist_to_vector<int>(py_groups);
+
 		scoped_gil_release sgr;
 		(void)sgr;
 		return base::read(key,
@@ -276,10 +333,11 @@ public:
 	list write(const object &py_key, const object &py_dc,
 			const uint64_t &offset = 0, const uint64_t &size = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
-			const std::vector<int> &groups = std::vector<int>(),
+			const list &py_groups = list(),
 			int success_copies_num = 0) {
 		auto key = get_key(py_key);
 		auto dc = get_data_container(py_dc);
+		auto groups = pylist_to_vector<int>(py_groups);
 
 		scoped_gil_release sgr;
 		auto lrs = base::write(key, dc,
@@ -296,8 +354,10 @@ public:
 	}
 
 	void remove(const object &py_key,
-			const std::vector<int> &groups = std::vector<int>()) {
+			const list &py_groups = list()) {
 		auto key = get_key(py_key);
+		auto groups = pylist_to_vector<int>(py_groups);
+
 		scoped_gil_release sgr;
 		(void)sgr;
 		base::remove(key, _groups = groups);
@@ -307,11 +367,12 @@ public:
 			const object &py_from, const object &py_to,
 			const uint64_t &limit_start = 0, const uint64_t &limit_num = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
-			const std::vector<int> &groups = std::vector<int>(),
+			const list &py_groups = list(),
 			const object &py_key = object()) {
 		auto from = get_key(py_from, "from");
 		auto to = get_key(py_to, "to");
 		auto key = get_key(py_key);
+		auto groups = pylist_to_vector<int>(py_groups);
 
 		scoped_gil_release sgr;
 		(void)sgr;
@@ -324,7 +385,7 @@ public:
 
 	dict bulk_read(const list &keys,
 					const uint64_t &cflags = 0,
-					const std::vector<int> &groups = std::vector<int>()) {
+					const list &py_groups = list()) {
 		std::vector<elliptics::key_t> ks;
 		size_t l = len(keys);
 		ks.reserve(l);
@@ -333,6 +394,7 @@ public:
 			oss << "keys[" << index << ']';
 			ks.push_back(get_key(keys[index], oss.str()));
 		}
+		auto groups = pylist_to_vector<int>(py_groups);
 
 		scoped_gil_release sgr;
 		auto dcs = base::bulk_read(ks, _cflags = cflags, _groups = groups);
@@ -348,8 +410,9 @@ public:
 	}
 
 	list lookup_addr(const object &py_key,
-						const std::vector<int> &groups = std::vector<int>()) {
+						const list &py_groups = list()) {
 		auto key = get_key(py_key);
+		auto groups = pylist_to_vector<int>(py_groups);
 
 		scoped_gil_release sgr;
 		auto rs = base::lookup_addr(key, _groups = groups);
@@ -366,7 +429,7 @@ public:
 
 	dict bulk_write(const list &keys, const list &data,
 					const uint64_t &cflags = 0,
-					const std::vector<int> &groups = std::vector<int>(),
+					const list &py_groups = list(),
 					int success_copies_num = 0
 					) {
 		size_t l = len(keys);
@@ -383,6 +446,7 @@ public:
 			ks.push_back(get_key(keys[index], oss_k.str()));
 			dcs.push_back(get_data_container(data[index], oss_d.str()));
 		}
+		auto groups = pylist_to_vector<int>(py_groups);
 
 		scoped_gil_release sgr;
 		auto lrs = base::bulk_write(ks, dcs,
@@ -407,8 +471,9 @@ public:
 
 	std::string exec_script(const object &py_key,
 								const std::string &script, const std::string &data,
-								const std::vector<int> &groups = std::vector<int>()) {
+								const list &py_groups = list()) {
 		auto key = get_key(py_key);
+		auto groups = pylist_to_vector<int>(py_groups);
 
 		scoped_gil_release sgr;
 		(void)sgr;
@@ -418,9 +483,10 @@ public:
 	python_async_read_result_t read_async(const object &py_key,
 			const uint64_t &offset = 0, const uint64_t &size = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
-			const std::vector<int> &groups = std::vector<int>(),
+			const list &py_groups = list(),
 			bool latest = false, bool embeded = false) {
 		auto key = get_key(py_key);
+		auto groups = pylist_to_vector<int>(py_groups);
 
 		scoped_gil_release sgr;
 		(void)sgr;
@@ -435,10 +501,11 @@ public:
 			const object &py_dc,
 			const uint64_t &offset = 0, const uint64_t &size = 0,
 			const uint64_t &cflags = 0, const uint64_t &ioflags = 0,
-			const std::vector<int> &groups = std::vector<int>(),
+			const list &py_groups = list(),
 			int success_copies_num = 0) {
 		auto key = get_key(py_key);
 		auto dc = get_data_container(py_dc);
+		auto groups = pylist_to_vector<int>(py_groups);
 
 		scoped_gil_release sgr;
 		(void)sgr;
@@ -450,8 +517,9 @@ public:
 	}
 
 	python_async_remove_result_t remove_async(const object &py_key,
-			const std::vector<int> &groups = std::vector<int>()) {
+			const list &py_groups = list()) {
 		auto key = get_key(py_key);
+		auto groups = pylist_to_vector<int>(py_groups);
 
 		scoped_gil_release sgr;
 		(void)sgr;
@@ -515,19 +583,6 @@ public:
 	}
 };
 
-template<typename T>
-std::vector<T> pylist_to_vector(const list &l) {
-	std::vector<T> res;
-	size_t size = len(l);
-	res.reserve(size);
-
-	for (size_t index = 0; index != size; ++index) {
-		res.push_back(extract<T>(l[index]));
-	}
-
-	return res;
-}
-
 std::string remote_str(const elliptics_proxy_t::remote &ob) {
 	std::ostringstream oss;
 	oss << "<host: " << ob.host << ", port: " << ob.port << ", family: " << ob.family << '>';
@@ -583,7 +638,7 @@ std::string config_str(const python_config &ob) {
 		<< ", ns: " << ob.ns
 		<< ", wait_timeout: " << ob.wait_timeout
 		<< ", check_timeout: " << ob.check_timeout
-		<< ", groups: " << vector_str(ob.groups)
+		<< ", groups: " << vector_str(pylist_to_vector<int>(ob.groups_list))
 		<< ", base_port: " << ob.base_port
 		<< ", directory_bit_num: " << ob.directory_bit_num
 		<< ", success_copies_num: " << ob.success_copies_num
@@ -690,19 +745,14 @@ tuple get_la_from_status_result_t(const status_result_t &s) {
 
 BOOST_PYTHON_MODULE(elliptics_proxy)
 {
-	class_<std::vector<int> >("VecInt")
-		.def(vector_indexing_suite<std::vector<int> >())
-		.def("__str__", &vector_str<int>)
-		.def("__repr__", &vector_repr<int>)
-	;
-
 	class_<std::vector<std::string> >("VecString")
 		.def(vector_indexing_suite<std::vector<std::string> >())
 		.def("__str__", &vector_str<std::string>)
 		.def("__repr__", &vector_repr<std::string>)
 	;
 
-	class_<timespec>("timespec")
+	class_<python_timespec>("timespec")
+		.def(init<__time_t, long int>())
 		.def("__str__", timespec_str)
 		.def("__repr__", timespec_repr)
 		.def_readwrite("tv_sec", &timespec::tv_sec)
@@ -727,7 +777,7 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 		.def_readwrite("ns",&elliptics_proxy_t::config::ns)
 		.def_readwrite("wait_timeout",&elliptics_proxy_t::config::wait_timeout)
 		.def_readwrite("check_timeout",&elliptics_proxy_t::config::check_timeout)
-		.def_readwrite("groups",&python_config::groups)	
+		.def_readwrite("groups",&python_config::groups_list)
 		.def_readwrite("base_port",&elliptics_proxy_t::config::base_port)
 		.def_readwrite("directory_bit_num",&elliptics_proxy_t::config::directory_bit_num)
 		.def_readwrite("success_copies_num",&elliptics_proxy_t::config::success_copies_num)
@@ -766,7 +816,7 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 		.add_property("id", make_function(static_cast<const python_dnet_id &(python_key_t::*)() const>(&python_key_t::id), return_value_policy<copy_const_reference>()))
 	;
 
-	class_<lookup_result_t>("lookup_result_t", init<const ioremap::elliptics::lookup_result_entry &, bool, int>())
+	class_<lookup_result_t>("lookup_result_t", no_init)
 		.def("__str__", lookup_result_str)
 		.def("__repr__", lookup_result_repr)
 		.add_property("host", make_function(&lookup_result_t::host, return_value_policy<copy_const_reference>()))
@@ -797,7 +847,7 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 		.def(init<const std::string &>())
 		.add_property("data", &python_data_container_t::get_data,
 								&python_data_container_t::set_data)
-		.add_property("timestamp", &python_data_container_t::get_timestamp,
+		.add_property("timestamp", make_function(&python_data_container_t::get_timestamp, return_internal_reference<>()),
 								&python_data_container_t::set_timestamp)
 	;
 
@@ -827,57 +877,57 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 
 	class_<python_elliptics_proxy_t, boost::noncopyable>("elliptics_proxy_t", init<python_config &>())
 		.def("lookup", &python_elliptics_proxy_t::lookup,
-			(arg("key"), arg("groups") = std::vector<int>()))
+			(arg("key"), arg("groups") = list()))
 		.def("read", &python_elliptics_proxy_t::read,
 			(arg("key"),
 			arg("offset") = 0, arg("size") = 0,
 			arg("cflags") = 0, arg("ioflags") = 0,
-			arg("groups") = std::vector<int>(),
+			arg("groups") = list(),
 			arg("latest") = false, arg("embeded") = false))
 		.def("write", &python_elliptics_proxy_t::write,
 			(arg("key"), arg("dc"),
 			arg("offset") = 0, arg("size") = 0,
 			arg("cflags") = 0, arg("ioflags") = 0,
-			arg("groups") = std::vector<int>(),
+			arg("groups") = list(),
 			arg("success_copies_num") = 0))
 		.def("remove", &python_elliptics_proxy_t::remove,
 			(arg("key"),
-			arg("groups") = std::vector<int>()))
+			arg("groups") = list()))
 		.def("range_get", &python_elliptics_proxy_t::range_get,
 			(arg("from"), arg("to"),
 			arg("limit_start") = 0, arg("limit_num") = 0,
 			arg("cflags") = 0, arg("ioflags") = 0,
-			arg("groups") = std::vector<int>(),
+			arg("groups") = list(),
 			arg("key") = object()))
 		.def("bulk_read", &python_elliptics_proxy_t::bulk_read,
 			(arg("keys"),
 			arg("cflags") = 0,
-			arg("groups") = std::vector<int>()))
+			arg("groups") = list()))
 		.def("lookup_addr", &python_elliptics_proxy_t::lookup_addr,
-			(arg("key"), arg("groups") = std::vector<int>()))
+			(arg("key"), arg("groups") = list()))
 		.def("bulk_write", &python_elliptics_proxy_t::bulk_write,
 			(arg("keys"), arg("dcs"),
 			arg("cflags") = 0,
-			arg("groups") = std::vector<int>(),
+			arg("groups") = list(),
 			arg("success_copies_num") = 0))
 		.def("exec_script", &python_elliptics_proxy_t::exec_script,
 			(arg("key"), arg("script"), arg("data"),
-			arg("groups") = std::vector<int>()))
+			arg("groups") = list()))
 		.def("read_async", &python_elliptics_proxy_t::read_async,
 			(arg("key"),
 			arg("offset") = 0, arg("size") = 0,
 			arg("cflags") = 0, arg("ioflags") = 0,
-			arg("groups") = std::vector<int>(),
+			arg("groups") = list(),
 			arg("latest") = false, arg("embeded") = false))
 		.def("write_async", &python_elliptics_proxy_t::write_async,
 			(arg("key"), arg("dc"),
 			arg("offset") = 0, arg("size") = 0,
 			arg("cflags") = 0, arg("ioflags") = 0,
-			arg("groups") = std::vector<int>(),
+			arg("groups") = list(),
 			arg("success_copies_num") = 0))
 		.def("remove_async", &python_elliptics_proxy_t::remove_async,
 			(arg("key"),
-			arg("groups") = std::vector<int>()))
+			arg("groups") = list()))
 		.def("ping", &python_elliptics_proxy_t::ping)
 		.def("stat_log", &python_elliptics_proxy_t::stat_log)
 		.def("get_symmetric_groups", &python_elliptics_proxy_t::get_symmetric_groups)
