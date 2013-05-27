@@ -1020,7 +1020,9 @@ std::string elliptics_proxy_t::impl::exec_script_impl(key_t &key, std::string &d
 
 	try {
 		sess.set_groups(lgroups);
-		res = sess.exec_locked(&id, script, data, std::string());
+		sync_exec_result results = sess.exec(&id, script, data_pointer(data));
+		for (size_t i = 0; i < results.size(); ++i)
+			res += results[i].context().data().to_string();
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
