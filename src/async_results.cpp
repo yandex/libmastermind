@@ -1,4 +1,5 @@
 #include "elliptics/async_results.hpp"
+#include "elliptics/proxy.hpp"
 
 elliptics::async_read_result_t::async_read_result_t(elliptics::async_read_result_t::inner_result_t &&inner_result, bool embeded)
 	: m_inner_result(std::move(inner_result))
@@ -26,7 +27,14 @@ std::vector<elliptics::async_read_result_t::outer_result_t> elliptics::async_rea
 }
 
 elliptics::async_read_result_t::outer_result_t elliptics::async_read_result_t::get_one() {
-	return data_container_t::unpack(m_inner_result.get_one().file(), m_embeded);
+	auto entry = m_inner_result.get_one();
+
+	bool embeded = m_embeded;
+	if (entry.io_attribute()->user_flags & UF_EMBEDS) {
+		embeded = true;
+	}
+
+	return data_container_t::unpack(entry.file(), embeded);
 }
 
 void elliptics::async_read_result_t::wait()

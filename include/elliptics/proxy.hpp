@@ -51,6 +51,10 @@ enum SUCCESS_COPIES_TYPE {
 	SUCCESS_COPIES_TYPE__ALL = -3
 };
 
+enum tag_user_flags {
+	UF_EMBEDS = 1
+};
+
 #ifdef HAVE_METABASE
 struct group_info_response_t {
 	std::vector<std::string> nodes;

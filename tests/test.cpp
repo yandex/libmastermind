@@ -244,6 +244,28 @@ public:
 		}
 	}
 
+	void write_read_with_smart_embeds() {
+		elliptics::key_t key("key_write_read_with_smart_embeds");
+		std::string data("test data");
+		timespec ts;
+		ts.tv_sec = 123;
+		ts.tv_nsec = 456789;
+
+		{
+			data_container_t dc(data);
+			dc.set<DNET_FCGI_EMBED_TIMESTAMP>(ts);
+			auto lr = m_proxy->write(key, dc);
+			CPPUNIT_ASSERT(lr.size() == 2);
+		}
+		{
+			auto dc = m_proxy->read(key);
+			CPPUNIT_ASSERT(data == dc.data.to_string());
+			timespec ts2 = *dc.get<DNET_FCGI_EMBED_TIMESTAMP>();
+			CPPUNIT_ASSERT(ts2.tv_sec == ts.tv_sec);
+			CPPUNIT_ASSERT(ts2.tv_nsec == ts.tv_nsec);
+		}
+	}
+
 	void lookup() {
 		elliptics::key_t key("key_lookup");
 		std::string data("data");

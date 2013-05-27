@@ -631,6 +631,11 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, dat
 
 		bool chunked = false;
 
+		if (data.embeds_count() != 0) {
+			elliptics_session.set_user_flags(elliptics_session.get_user_flags() | UF_EMBEDS);
+		}
+
+
 		ioremap::elliptics::data_pointer content = data_container_t::pack(data);
 
 		if (m_chunk_size && content.size() > static_cast<size_t>(m_chunk_size) && !key.by_id()
@@ -1114,6 +1119,10 @@ async_write_result_t elliptics_proxy_t::impl::write_async_impl(key_t &key, data_
 
 	try {
 		elliptics_session.set_groups(lgroups);
+
+		if (data.embeds_count() != 0) {
+			elliptics_session.set_user_flags(elliptics_session.get_user_flags() | UF_EMBEDS);
+		}
 
 		ioremap::elliptics::data_pointer content = data_container_t::pack(data);
 
