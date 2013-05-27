@@ -402,6 +402,7 @@ int main(int argc, char* argv[])
 	ADD_TEST("async write and async read", async_write_read);
 	ADD_TEST("lookup", lookup);
 	ADD_TEST("write and read with embeds", write_read_with_embeds);
+	ADD_TEST("write and read with smart embeds", write_read_with_smart_embeds);
 
 	ADD_TEST("write into 4 groups; with SUCCESS_COPIES_TYPE__ALL", write_g4_scnALL);
 	ADD_TEST("write into 3 groups; with SUCCESS_COPIES_TYPE__ALL", write_g3_scnALL);
