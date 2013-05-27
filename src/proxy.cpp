@@ -889,8 +889,8 @@ std::vector<elliptics_proxy_t::remote> elliptics_proxy_t::impl::lookup_addr_impl
 
 	std::vector<elliptics_proxy_t::remote> addrs;
 
-	for (std::vector<int>::const_iterator it = groups.begin();
-			it != groups.end(); it++)
+	for (std::vector<int>::const_iterator it = lgroups.begin();
+			it != lgroups.end(); it++)
 	{
 		std::string ret;
 
