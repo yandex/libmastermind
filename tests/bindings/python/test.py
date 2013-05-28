@@ -1,6 +1,7 @@
 # coding=utf-8
 import sys
 sys.path.append("bindings/python/")
+print sys.path
 
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
