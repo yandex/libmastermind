@@ -3,7 +3,7 @@ import traceback
 import sys
 from unittest import TestResult
 
-from teamcity.messages import TeamcityServiceMessages
+from messages import TeamcityServiceMessages
 
 
 # Added *k to some methods to get compatibility with nosetests
