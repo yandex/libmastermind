@@ -4,7 +4,7 @@ sys.path.append("bindings/python/")
 sys.path.append("/usr/local/lib/python2.7/dist-packages/teamcity_messages-1.7-py2.7.egg")
 print sys.path
 
-from teamcity import is_running_under_teamcity
+#from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
 from elliptics_proxy import *
 
