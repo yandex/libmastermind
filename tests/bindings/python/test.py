@@ -1,8 +1,6 @@
 # coding=utf-8
 import sys
 sys.path.append("bindings/python/")
-#sys.path.append("/usr/local/lib/python2.7/dist-packages/teamcity_messages-1.7-py2.7.egg")
-print sys.path
 
 from unittestpy import TeamcityTestRunner
 from elliptics_proxy import *
