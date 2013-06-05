@@ -12,6 +12,7 @@
 #include <boost/tokenizer.hpp>
 
 #include <cppunit/TestResult.h>
+#include <cppunit/TestResultCollector.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "teamcity_cppunit.h"
 
@@ -85,6 +86,7 @@ public:
 		: m_hostname(hostname)
 		, m_port(port)
 		, m_family(family)
+		, m_groups(groups)
 	{
 	}
 
@@ -199,7 +201,7 @@ public:
 		std::string data1("test data 1");
 		std::string data2("test data 2");
 
-		std::vector<ioremap::elliptics::lookup_result_entry> l;
+		std::vector<elliptics::lookup_result_t> l;
 		auto awr1 = m_proxy->write_async(key1, data1);
 		auto awr2 = m_proxy->write_async(key2, data2);
 
@@ -213,10 +215,10 @@ public:
 		auto arr1 = m_proxy->read_async(key1);
 		auto arr2 = m_proxy->read_async(key2);
 
-		dc = arr1.get();
+		dc = arr1.get_one();
 		CPPUNIT_ASSERT(dc.data.to_string() == data1);
 
-		dc = arr2.get();
+		dc = arr2.get_one();
 		CPPUNIT_ASSERT(dc.data.to_string() == data2);
 	}
 
@@ -242,6 +244,28 @@ public:
 		}
 	}
 
+	void write_read_with_smart_embeds() {
+		elliptics::key_t key("key_write_read_with_smart_embeds");
+		std::string data("test data");
+		timespec ts;
+		ts.tv_sec = 123;
+		ts.tv_nsec = 456789;
+
+		{
+			data_container_t dc(data);
+			dc.set<DNET_FCGI_EMBED_TIMESTAMP>(ts);
+			auto lr = m_proxy->write(key, dc);
+			CPPUNIT_ASSERT(lr.size() == 2);
+		}
+		{
+			auto dc = m_proxy->read(key);
+			CPPUNIT_ASSERT(data == dc.data.to_string());
+			timespec ts2 = *dc.get<DNET_FCGI_EMBED_TIMESTAMP>();
+			CPPUNIT_ASSERT(ts2.tv_sec == ts.tv_sec);
+			CPPUNIT_ASSERT(ts2.tv_nsec == ts.tv_nsec);
+		}
+	}
+
 	void lookup() {
 		elliptics::key_t key("key_lookup");
 		std::string data("data");
@@ -249,7 +273,7 @@ public:
 		auto lr = m_proxy->write(key, data, _groups = groups);
 		CPPUNIT_ASSERT(lr.size() == 2);
 		auto l = m_proxy->lookup(key);
-		CPPUNIT_ASSERT(l.port == 1026);
+		CPPUNIT_ASSERT(l.port() == 1026);
 	}
 
 	void write_g4_scnALL() {
@@ -340,7 +364,8 @@ int main(int argc, char* argv[])
 		port = boost::lexical_cast<int>(*(++tit));
 		family = boost::lexical_cast<int>(*(++tit));
 
-		if (tit != tok.end()) {
+		if (++tit != tok.end()) {
+			std::cout << "Incorrect remote" << std::endl;
 			print_usage();
 			return 0;
 		}
@@ -358,6 +383,10 @@ int main(int argc, char* argv[])
 	}
 
 	CppUnit::TestResult controller;
+
+	CppUnit::TestResultCollector result;
+	controller.addListener(&result);
+
 	std::unique_ptr<CppUnit::TestListener> listener(new JetBrains::TeamcityProgressListener());
 	controller.addListener(listener.get());
 	CppUnit::TestSuite suite;
@@ -373,6 +402,7 @@ int main(int argc, char* argv[])
 	ADD_TEST("async write and async read", async_write_read);
 	ADD_TEST("lookup", lookup);
 	ADD_TEST("write and read with embeds", write_read_with_embeds);
+	ADD_TEST("write and read with smart embeds", write_read_with_smart_embeds);
 
 	ADD_TEST("write into 4 groups; with SUCCESS_COPIES_TYPE__ALL", write_g4_scnALL);
 	ADD_TEST("write into 3 groups; with SUCCESS_COPIES_TYPE__ALL", write_g3_scnALL);
@@ -385,7 +415,7 @@ int main(int argc, char* argv[])
 	ADD_TEST("write into 3 groups, 3 groups are shut down; with SUCCESS_COPIES_TYPE__ANY", write_g0_3_scnANY);
 
 	suite.run(&controller);
-	return 0;
+	return result.wasSuccessful() ? 0 : 1;;
 #if 0
 	//test_lookup ();
 	//test_read_async ();

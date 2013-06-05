@@ -57,6 +57,8 @@ SET_TARGET_PROPERTIES(${LIB} PROPERTIES
 TARGET_LINK_LIBRARIES(${LIB}
                       ${REQUIRED_LIBRARIES})
 
+add_subdirectory(bindings)
+
 INSTALL(TARGETS ${LIB}
             RUNTIME DESTINATION bin COMPONENT runtime
             LIBRARY DESTINATION lib COMPONENT runtime
@@ -86,3 +88,8 @@ set_target_properties(${TEST} PROPERTIES
         BUILD_WITH_INSTALL_RPATH ON)
 enable_testing ()
 add_test (${TEST} ${TEST} ${PROJECT_SOURCE_DIR}/tests/)
+set(PYTEST pytest_runner.sh)
+add_test (${PYTEST} ${PYTEST} ${PROJECT_SOURCE_DIR}/tests/)
+file(COPY
+	${CMAKE_CURRENT_SOURCE_DIR}/tests/${PYTEST}
+	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)

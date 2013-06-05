@@ -115,6 +115,10 @@ public:
 		embeds.insert(std::make_pair(type, e));
 	}
 
+	size_t embeds_count() const {
+		return embeds.size();
+	}
+
 	static ioremap::elliptics::data_pointer pack(const data_container_t &ds);
 	static data_container_t unpack(ioremap::elliptics::data_pointer data_pointer, bool embeded = false);
 
