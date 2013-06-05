@@ -8,11 +8,10 @@ Build-Depends: debhelper (>= 5),
  libboost-dev,
  libboost-system-dev,
  libboost-thread-dev,
- elliptics-dev (>= 2.23), elliptics-dev (<< 2.24),
- elliptics-client (>= 2.23), elliptics-client (<< 2.24),
- elliptics (>=2.23),
+ elliptics-dev,
+ elliptics-client,
  libcurl4-openssl-dev,
- libcocaine-dealer-dev (>= 0.9.10004),
+ libcocaine-dealer-dev (>= 0.10),
  libmsgpack-dev,
  uuid-dev,
  libcppunit-dev
@@ -30,6 +29,6 @@ Description: Smart client for Elliptics storage (debug symbols)
 
 Package: libelliptics-proxy-dev
 Architecture: any
-Depends: libelliptics-proxy (= ${Source-Version}), libboost-dev, libcocaine-dealer-dev (>= 0.9.10000), libmsgpack-dev, elliptics-dev (>= 2.23), elliptics-dev (<< 2.24)
+Depends: libelliptics-proxy (= ${Source-Version}), libboost-dev, libcocaine-dealer-dev (>= 0.9.10000), libmsgpack-dev, elliptics-dev
 Description: Smart client for Elliptics storage (developer files)
 

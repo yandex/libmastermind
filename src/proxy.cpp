@@ -1169,7 +1169,7 @@ std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_wri
 }
 
 std::string elliptics_proxy_t::impl::exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups) {
-	std::string res;
+	std::stringstream res;
 	ioremap::elliptics::session sess(*m_elliptics_node);
 	if (sess.state_num() < m_die_limit) {
 		throw std::runtime_error("Too low number of existing states");
@@ -1189,7 +1189,25 @@ std::string elliptics_proxy_t::impl::exec_script_impl(key_t &key, std::string &d
 
 	try {
 		sess.set_groups(lgroups);
-		res = sess.exec_locked(&id, script, data, std::string());
+		auto result = sess.exec(&id, script, data).get();
+
+        for (auto it = result.begin(); it != result.end(); ++it) {
+            if (it->error()) {
+                error_info error = it->error();
+                res << dnet_server_convert_dnet_addr(it->address())
+                    << ": failed to process: \"" << error.message() << "\": " << error.code() << std::endl;
+            } else {
+                exec_context context = it->context();
+                if (context.is_null()) {
+                    res << dnet_server_convert_dnet_addr(it->address())
+                        << ": acknowledge" << std::endl;
+                } else {
+                    res << dnet_server_convert_dnet_addr(context.address())
+                        << ": " << context.event()
+                        << " \"" << context.data().to_string() << "\"" << std::endl;
+                }
+            }
+        }
 	}
 	catch (const std::exception &e) {
 		std::stringstream msg;
@@ -1203,7 +1221,7 @@ std::string elliptics_proxy_t::impl::exec_script_impl(key_t &key, std::string &d
 		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
-	return res;
+	return res.str();
 }
 
 data_container_t read_parser(const ioremap::elliptics::read_result_entry &entry, bool embeded) {

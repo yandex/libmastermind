@@ -1,3 +1,9 @@
+libelliptics-proxy (0.2.4) precise; urgency=low
+
+  * Elliptics 24 support
+
+ -- toshik <toshik@mercury.dev.yandex.net>  Wed, 05 Jun 2013 15:55:07 +0400
+
 libelliptics-proxy (0.2.3) unstable; urgency=low
 
   * Fixed build on ubuntu precise
