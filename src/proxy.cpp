@@ -1005,7 +1005,7 @@ std::map<key_t, std::vector<lookup_result_t> > elliptics_proxy_t::impl::bulk_wri
 }
 
 std::string elliptics_proxy_t::impl::exec_script_impl(key_t &key, std::string &data, std::string &script, std::vector<int> &groups) {
-	std::stringstream res;
+	std::string res;
 	ioremap::elliptics::session sess(*m_elliptics_node);
 	if (sess.state_num() < m_die_limit) {
 		throw std::runtime_error("Too low number of existing states");
@@ -1041,7 +1041,7 @@ std::string elliptics_proxy_t::impl::exec_script_impl(key_t &key, std::string &d
 		m_elliptics_log->log(DNET_LOG_ERROR, msg.str().c_str());
 		throw;
 	}
-	return res.str();
+	return res;
 }
 
 async_read_result_t elliptics_proxy_t::impl::read_async_impl(key_t &key, uint64_t offset, uint64_t size,
