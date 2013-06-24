@@ -54,8 +54,6 @@ elliptics_proxy_t::config::config() :
 
 bool dnet_id_less::operator () (const struct dnet_id &ob1, const struct dnet_id &ob2) {
 	int res = memcmp(ob1.id, ob2.id, DNET_ID_SIZE);
-	if (res == 0)
-		res = ob1.type - ob2.type;
 	return (res < 0);
 }
 
