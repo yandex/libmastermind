@@ -41,6 +41,8 @@
 
 #include "utils.hpp"
 
+#include <elliptics/interface.h>
+
 namespace {
 
 size_t uploads_need(size_t success_copies_num, size_t replication_count) {
@@ -1544,5 +1546,206 @@ std::vector<int> elliptics_proxy_t::impl::get_all_groups() {
 }
 #endif /* HAVE_METABASE */
 
-} // namespace elliptics
 
+struct mastermind_t::data {
+	data(std::string cocaine_config = "", int wait_timeout = 0, int group_weights_refresh_period = 60)
+		: m_cocaine_dealer()
+		, m_metabase_usage(PROXY_META_NONE)
+		, m_weight_cache(get_group_weighs_cache())
+		, m_group_weights_update_period(group_weights_refresh_period)
+		, m_done(false)
+	{
+		if (cocaine_config.size()) {
+			m_cocaine_dealer.reset(new cocaine::dealer::dealer_t(cocaine_config));
+		}
+
+		m_cocaine_default_policy.deadline = wait_timeout;
+		if (m_cocaine_dealer.get()) {
+			m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_group_weights_loop, this));
+		}
+	}
+
+	bool collect_group_weights();
+	void collect_group_weights_loop();
+
+	std::unique_ptr<cocaine::dealer::dealer_t>         m_cocaine_dealer;
+	cocaine::dealer::message_policy_t                  m_cocaine_default_policy;
+	int                                                m_metabase_timeout;
+	int                                                m_metabase_usage;
+	uint64_t                                           m_metabase_current_stamp;
+
+	std::unique_ptr<group_weights_cache_interface_t>   m_weight_cache;
+	const int                                          m_group_weights_update_period;
+	std::thread                                        m_weight_cache_update_thread;
+	std::condition_variable                            m_weight_cache_condition_variable;
+	std::mutex                                         m_mutex;
+	bool                                               m_done;
+};
+
+bool mastermind_t::data::collect_group_weights() {
+	if (!m_cocaine_dealer.get()) {
+		throw std::runtime_error("Dealer is not initialized");
+	}
+
+	metabase_group_weights_request_t req;
+	metabase_group_weights_response_t resp;
+
+	req.stamp = ++m_metabase_current_stamp;
+
+	cocaine::dealer::message_path_t path("mastermind", "get_group_weights");
+
+	boost::shared_ptr<cocaine::dealer::response_t> future;
+	future = m_cocaine_dealer->send_message(req, path, m_cocaine_default_policy);
+
+	cocaine::dealer::data_container chunk;
+	future->get(&chunk);
+
+	msgpack::unpacked unpacked;
+	msgpack::unpack(&unpacked, static_cast<const char*>(chunk.data()), chunk.size());
+
+	unpacked.get().convert(&resp);
+
+	return m_weight_cache->update(resp);
+}
+
+void mastermind_t::data::collect_group_weights_loop() {
+	std::unique_lock<std::mutex> lock(m_mutex);
+#if __GNUC_MINOR__ >= 6
+	auto no_timeout = std::cv_status::no_timeout;
+	auto timeout = std::cv_status::timeout;
+	auto tm = timeout;
+#else
+	bool no_timeout = false;
+	bool timeout = true;
+	bool tm = timeout;
+#endif
+	do {
+		collect_group_weights();
+		tm = timeout;
+		while(m_done == false)
+			tm = m_weight_cache_condition_variable.wait_for(lock,
+															std::chrono::seconds(
+																m_group_weights_update_period));
+	} while(no_timeout == tm);
+}
+
+
+mastermind_t::mastermind_t()
+	: m_data(new data())
+{
+}
+
+mastermind_t::~mastermind_t()
+{
+}
+
+std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count) {
+	if(!m_data->m_weight_cache->initialized() && !m_data->collect_group_weights()) {
+		return std::vector<int>();
+	}
+	std::vector<int> result = m_data->m_weight_cache->choose(count);
+
+	std::ostringstream msg;
+
+	msg << "Chosen group: [";
+
+	std::vector<int>::const_iterator e = result.end();
+	for(
+		std::vector<int>::const_iterator it = result.begin();
+		it != e;
+		++it) {
+		if(it != result.begin()) {
+			msg << ", ";
+		}
+		msg << *it;
+	}
+	msg << "]\n";
+	return result;
+}
+
+group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
+	if (!m_data->m_cocaine_dealer.get()) {
+		throw std::runtime_error("Dealer is not initialized");
+	}
+
+	group_info_request_t req;
+	group_info_response_t resp;
+
+	req.group = group;
+
+	cocaine::dealer::message_path_t path("mastermind", "get_group_info");
+
+	boost::shared_ptr<cocaine::dealer::response_t> future;
+	future = m_data->m_cocaine_dealer->send_message(req.group, path, m_data->m_cocaine_default_policy);
+
+	cocaine::dealer::data_container chunk;
+	future->get(&chunk);
+
+	msgpack::unpacked unpacked;
+	msgpack::unpack(&unpacked, static_cast<const char*>(chunk.data()), chunk.size());
+
+	unpacked.get().convert(&resp);
+
+	return resp;
+}
+
+std::vector<std::vector<int> > mastermind_t::get_symmetric_groups() {
+	std::vector<std::vector<int> > res;
+
+	cocaine::dealer::message_path_t path("mastermind", "get_symmetric_groups");
+
+	boost::shared_ptr<cocaine::dealer::response_t> future;
+	future = m_data->m_cocaine_dealer->send_message(std::string(), path, m_data->m_cocaine_default_policy);
+
+	cocaine::dealer::data_container chunk;
+	future->get(&chunk);
+
+	msgpack::unpacked unpacked;
+	msgpack::unpack(&unpacked, static_cast<const char*>(chunk.data()), chunk.size());
+
+	unpacked.get().convert(&res);
+	return res;
+}
+
+std::map<int, std::vector<int> > mastermind_t::get_bad_groups() {
+	std::map<int, std::vector<int> > res;
+
+	cocaine::dealer::message_path_t path("mastermind", "get_bad_groups");
+
+	boost::shared_ptr<cocaine::dealer::response_t> future;
+	future = m_data->m_cocaine_dealer->send_message(std::string(), path, m_data->m_cocaine_default_policy);
+
+	cocaine::dealer::data_container chunk;
+	future->get(&chunk);
+
+	msgpack::unpacked unpacked;
+	msgpack::unpack(&unpacked, static_cast<const char*>(chunk.data()), chunk.size());
+
+	unpacked.get().convert(&res);
+	return res;
+}
+
+std::vector<int> mastermind_t::get_all_groups() {
+	std::vector<int> res;
+
+	{
+		std::vector<std::vector<int> > r1 = get_symmetric_groups();
+		for (auto it = r1.begin(); it != r1.end(); ++it) {
+			res.insert(res.end(), it->begin(), it->end());
+		}
+	}
+
+	{
+		std::map<int, std::vector<int> > r2 = get_bad_groups();
+		for (auto it = r2.begin(); it != r2.end(); ++it) {
+			res.insert(res.end(), it->second.begin(), it->second.end());
+		}
+	}
+
+	std::sort(res.begin(), res.end());
+	res.erase(std::unique(res.begin(), res.end()), res.end());
+
+	return res;
+}
+
+} // namespace elliptics

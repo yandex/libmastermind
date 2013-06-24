@@ -488,6 +488,21 @@ private:
 #endif /* HAVE_METABASE */
 };
 
+class mastermind_t {
+public:
+	mastermind_t();
+	~mastermind_t();
+
+	std::vector<int> get_metabalancer_groups(uint64_t count = 0);
+	group_info_response_t get_metabalancer_group_info(int group);
+	std::vector<std::vector<int> > get_symmetric_groups();
+	std::map<int, std::vector<int> > get_bad_groups();
+	std::vector<int> get_all_groups();
+private:
+	struct data;
+	std::unique_ptr<data> m_data;
+};
+
 } // namespace elliptics
 
 #endif // _ELLIPTICS_FASTCGI_HPP_INCLUDED_
