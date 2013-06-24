@@ -86,7 +86,6 @@ public:
 	python_dnet_id()
 	{
 		group_id = 0;
-		type = 0;
 		memset(id, 0, DNET_ID_SIZE);
 		bytearray = object(handle<>(PyByteArray_FromStringAndSize(
 										reinterpret_cast<char *>(id)
@@ -109,8 +108,8 @@ public:
 class python_key_t : public elliptics::key_t {
 public:
 	typedef elliptics::key_t base;
-	python_key_t(const std::string &remote, int type = 0)
-		: base(remote, type)
+	python_key_t(const std::string &remote)
+		: base(remote)
 	{
 	}
 
@@ -674,7 +673,6 @@ std::string dnet_id_str(const python_dnet_id &ob) {
 	oss << buf.data();
 
 	oss << ", group_id: " << ob.group_id
-		<< ", type: " << ob.type
 		<< '>';
 
 	return oss.str();
@@ -797,10 +795,9 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 		.def("__repr__", dnet_id_repr)
 		.def_readwrite("id", &python_dnet_id::bytearray)
 		.def_readwrite("group_id", &dnet_id::group_id)
-		.def_readwrite("type", &dnet_id::type)
 	;
 
-	class_<python_key_t>("key_t", init<const std::string &, optional<int> >())
+	class_<python_key_t>("key_t", init<const std::string &>())
 		.def(init<python_dnet_id &>())
 		.def("__str__", key_str)
 		.def("__repr__", key_repr)
@@ -812,7 +809,6 @@ BOOST_PYTHON_MODULE(elliptics_proxy)
 				return_value_policy<copy_const_reference>()
 				)
 			)
-		.def_readonly("type", &elliptics::key_t::type)
 		.add_property("id", make_function(static_cast<const python_dnet_id &(python_key_t::*)() const>(&python_key_t::id), return_value_policy<copy_const_reference>()))
 	;
 

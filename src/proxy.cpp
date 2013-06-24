@@ -716,7 +716,7 @@ std::vector<lookup_result_t> elliptics_proxy_t::impl::write_impl(key_t &key, dat
 		memset(&ts, 0, sizeof(ts));
 
 		elliptics_session.set_cflags(0);
-		elliptics_session.write_metadata(key, key.remote(), helper.get_upload_groups(), ts);
+		//elliptics_session.write_metadata(key, key.remote(), helper.get_upload_groups(), ts);
 		elliptics_session.set_cflags(ioflags);
 	}
 	catch (const std::exception &e) {
@@ -764,7 +764,6 @@ std::vector<std::string> elliptics_proxy_t::impl::range_get_impl(key_t &from, ke
 		io.start = limit_start;
 		io.num = limit_num;
 		io.flags = ioflags;
-		io.type = from.type();
 
 
 		for (size_t i = 0; i < lgroups.size(); ++i) {
@@ -1018,7 +1017,6 @@ std::string elliptics_proxy_t::impl::exec_script_impl(key_t &key, std::string &d
 		id = key.id();
 	} else {
 		sess.transform(key.remote(), id);
-		id.type = key.type();
 	}
 
 	std::vector<int> lgroups = get_groups(key, groups);
@@ -1276,12 +1274,12 @@ async_update_indexes_result_t elliptics_proxy_t::impl::update_indexes_async(cons
 
 async_find_indexes_result_t elliptics_proxy_t::impl::find_indexes_async(const std::vector<dnet_raw_id> &indexes) {
 	ioremap::elliptics::session sess(*m_elliptics_node);
-	return sess.find_indexes(indexes);
+	return sess.find_all_indexes(indexes);
 }
 
 async_find_indexes_result_t elliptics_proxy_t::impl::find_indexes_async(const std::vector<std::string> &indexes) {
 	ioremap::elliptics::session sess(*m_elliptics_node);
-	return sess.find_indexes(indexes);
+	return sess.find_all_indexes(indexes);
 }
 
 async_check_indexes_result_t elliptics_proxy_t::impl::check_indexes_async(const key_t &key) {
