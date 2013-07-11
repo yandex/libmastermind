@@ -1,6 +1,6 @@
 cmake_minimum_required( VERSION 2.6 ) 
  
-set( LIB elliptics-proxy) 
+set( LIB mastermind) 
 project( ${LIB} ) 
  
 FILE (READ "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog" DEBCHANGELOG)
@@ -20,22 +20,26 @@ set(REQUIRED_LIBRARIES
                       elliptics_cpp
                       curl
                       ${Boost_SYSTEM_LIBRARY}
-                      ${Boost_THREAD_LIBRARY})
-IF(WITH_METABASE)
-    SET(HAVE_METABASE true)
-    FIND_LIBRARY(DEALER NAMES cocaine-dealer)
+                      ${Boost_THREAD_LIBRARY}
+					  cocaine-core
+					  cocaine-framework
+					  )
+#IF(WITH_METABASE)
+#    SET(HAVE_METABASE true)
+#    FIND_LIBRARY(FRAMEWORK NAMES cocaine-framework)
 
-    IF(${DEALER} STREQUAL "DEALER-NOTFOUND")
-        SET(HAVE_METABASE false)
-    ENDIF()
+#   IF(${FRAMEWORK} STREQUAL "FRAMEWORK-NOTFOUND")
+#        SET(HAVE_METABASE false)
+#    ENDIF()
 
-    IF(HAVE_METABASE)
-        SET(REQUIRED_LIBRARIES 
-			${REQUIRED_LIBRARIES}
-			${DEALER})
-    ENDIF()
-message("Metabase: ${HAVE_METABASE} ${REQUIRED_LIBRARIES}")
-ENDIF()
+#    IF(HAVE_METABASE)
+#        SET(REQUIRED_LIBRARIES 
+#			${REQUIRED_LIBRARIES}
+#			${FRAMEWORK}
+#			)
+#    ENDIF()
+#message("Metabase: ${HAVE_METABASE} ${REQUIRED_LIBRARIES}")
+#ENDIF()
 
 CONFIGURE_FILE(
 	"${PROJECT_SOURCE_DIR}/include/elliptics/proxy.hpp"
@@ -57,7 +61,7 @@ SET_TARGET_PROPERTIES(${LIB} PROPERTIES
 TARGET_LINK_LIBRARIES(${LIB}
                       ${REQUIRED_LIBRARIES})
 
-add_subdirectory(bindings)
+#add_subdirectory(bindings)
 
 INSTALL(TARGETS ${LIB}
             RUNTIME DESTINATION bin COMPONENT runtime
@@ -70,26 +74,26 @@ INSTALL(
     DESTINATION include
     COMPONENT development)
 
-set (TESTS_SOURCES
-	tests/test.cpp
-	tests/teamcity_cppunit.cpp
-	tests/teamcity_messages.cpp
-	tests/teamcity_cppunit.h
-	tests/teamcity_messages.h
-)
-set (TEST test_${LIB})
-add_executable (${TEST} ${TESTS_SOURCES})
-target_link_libraries (${TEST} ${LIB} cppunit)
-#set_target_properties(${TEST} PROPERTIES
+#set (TESTS_SOURCES
+#	tests/test.cpp
+#	tests/teamcity_cppunit.cpp
+#	tests/teamcity_messages.cpp
+#	tests/teamcity_cppunit.h
+#	tests/teamcity_messages.h
+#)
+#set (TEST test_${LIB})
+#add_executable (${TEST} ${TESTS_SOURCES})
+#target_link_libraries (${TEST} ${LIB} cppunit)
+##set_target_properties(${TEST} PROPERTIES
 #        BUILD_WITH_INSTALL_RPATH 1
 #        INSTALL_RPATH .)
-set_target_properties(${TEST} PROPERTIES
-        INSTALL_RPATH "."
-        BUILD_WITH_INSTALL_RPATH ON)
-enable_testing ()
-add_test (${TEST} ${TEST} ${PROJECT_SOURCE_DIR}/tests/)
-set(PYTEST pytest_runner.sh)
-add_test (${PYTEST} ${PYTEST} ${PROJECT_SOURCE_DIR}/tests/)
-file(COPY
-	${CMAKE_CURRENT_SOURCE_DIR}/tests/${PYTEST}
-	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+#set_target_properties(${TEST} PROPERTIES
+#        INSTALL_RPATH "."
+#        BUILD_WITH_INSTALL_RPATH ON)
+#enable_testing ()
+#add_test (${TEST} ${TEST} ${PROJECT_SOURCE_DIR}/tests/)
+#set(PYTEST pytest_runner.sh)
+#add_test (${PYTEST} ${PYTEST} ${PROJECT_SOURCE_DIR}/tests/)
+#file(COPY
+#	${CMAKE_CURRENT_SOURCE_DIR}/tests/${PYTEST}
+#	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
