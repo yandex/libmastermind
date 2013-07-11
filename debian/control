@@ -1,4 +1,4 @@
-Source: libelliptics-proxy
+Source: libmastermind
 Section: net
 Priority: optional
 Maintainer: Anton Kortunov <toshik@yandex-team.ru>
@@ -13,24 +13,25 @@ Build-Depends: debhelper (>= 5),
  elliptics-client (>= 2.24), elliptics-client (<< 2.25),
  elliptics (>=2.24),
  libcurl4-openssl-dev,
- libcocaine-dealer-dev (>= 0.9.10004),
+ cocaine-framework-native (>= 0.10.5),
+ libcocaine-core2 (>= 0.10.5),
  libmsgpack-dev,
  uuid-dev,
  libcppunit-dev
 Standards-Version: 3.9.1
 
-Package: libelliptics-proxy
+Package: libmastermind
 Architecture: any
 Depends: ${shlibs:Depends}
 Description: Smart client for Elliptics storage
 
-Package: libelliptics-proxy-dbg
+Package: libmastermind-dbg
 Architecture: any
-Depends: libelliptics-proxy (= ${Source-Version})
+Depends: libmastermind (= ${Source-Version})
 Description: Smart client for Elliptics storage (debug symbols)
 
-Package: libelliptics-proxy-dev
+Package: libmastermind-dev
 Architecture: any
-Depends: libelliptics-proxy (= ${Source-Version}), libboost-dev, libcocaine-dealer-dev (>= 0.9.10000), libmsgpack-dev, elliptics-dev (>= 2.23), elliptics-dev (<< 2.24)
+Depends: libmastermind (= ${Source-Version}), libboost-dev, libmsgpack-dev, elliptics-dev (>= 2.24), elliptics-dev (<< 2.25)
 Description: Smart client for Elliptics storage (developer files)
 

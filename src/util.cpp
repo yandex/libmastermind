@@ -30,32 +30,8 @@
 
 namespace elliptics {
 
-elliptics_proxy_t::remote::remote(const std::string &host, const int port, const int family) :
-				host(host), port(port), family(family)
-{ }
-
-elliptics_proxy_t::config::config() :
-				log_path("/dev/stderr"),
-				log_mask(DNET_LOG_INFO|DNET_LOG_ERROR),
-				flags(0),
-				wait_timeout(0),
-				check_timeout(0),
-				base_port(1024),
-				directory_bit_num(32),
-				success_copies_num(2),
-				die_limit(0),
-				replication_count(0),
-				chunk_size(0),
-				eblob_style_path(true)
-#ifdef HAVE_METABASE
-				,group_weights_refresh_period(60)
-#endif
-{ }
-
 bool dnet_id_less::operator () (const struct dnet_id &ob1, const struct dnet_id &ob2) {
 	int res = memcmp(ob1.id, ob2.id, DNET_ID_SIZE);
-	if (res == 0)
-		res = ob1.type - ob2.type;
 	return (res < 0);
 }
 
