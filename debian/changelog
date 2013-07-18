@@ -1,3 +1,16 @@
+libmastermind (1.1) lucid; urgency=low
+
+  * removed extra code from CMakeLists
+  * removed a lot of dependencies
+  * removed dependenc of cocaine-dealer
+  * add dependence of cocaine-framework >= 0.10.5
+  * changed description of packages
+  * removed extra headers and source files
+  * proxy.{hpp|cpp} renamed to mastermind.{hpp|cpp}
+  * changed scope guards for uniformity
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 18 Jul 2013 16:19:49 +0400
+
 libmastermind (1.0) lucid; urgency=low
 
   * Removed elliptcs-proxy, only mastermind tools are exist
