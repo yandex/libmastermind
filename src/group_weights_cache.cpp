@@ -3,10 +3,7 @@
 
 #include <boost/thread.hpp>
 
-#include "elliptics/proxy.hpp"
 #include "utils.hpp"
-
-#ifdef HAVE_METABASE
 
 namespace elliptics {
 
@@ -93,4 +90,3 @@ std::unique_ptr<group_weights_cache_interface_t> get_group_weighs_cache() {
 
 }
 
-#endif

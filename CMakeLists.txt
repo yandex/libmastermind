@@ -1,74 +1,48 @@
 cmake_minimum_required( VERSION 2.6 ) 
  
-set( LIB mastermind) 
-project( ${LIB} ) 
+set(LIB mastermind)
+project(${LIB})
  
 FILE (READ "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog" DEBCHANGELOG)
 
 string(REGEX MATCH "([0-9]+\\.[0-9]+\\.[0-9]+)" DEBFULLVERSION "${DEBCHANGELOG}")
-STRING (REGEX MATCH "([0-9]+\\.[0-9]+)" MAJOR_VERSION "${DEBFULLVERSION}")
-STRING (REGEX MATCH "([0-9]+$)" MINOR_VERSION "${DEBFULLVERSION}")
- 
-option(WITH_METABASE "Build with metabase and metabalancer support" ON)
-SET(HAVE_METABASE false)
+string(REGEX MATCH "([0-9]+\\.[0-9]+)" MAJOR_VERSION "${DEBFULLVERSION}")
+string (REGEX MATCH "([0-9]+$)" MINOR_VERSION "${DEBFULLVERSION}")
 
-SET(CMAKE_CXX_FLAGS "-O0 -Wall -pedantic -std=c++0x")
-
-find_package(Boost COMPONENTS system thread REQUIRED)
+set(CMAKE_CXX_FLAGS "-O0 -Wall -pedantic -std=c++0x")
 
 set(REQUIRED_LIBRARIES
-                      elliptics_cpp
-                      curl
-                      ${Boost_SYSTEM_LIBRARY}
-                      ${Boost_THREAD_LIBRARY}
-					  cocaine-core
-					  cocaine-framework
-					  )
-#IF(WITH_METABASE)
-#    SET(HAVE_METABASE true)
-#    FIND_LIBRARY(FRAMEWORK NAMES cocaine-framework)
-
-#   IF(${FRAMEWORK} STREQUAL "FRAMEWORK-NOTFOUND")
-#        SET(HAVE_METABASE false)
-#    ENDIF()
-
-#    IF(HAVE_METABASE)
-#        SET(REQUIRED_LIBRARIES 
-#			${REQUIRED_LIBRARIES}
-#			${FRAMEWORK}
-#			)
-#    ENDIF()
-#message("Metabase: ${HAVE_METABASE} ${REQUIRED_LIBRARIES}")
-#ENDIF()
-
-CONFIGURE_FILE(
-	"${PROJECT_SOURCE_DIR}/include/elliptics/proxy.hpp"
-	"${PROJECT_SOURCE_DIR}/include/elliptics/proxy.hpp")
+	cocaine-core
+	cocaine-framework
+	)
 	
-INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/include)
+include_directories(BEFORE ${PROJECT_SOURCE_DIR}/include)
  
-AUX_SOURCE_DIRECTORY(src SOURCES)
+aux_source_directory(src SOURCES)
 set(SOURCES
 	${SOURCES}
-	${PROJECT_SOURCE_DIR}/src/utils.hpp)
+	${PROJECT_SOURCE_DIR}/src/utils.hpp
+	)
 
-ADD_LIBRARY(${LIB} SHARED ${SOURCES})
+add_library(${LIB} SHARED ${SOURCES})
  
-SET_TARGET_PROPERTIES(${LIB} PROPERTIES 
-                             VERSION "${MAJOR_VERSION}.${MINOR_VERSION}"
-                             SOVERSION ${MAJOR_VERSION})
+set_target_properties(${LIB} PROPERTIES 
+	VERSION "${MAJOR_VERSION}.${MINOR_VERSION}"
+	SOVERSION ${MAJOR_VERSION}
+	)
  
-TARGET_LINK_LIBRARIES(${LIB}
-                      ${REQUIRED_LIBRARIES})
+target_link_libraries(${LIB}
+	${REQUIRED_LIBRARIES})
 
 #add_subdirectory(bindings)
 
-INSTALL(TARGETS ${LIB}
-            RUNTIME DESTINATION bin COMPONENT runtime
-            LIBRARY DESTINATION lib COMPONENT runtime
-            ARCHIVE DESTINATION lib COMPONENT developement)
+install(TARGETS ${LIB}
+	RUNTIME DESTINATION bin COMPONENT runtime
+	LIBRARY DESTINATION lib COMPONENT runtime
+	ARCHIVE DESTINATION lib COMPONENT developement
+	)
 
-INSTALL(
+install(
     DIRECTORY
         include/
     DESTINATION include

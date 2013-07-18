@@ -1,18 +1,10 @@
-#ifndef _UTILS_FASTCGI_HPP_INCLUDED_
-#define _UTILS_FASTCGI_HPP_INCLUDED_
+#ifndef SRC__UTILS_HPP
+#define SRC__UTILS_HPP
 
-#include "elliptics/proxy.hpp"
+#include <msgpack.hpp>
 
 namespace elliptics {
 
-enum METABASE_TYPE {
-  PROXY_META_NONE = 0,
-  PROXY_META_OPTIONAL,
-  PROXY_META_NORMAL,
-  PROXY_META_MANDATORY
-};
-
-#ifdef HAVE_METABASE
 struct metabase_group_weights_request_t {
   uint64_t stamp;
   MSGPACK_DEFINE(stamp)
@@ -54,12 +46,7 @@ struct group_info_request_t {
   int group;
   MSGPACK_DEFINE(group)
 };
-#endif /* HAVE_METABASE */
-
-struct dnet_id_less {
-  bool operator () (const struct dnet_id &ob1, const struct dnet_id &ob2);
-};
 
 }
 
-#endif /* _UTILS_FASTCGI_HPP_INCLUDED_ */
+#endif /* SRC__UTILS_HPP */

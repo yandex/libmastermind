@@ -6,33 +6,26 @@ Build-Depends: debhelper (>= 5),
  cdbs,
  cmake (>= 2.6),
  libboost-dev,
- libboost-system-dev,
- libboost-thread-dev,
  libboost-python-dev,
- elliptics-dev (>= 2.24), elliptics-dev (<= 2.24.9.4),
- elliptics-client (>= 2.24), elliptics-client (<= 2.24.9.4),
- elliptics (>=2.24), elliptics (<= 2.24.9.4),
- eblob (>= 0.19), eblob (<< 0.20),
- libcurl4-openssl-dev,
  cocaine-framework-native (>= 0.10.5),
+ cocaine-framework-native-dev (>= 0.10.5),
  libcocaine-core2 (>= 0.10.5),
- libmsgpack-dev,
- uuid-dev,
- libcppunit-dev
+ libcocaine-dev,
+ libmsgpack-dev
 Standards-Version: 3.9.1
 
 Package: libmastermind
 Architecture: any
 Depends: ${shlibs:Depends}
-Description: Smart client for Elliptics storage
+Description: Client for Mastermind service
 
 Package: libmastermind-dbg
 Architecture: any
 Depends: libmastermind (= ${Source-Version})
-Description: Smart client for Elliptics storage (debug symbols)
+Description: Client for Mastermind service (debug symbols)
 
 Package: libmastermind-dev
 Architecture: any
-Depends: libmastermind (= ${Source-Version}), libboost-dev, libmsgpack-dev, elliptics-dev (>= 2.24), elliptics-dev (<< 2.25)
-Description: Smart client for Elliptics storage (developer files)
+Depends: libmastermind (= ${Source-Version})
+Description: Client for Mastermind service (developer files)
 
