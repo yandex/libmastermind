@@ -18,6 +18,7 @@
 #include <thread>
 #include <condition_variable>
 #include <mutex>
+#include <algorithm>
 
 #include <elliptics/mastermind.hpp>
 #include <msgpack.hpp>
@@ -99,13 +100,18 @@ struct mastermind_t::data {
 		m_service_manager = cocaine::framework::service_manager_t::create(
 			cocaine::io::tcp::endpoint(ip, port));
 		m_app = m_service_manager->get_service<cocaine::framework::app_service_t>("mastermind");
+		m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
 	}
 
 	bool collect_group_weights();
-	void collect_group_weights_loop();
+	bool collect_symmetric_groups();
+	void collect_info_loop();
 
 	int                                                m_metabase_timeout;
 	uint64_t                                           m_metabase_current_stamp;
+
+	std::map<int, std::vector<int>>                    m_symmetric_groups_cache;
+	std::mutex                                         m_symmetric_groups_mutex;
 
 	std::unique_ptr<group_weights_cache_interface_t>   m_weight_cache;
 	const int                                          m_group_weights_update_period;
@@ -138,7 +144,32 @@ bool mastermind_t::data::collect_group_weights() {
 	return m_weight_cache->update(resp);
 }
 
-void mastermind_t::data::collect_group_weights_loop() {
+bool mastermind_t::data::collect_symmetric_groups() {
+	if (!m_app.get()) {
+		throw std::runtime_error("Mastermind is not initialized");
+	}
+
+	auto g = m_app->enqueue("get_symmetric_groups", "");
+	auto chunk = g.next();
+	auto sym_groups = cocaine::framework::unpack<std::vector<std::vector<int>>>(chunk);
+
+	std::map<int, std::vector<int>> cache;
+	for (auto it = sym_groups.begin(); it != sym_groups.end(); ++it) {
+		auto b = it->begin();
+		auto e = it->end();
+		auto m = std::min_element(b, e);
+		cache.insert(std::make_pair(*m, *it));
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(m_symmetric_groups_mutex);
+		(void) lock;
+		m_symmetric_groups_cache.swap(cache);
+	}
+	return true;
+}
+
+void mastermind_t::data::collect_info_loop() {
 	std::unique_lock<std::mutex> lock(m_mutex);
 #if __GNUC_MINOR__ >= 6
 	auto no_timeout = std::cv_status::no_timeout;
@@ -151,6 +182,7 @@ void mastermind_t::data::collect_group_weights_loop() {
 #endif
 	do {
 		collect_group_weights();
+		collect_symmetric_groups();
 		tm = timeout;
 		while(m_done == false)
 			tm = m_weight_cache_condition_variable.wait_for(lock,
@@ -216,6 +248,14 @@ std::vector<std::vector<int> > mastermind_t::get_symmetric_groups() {
 	auto g = m_data->m_app->enqueue("get_symmetric_groups", "");
 	auto chunk = g.next();
 	return cocaine::framework::unpack<std::vector<std::vector<int>>>(chunk);
+}
+
+std::vector<int> mastermind_t::get_symmetric_groups(int group) {
+	auto it = m_data->m_symmetric_groups_cache.find(group);
+	if (it == m_data->m_symmetric_groups_cache.end() && !m_data->collect_symmetric_groups()) {
+		return std::vector<int>();
+	}
+	return it->second;
 }
 
 std::map<int, std::vector<int> > mastermind_t::get_bad_groups() {
