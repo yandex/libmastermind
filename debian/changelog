@@ -1,3 +1,10 @@
+libmastermind (2.0) lucid; urgency=low
+
+  * added cache for symmetric groups
+  * added method to get `symmetric_groups` by smallest group
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Wed, 24 Jul 2013 16:46:34 +0400
+
 libmastermind (1.1) lucid; urgency=low
 
   * removed extra code from CMakeLists
