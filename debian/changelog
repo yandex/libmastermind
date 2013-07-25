@@ -1,3 +1,9 @@
+libmastermind (2.1) lucid; urgency=low
+
+  * Fixed determination of version during of build
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 25 Jul 2013 16:20:16 +0400
+
 libmastermind (2.0) lucid; urgency=low
 
   * added cache for symmetric groups
