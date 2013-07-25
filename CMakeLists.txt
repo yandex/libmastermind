@@ -5,8 +5,8 @@ project(${LIB})
  
 FILE (READ "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog" DEBCHANGELOG)
 
-string(REGEX MATCH "([0-9]+\\.[0-9]+\\.[0-9]+)" DEBFULLVERSION "${DEBCHANGELOG}")
-string(REGEX MATCH "([0-9]+\\.[0-9]+)" MAJOR_VERSION "${DEBFULLVERSION}")
+string(REGEX MATCH "([0-9]+\\.[0-9]+)" DEBFULLVERSION "${DEBCHANGELOG}")
+string(REGEX MATCH "([0-9]+)" MAJOR_VERSION "${DEBFULLVERSION}")
 string (REGEX MATCH "([0-9]+$)" MINOR_VERSION "${DEBFULLVERSION}")
 
 set(CMAKE_CXX_FLAGS "-O0 -Wall -pedantic -std=c++0x")
