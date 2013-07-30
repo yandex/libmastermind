@@ -20,7 +20,7 @@
 #include <mutex>
 #include <algorithm>
 
-#include <elliptics/mastermind.hpp>
+#include "elliptics/mastermind.hpp"
 #include <msgpack.hpp>
 
 #include <cocaine/framework/service.hpp>
@@ -92,15 +92,28 @@ enum dnet_common_embed_types {
 };
 
 struct mastermind_t::data {
-	data(const std::string &ip, uint16_t port, int wait_timeout = 0, int group_weights_refresh_period = 60)
+	data(const std::string &host, uint16_t port, int wait_timeout = 0, int group_info_update_period = 60)
 		: m_weight_cache(get_group_weighs_cache())
-		, m_group_weights_update_period(group_weights_refresh_period)
+		, m_group_info_update_period(group_info_update_period)
 		, m_done(false)
 	{
 		m_service_manager = cocaine::framework::service_manager_t::create(
-			cocaine::io::tcp::endpoint(ip, port));
+			cocaine::framework::service_manager_t::endpoint_t(host, port));
 		m_app = m_service_manager->get_service<cocaine::framework::app_service_t>("mastermind");
 		m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
+	}
+
+	~data() {
+		try {
+			{
+				std::lock_guard<std::mutex> lock(m_mutex);
+				(void)lock;
+				m_done = true;
+				m_weight_cache_condition_variable.notify_one();
+			}
+			m_weight_cache_update_thread.join();
+		} catch (const std::system_error &) {
+		}
 	}
 
 	bool collect_group_weights();
@@ -114,14 +127,14 @@ struct mastermind_t::data {
 	std::mutex                                         m_symmetric_groups_mutex;
 
 	std::unique_ptr<group_weights_cache_interface_t>   m_weight_cache;
-	const int                                          m_group_weights_update_period;
+	const int                                          m_group_info_update_period;
 	std::thread                                        m_weight_cache_update_thread;
 	std::condition_variable                            m_weight_cache_condition_variable;
 	std::mutex                                         m_mutex;
 	bool                                               m_done;
 
-	std::shared_ptr<cocaine::framework::service_manager_t> m_service_manager;
 	std::shared_ptr<cocaine::framework::app_service_t> m_app;
+	std::shared_ptr<cocaine::framework::service_manager_t> m_service_manager;
 };
 
 bool mastermind_t::data::collect_group_weights() {
@@ -137,8 +150,9 @@ bool mastermind_t::data::collect_group_weights() {
 	msgpack::sbuffer buf;
 	msgpack::packer<msgpack::sbuffer> pk(buf);
 	pk << req;
-	auto g = m_app->enqueue("get_groups_weights", std::string(buf.data(), buf.size()));
+	auto g = m_app->enqueue("get_group_weights", std::string(buf.data(), buf.size()));
 	auto chunk = g.next();
+
 	resp = cocaine::framework::unpack<metabase_group_weights_response_t>(chunk);
 
 	return m_weight_cache->update(resp);
@@ -187,13 +201,13 @@ void mastermind_t::data::collect_info_loop() {
 		while(m_done == false)
 			tm = m_weight_cache_condition_variable.wait_for(lock,
 															std::chrono::seconds(
-																m_group_weights_update_period));
+																m_group_info_update_period));
 	} while(no_timeout == tm);
 }
 
 
-mastermind_t::mastermind_t(const std::string &ip, uint16_t port)
-	: m_data(new data(ip, port))
+mastermind_t::mastermind_t(const std::string &host, uint16_t port, int wait_timeout, int group_info_update_period)
+	: m_data(new data(host, port, wait_timeout, group_info_update_period))
 {
 }
 

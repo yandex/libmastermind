@@ -1,3 +1,13 @@
+libmastermind (3.0) lucid; urgency=low
+
+  * Support cocaine-framework-native 0.10.6.0
+  * Added wait_timeout and group_info_update_period parameters into constructor
+  * Uses host name instead of ip to connect to application
+  * Fixed name of event `get_group_weight`
+  * Mastermind join update_cache_thread before will be destroyed
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 29 Jul 2013 18:48:51 +0400
+
 libmastermind (2.1) lucid; urgency=low
 
   * Fixed determination of version during of build
