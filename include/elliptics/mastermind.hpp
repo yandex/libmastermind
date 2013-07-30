@@ -33,7 +33,7 @@ struct group_info_response_t {
 
 class mastermind_t {
 public:
-	mastermind_t(const std::string &ip, uint16_t port);
+	mastermind_t(const std::string &host, uint16_t port, int wait_timeout = 0, int group_info_update_period = 60);
 	~mastermind_t();
 
 	std::vector<int> get_metabalancer_groups(uint64_t count = 0);
