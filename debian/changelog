@@ -1,3 +1,9 @@
+libmastermind (3.1) lucid; urgency=low
+
+  * Removed extra debug
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Wed, 31 Jul 2013 13:20:15 +0400
+
 libmastermind (3.0) lucid; urgency=low
 
   * Support cocaine-framework-native 0.10.6.0
