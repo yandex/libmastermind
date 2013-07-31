@@ -1,3 +1,9 @@
+libmastermind (4.0) lucid; urgency=low
+
+  * Removed unused parameter `wait_timeout`
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Wed, 31 Jul 2013 15:59:57 +0400
+
 libmastermind (3.1) lucid; urgency=low
 
   * Removed extra debug
