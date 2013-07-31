@@ -92,7 +92,7 @@ enum dnet_common_embed_types {
 };
 
 struct mastermind_t::data {
-	data(const std::string &host, uint16_t port, int wait_timeout = 0, int group_info_update_period = 60)
+	data(const std::string &host, uint16_t port, int group_info_update_period = 60)
 		: m_weight_cache(get_group_weighs_cache())
 		, m_group_info_update_period(group_info_update_period)
 		, m_done(false)
@@ -206,8 +206,8 @@ void mastermind_t::data::collect_info_loop() {
 }
 
 
-mastermind_t::mastermind_t(const std::string &host, uint16_t port, int wait_timeout, int group_info_update_period)
-	: m_data(new data(host, port, wait_timeout, group_info_update_period))
+mastermind_t::mastermind_t(const std::string &host, uint16_t port, int group_info_update_period)
+	: m_data(new data(host, port, group_info_update_period))
 {
 }
 
