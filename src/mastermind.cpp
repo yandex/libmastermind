@@ -219,24 +219,7 @@ std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count) {
 	if(!m_data->m_weight_cache->initialized() && !m_data->collect_group_weights()) {
 		return std::vector<int>();
 	}
-	std::vector<int> result = m_data->m_weight_cache->choose(count);
-
-	std::ostringstream msg;
-
-	msg << "Chosen group: [";
-
-	std::vector<int>::const_iterator e = result.end();
-	for(
-		std::vector<int>::const_iterator it = result.begin();
-		it != e;
-		++it) {
-		if(it != result.begin()) {
-			msg << ", ";
-		}
-		msg << *it;
-	}
-	msg << "]\n";
-	return result;
+	return m_data->m_weight_cache->choose(count);
 }
 
 group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
