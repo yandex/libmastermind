@@ -92,14 +92,15 @@ enum dnet_common_embed_types {
 };
 
 struct mastermind_t::data {
-	data(const std::string &host, uint16_t port, int group_info_update_period = 60)
-		: m_weight_cache(get_group_weighs_cache())
+	data(const std::string &host, uint16_t port, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60)
+		: m_logger(logger)
+		, m_weight_cache(get_group_weighs_cache())
 		, m_group_info_update_period(group_info_update_period)
 		, m_done(false)
 	{
 		m_service_manager = cocaine::framework::service_manager_t::create(
 			cocaine::framework::service_manager_t::endpoint_t(host, port));
-		m_app = m_service_manager->get_service<cocaine::framework::app_service_t>("mastermind");
+		m_app = m_service_manager->get_service_async<cocaine::framework::app_service_t>("mastermind");
 		m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
 	}
 
@@ -120,6 +121,8 @@ struct mastermind_t::data {
 	bool collect_symmetric_groups();
 	void collect_info_loop();
 
+	std::shared_ptr<cocaine::framework::logger_t> m_logger;
+
 	int                                                m_metabase_timeout;
 	uint64_t                                           m_metabase_current_stamp;
 
@@ -138,49 +141,51 @@ struct mastermind_t::data {
 };
 
 bool mastermind_t::data::collect_group_weights() {
-	if (!m_app.get()) {
-		throw std::runtime_error("Mastermind is not initialized");
+	try {
+		metabase_group_weights_request_t req;
+		metabase_group_weights_response_t resp;
+
+		req.stamp = ++m_metabase_current_stamp;
+
+		msgpack::sbuffer buf;
+		msgpack::packer<msgpack::sbuffer> pk(buf);
+		pk << req;
+		auto g = m_app->enqueue("get_group_weights", std::string(buf.data(), buf.size()));
+		auto chunk = g.next();
+
+		resp = cocaine::framework::unpack<metabase_group_weights_response_t>(chunk);
+
+		return m_weight_cache->update(resp);
+	} catch(const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger, ex.what());
 	}
-
-	metabase_group_weights_request_t req;
-	metabase_group_weights_response_t resp;
-
-	req.stamp = ++m_metabase_current_stamp;
-
-	msgpack::sbuffer buf;
-	msgpack::packer<msgpack::sbuffer> pk(buf);
-	pk << req;
-	auto g = m_app->enqueue("get_group_weights", std::string(buf.data(), buf.size()));
-	auto chunk = g.next();
-
-	resp = cocaine::framework::unpack<metabase_group_weights_response_t>(chunk);
-
-	return m_weight_cache->update(resp);
+	return false;
 }
 
 bool mastermind_t::data::collect_symmetric_groups() {
-	if (!m_app.get()) {
-		throw std::runtime_error("Mastermind is not initialized");
-	}
+	try {
+		auto g = m_app->enqueue("get_symmetric_groups", "");
+		auto chunk = g.next();
+		auto sym_groups = cocaine::framework::unpack<std::vector<std::vector<int>>>(chunk);
 
-	auto g = m_app->enqueue("get_symmetric_groups", "");
-	auto chunk = g.next();
-	auto sym_groups = cocaine::framework::unpack<std::vector<std::vector<int>>>(chunk);
+		std::map<int, std::vector<int>> cache;
+		for (auto it = sym_groups.begin(); it != sym_groups.end(); ++it) {
+			auto b = it->begin();
+			auto e = it->end();
+			auto m = std::min_element(b, e);
+			cache.insert(std::make_pair(*m, *it));
+		}
 
-	std::map<int, std::vector<int>> cache;
-	for (auto it = sym_groups.begin(); it != sym_groups.end(); ++it) {
-		auto b = it->begin();
-		auto e = it->end();
-		auto m = std::min_element(b, e);
-		cache.insert(std::make_pair(*m, *it));
+		{
+			std::lock_guard<std::mutex> lock(m_symmetric_groups_mutex);
+			(void) lock;
+			m_symmetric_groups_cache.swap(cache);
+		}
+		return true;
+	} catch(const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger, ex.what());
 	}
-
-	{
-		std::lock_guard<std::mutex> lock(m_symmetric_groups_mutex);
-		(void) lock;
-		m_symmetric_groups_cache.swap(cache);
-	}
-	return true;
+	return false;
 }
 
 void mastermind_t::data::collect_info_loop() {
@@ -206,8 +211,8 @@ void mastermind_t::data::collect_info_loop() {
 }
 
 
-mastermind_t::mastermind_t(const std::string &host, uint16_t port, int group_info_update_period)
-	: m_data(new data(host, port, group_info_update_period))
+mastermind_t::mastermind_t(const std::string &host, uint16_t port, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period)
+	: m_data(new data(host, port, logger, group_info_update_period))
 {
 }
 
@@ -216,49 +221,70 @@ mastermind_t::~mastermind_t()
 }
 
 std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count) {
-	if(!m_data->m_weight_cache->initialized() && !m_data->collect_group_weights()) {
-		return std::vector<int>();
+	try {
+		if(!m_data->m_weight_cache->initialized() && !m_data->collect_group_weights()) {
+			return std::vector<int>();
+		}
+		return m_data->m_weight_cache->choose(count);
+	} catch(const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
+		throw;
 	}
-	return m_data->m_weight_cache->choose(count);
 }
 
 group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
-	if (!m_data->m_app.get()) {
-		throw std::runtime_error("Mastermind is not initialized");
+	try {
+		group_info_request_t req;
+		group_info_response_t resp;
+
+		req.group = group;
+
+		msgpack::sbuffer buf;
+		msgpack::packer<msgpack::sbuffer> pk(buf);
+		pk << req.group;
+
+		auto g = m_data->m_app->enqueue("get_group_info", std::string(buf.data(), buf.size()));
+		auto chunk = g.next();
+		return cocaine::framework::unpack<group_info_response_t>(chunk);
+	} catch(const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
+		throw;
 	}
-
-	group_info_request_t req;
-	group_info_response_t resp;
-
-	req.group = group;
-
-	msgpack::sbuffer buf;
-	msgpack::packer<msgpack::sbuffer> pk(buf);
-	pk << req.group;
-
-	auto g = m_data->m_app->enqueue("get_group_info", std::string(buf.data(), buf.size()));
-	auto chunk = g.next();
-	return cocaine::framework::unpack<group_info_response_t>(chunk);
 }
 
 std::vector<std::vector<int> > mastermind_t::get_symmetric_groups() {
-	auto g = m_data->m_app->enqueue("get_symmetric_groups", "");
-	auto chunk = g.next();
-	return cocaine::framework::unpack<std::vector<std::vector<int>>>(chunk);
+	try {
+		auto g = m_data->m_app->enqueue("get_symmetric_groups", "");
+		auto chunk = g.next();
+		return cocaine::framework::unpack<std::vector<std::vector<int>>>(chunk);
+	} catch(const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
+		throw;
+	}
 }
 
 std::vector<int> mastermind_t::get_symmetric_groups(int group) {
-	auto it = m_data->m_symmetric_groups_cache.find(group);
-	if (it == m_data->m_symmetric_groups_cache.end() && !m_data->collect_symmetric_groups()) {
-		return std::vector<int>();
+	try {
+		auto it = m_data->m_symmetric_groups_cache.find(group);
+		if (it == m_data->m_symmetric_groups_cache.end() && !m_data->collect_symmetric_groups()) {
+			return std::vector<int>();
+		}
+		return it->second;
+	} catch(const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
+		throw;
 	}
-	return it->second;
 }
 
 std::map<int, std::vector<int> > mastermind_t::get_bad_groups() {
-	auto g = m_data->m_app->enqueue("get_bad_groups", "");
-	auto chunk = g.next();
-	return cocaine::framework::unpack<std::map<int, std::vector<int>>>(chunk);
+	try {
+		auto g = m_data->m_app->enqueue("get_bad_groups", "");
+		auto chunk = g.next();
+		return cocaine::framework::unpack<std::map<int, std::vector<int>>>(chunk);
+	} catch(const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
+		throw;
+	}
 }
 
 std::vector<int> mastermind_t::get_all_groups() {
