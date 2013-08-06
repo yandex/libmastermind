@@ -3,6 +3,10 @@
 include /usr/share/cdbs/1/class/cmake.mk
 include /usr/share/cdbs/1/rules/debhelper.mk
 
+MASTERMIND_VERSION := "$(shell dpkg-parsechangelog | sed -n -r -e 's/^Version: ([^.]+\.[^.]+).*/\1/p')"
+
+DEB_DH_MAKESHLIBS_ARGS := -V "libmastermind (>= $(MASTERMIND_VERSION))"
+
 DEB_CMAKE_EXTRA_FLAGS := -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_SKIP_RPATH=OFF
 
 DEB_DH_STRIP_ARGS := --dbg-package=libmastermind-dbg
