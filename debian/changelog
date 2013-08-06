@@ -1,3 +1,9 @@
+libmastermind (5.0) lucid; urgency=low
+
+  * Added logger
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 05 Aug 2013 20:16:32 +0400
+
 libmastermind (4.1) lucid; urgency=low
 
   * Changed build-depends of cocaine
