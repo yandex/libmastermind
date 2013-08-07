@@ -42,7 +42,7 @@ public:
 	group_info_response_t get_metabalancer_group_info(int group);
 	std::vector<std::vector<int> > get_symmetric_groups();
 	std::vector<int> get_symmetric_groups(int group);
-	std::map<int, std::vector<int> > get_bad_groups();
+	std::vector<std::vector<int> > get_bad_groups();
 	std::vector<int> get_all_groups();
 private:
 	struct data;

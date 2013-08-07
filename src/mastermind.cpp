@@ -276,11 +276,11 @@ std::vector<int> mastermind_t::get_symmetric_groups(int group) {
 	}
 }
 
-std::map<int, std::vector<int> > mastermind_t::get_bad_groups() {
+std::vector<std::vector<int> > mastermind_t::get_bad_groups() {
 	try {
 		auto g = m_data->m_app->enqueue("get_bad_groups", "");
 		auto chunk = g.next();
-		return cocaine::framework::unpack<std::map<int, std::vector<int>>>(chunk);
+		return cocaine::framework::unpack<std::vector<std::vector<int>>>(chunk);
 	} catch(const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
 		throw;
@@ -298,9 +298,9 @@ std::vector<int> mastermind_t::get_all_groups() {
 	}
 
 	{
-		std::map<int, std::vector<int> > r2 = get_bad_groups();
+		std::vector<std::vector<int> > r2 = get_bad_groups();
 		for (auto it = r2.begin(); it != r2.end(); ++it) {
-			res.insert(res.end(), it->second.begin(), it->second.end());
+			res.insert(res.end(), it->begin(), it->end());
 		}
 	}
 
