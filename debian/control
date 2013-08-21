@@ -26,6 +26,6 @@ Description: Client for Mastermind service (debug symbols)
 
 Package: libmastermind-dev
 Architecture: any
-Depends: libmastermind (= ${Source-Version})
+Depends: libmastermind (= ${Source-Version}), cocaine-framework-native-dev (>= 0.10.6.1)
 Description: Client for Mastermind service (developer files)
 
