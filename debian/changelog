@@ -1,3 +1,9 @@
+libmastermind (6.1) lucid; urgency=low
+
+  * Added dependence of cocaine-framework-native-dev to libmastermind-dev
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Wed, 21 Aug 2013 20:03:57 +0400
+
 libmastermind (6.0) lucid; urgency=low
 
   * Fixed return type of get_bad_groups
