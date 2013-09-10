@@ -252,11 +252,13 @@ group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
 	}
 }
 
-std::vector<std::vector<int> > mastermind_t::get_symmetric_groups() {
+std::map<int, std::vector<int>> mastermind_t::get_symmetric_groups() {
 	try {
-		auto g = m_data->m_app->enqueue("get_symmetric_groups", "");
-		auto chunk = g.next();
-		return cocaine::framework::unpack<std::vector<std::vector<int>>>(chunk);
+		if (m_data->m_symmetric_groups_cache.empty()) {
+			m_data->collect_symmetric_groups();
+		}
+
+		return m_data->m_symmetric_groups_cache;
 	} catch(const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
 		throw;
@@ -265,8 +267,12 @@ std::vector<std::vector<int> > mastermind_t::get_symmetric_groups() {
 
 std::vector<int> mastermind_t::get_symmetric_groups(int group) {
 	try {
+		if (m_data->m_symmetric_groups_cache.empty()) {
+			m_data->collect_symmetric_groups();
+		}
+
 		auto it = m_data->m_symmetric_groups_cache.find(group);
-		if (it == m_data->m_symmetric_groups_cache.end() && !m_data->collect_symmetric_groups()) {
+		if (it == m_data->m_symmetric_groups_cache.end()) {
 			return std::vector<int>();
 		}
 		return it->second;
@@ -291,9 +297,9 @@ std::vector<int> mastermind_t::get_all_groups() {
 	std::vector<int> res;
 
 	{
-		std::vector<std::vector<int> > r1 = get_symmetric_groups();
+		auto r1 = get_symmetric_groups();
 		for (auto it = r1.begin(); it != r1.end(); ++it) {
-			res.insert(res.end(), it->begin(), it->end());
+			res.insert(res.end(), it->second.begin(), it->second.end());
 		}
 	}
 
