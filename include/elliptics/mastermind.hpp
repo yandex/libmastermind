@@ -31,6 +31,7 @@ struct group_info_response_t {
 	std::vector<std::string> nodes;
 	std::vector<int> couples;
 	int status;
+	std::string name_space;
 };
 
 class mastermind_t {
@@ -38,7 +39,7 @@ public:
 	mastermind_t(const std::string &host, uint16_t port, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60);
 	~mastermind_t();
 
-	std::vector<int> get_metabalancer_groups(uint64_t count = 0);
+	std::vector<int> get_metabalancer_groups(uint64_t count = 0, const std::string &name_space = std::string("default"));
 	group_info_response_t get_metabalancer_group_info(int group);
 	std::map<int, std::vector<int>> get_symmetric_groups();
 	std::vector<int> get_symmetric_groups(int group);

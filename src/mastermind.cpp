@@ -57,6 +57,8 @@ inline elliptics::group_info_response_t &operator >> (object o, elliptics::group
 			} else if (!status.compare("coupled")) {
 				v.status = elliptics::GROUP_INFO_STATUS_COUPLED;
 			}
+		} else if (!key.compare("namespace")) {
+			p->val.convert(&v.name_space);
 		}
 	}
 
@@ -74,10 +76,22 @@ inline elliptics::metabase_group_weights_response_t &operator >> (
 	msgpack::object_kv *const pend = o.via.map.ptr + o.via.map.size;
 
 	for (; p < pend; ++p) {
-		elliptics::metabase_group_weights_response_t::SizedGroups sized_groups;
-		p->key.convert(&sized_groups.size);
-		p->val.convert(&sized_groups.weighted_groups);
-		v.info.push_back(sized_groups);
+		elliptics::metabase_group_weights_response_t::NamedGroups named_groups;
+
+		p->key.convert(&named_groups.name);
+		object o2 = p->val;
+
+		msgpack::object_kv *p2 = o2.via.map.ptr;
+		msgpack::object_kv *const p2end = o2.via.map.ptr + o2.via.map.size;
+
+		for (; p2 < p2end; ++p2) {
+			elliptics::metabase_group_weights_response_t::SizedGroups sized_groups;
+			p2->key.convert(&sized_groups.size);
+			p2->val.convert(&sized_groups.weighted_groups);
+			named_groups.sized_groups.push_back(sized_groups);
+		}
+
+		v.info.push_back(named_groups);
 	}
 
 	return v;
@@ -147,10 +161,7 @@ bool mastermind_t::data::collect_group_weights() {
 
 		req.stamp = ++m_metabase_current_stamp;
 
-		msgpack::sbuffer buf;
-		msgpack::packer<msgpack::sbuffer> pk(buf);
-		pk << req;
-		auto g = m_app->enqueue("get_group_weights", std::string(buf.data(), buf.size()));
+		auto g = m_app->enqueue("get_group_weights", req);
 		auto chunk = g.next();
 
 		resp = cocaine::framework::unpack<metabase_group_weights_response_t>(chunk);
@@ -220,12 +231,12 @@ mastermind_t::~mastermind_t()
 {
 }
 
-std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count) {
+std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std::string &name_space) {
 	try {
 		if(!m_data->m_weight_cache->initialized() && !m_data->collect_group_weights()) {
 			return std::vector<int>();
 		}
-		return m_data->m_weight_cache->choose(count);
+		return m_data->m_weight_cache->choose(count, name_space);
 	} catch(const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
 		throw;
@@ -234,16 +245,9 @@ std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count) {
 
 group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
 	try {
-		group_info_request_t req;
 		group_info_response_t resp;
 
-		req.group = group;
-
-		msgpack::sbuffer buf;
-		msgpack::packer<msgpack::sbuffer> pk(buf);
-		pk << req.group;
-
-		auto g = m_data->m_app->enqueue("get_group_info", std::string(buf.data(), buf.size()));
+		auto g = m_data->m_app->enqueue("get_group_info", group);
 		auto chunk = g.next();
 		return cocaine::framework::unpack<group_info_response_t>(chunk);
 	} catch(const std::exception &ex) {

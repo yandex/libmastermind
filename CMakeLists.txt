@@ -14,6 +14,7 @@ set(CMAKE_CXX_FLAGS "-Wall -pedantic -std=c++0x")
 set(REQUIRED_LIBRARIES
 	cocaine-core
 	cocaine-framework
+	boost_thread
 	)
 	
 include_directories(BEFORE ${PROJECT_SOURCE_DIR}/include)

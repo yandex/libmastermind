@@ -21,7 +21,12 @@ struct metabase_group_weights_response_t {
 	std::vector<GroupWithWeight> weighted_groups;
 	MSGPACK_DEFINE(size, weighted_groups)
   };
-  std::vector<SizedGroups> info;
+  struct NamedGroups {
+	std::string name;
+	std::vector<SizedGroups> sized_groups;
+	MSGPACK_DEFINE(name, sized_groups)
+  };
+  std::vector<NamedGroups> info;
   MSGPACK_DEFINE(info)
 };
 
@@ -30,7 +35,7 @@ public:
   virtual ~group_weights_cache_interface_t() {};
 
   virtual bool update(metabase_group_weights_response_t &resp) = 0;
-  virtual std::vector<int> choose(uint64_t count) = 0;
+  virtual std::vector<int> choose(uint64_t count, const std::string &name_space) = 0;
   virtual bool initialized() = 0;
 };
 
