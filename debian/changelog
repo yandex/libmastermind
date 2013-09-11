@@ -1,3 +1,10 @@
+libmastermind (6.2) lucid; urgency=low
+
+  * Added support for namespaces of mastermind
+  * Return type of get_symmetric_groups() was changed to std::map<int, std::vector<int>>
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Wed, 11 Sep 2013 16:24:05 +0400
+
 libmastermind (6.1) lucid; urgency=low
 
   * Added dependence of cocaine-framework-native-dev to libmastermind-dev
