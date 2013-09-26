@@ -45,6 +45,7 @@ public:
 	std::vector<int> get_symmetric_groups(int group);
 	std::vector<std::vector<int> > get_bad_groups();
 	std::vector<int> get_all_groups();
+	std::vector<int> get_cache_groups(const std::string &key);
 private:
 	struct data;
 	std::unique_ptr<data> m_data;

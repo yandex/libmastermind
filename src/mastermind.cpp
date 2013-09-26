@@ -133,6 +133,7 @@ struct mastermind_t::data {
 
 	bool collect_group_weights();
 	bool collect_symmetric_groups();
+	bool collect_cache_groups();
 	void collect_info_loop();
 
 	std::shared_ptr<cocaine::framework::logger_t> m_logger;
@@ -149,6 +150,9 @@ struct mastermind_t::data {
 	std::condition_variable                            m_weight_cache_condition_variable;
 	std::mutex                                         m_mutex;
 	bool                                               m_done;
+
+	std::map<std::string, std::vector<int>>            m_cache_groups;
+	std::mutex                                         m_cache_groups_mutex;
 
 	std::shared_ptr<cocaine::framework::app_service_t> m_app;
 	std::shared_ptr<cocaine::framework::service_manager_t> m_service_manager;
@@ -199,6 +203,29 @@ bool mastermind_t::data::collect_symmetric_groups() {
 	return false;
 }
 
+bool mastermind_t::data::collect_cache_groups() {
+	try {
+		auto g = m_app->enqueue("get_cached_keys", "");
+		auto chunk = g.next();
+		auto cache_groups = cocaine::framework::unpack<std::vector<std::pair<std::string, std::vector<int>>>>(chunk);
+
+		std::map<std::string, std::vector<int>> cache;
+		for (auto it = cache_groups.begin(); it != cache_groups.end(); ++it) {
+			cache.insert(*it);
+		}
+
+		{
+			std::lock_guard<std::mutex> lock(m_cache_groups_mutex);
+			(void) lock;
+			m_cache_groups.swap(cache);
+		}
+		return true;
+	} catch(const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger, ex.what());
+	}
+	return false;
+}
+
 void mastermind_t::data::collect_info_loop() {
 	std::unique_lock<std::mutex> lock(m_mutex);
 #if __GNUC_MINOR__ >= 6
@@ -213,6 +240,7 @@ void mastermind_t::data::collect_info_loop() {
 	do {
 		collect_group_weights();
 		collect_symmetric_groups();
+		collect_cache_groups();
 		tm = timeout;
 		while(m_done == false)
 			tm = m_weight_cache_condition_variable.wait_for(lock,
@@ -318,6 +346,25 @@ std::vector<int> mastermind_t::get_all_groups() {
 	res.erase(std::unique(res.begin(), res.end()), res.end());
 
 	return res;
+}
+
+std::vector<int> mastermind_t::get_cache_groups(const std::string &key) {
+	std::lock_guard<std::mutex> lock(m_data->m_cache_groups_mutex);
+	(void) lock;
+
+	try {
+		//if (m_data->m_cache_groups.empty()) {
+		//	m_data->collect_cache_groups();
+		//}
+
+		auto it = m_data->m_cache_groups.find(key);
+		if (it != m_data->m_cache_groups.end())
+			return it->second;
+		return std::vector<int>();
+	} catch(const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
+		throw;
+	}
 }
 
 } // namespace elliptics
