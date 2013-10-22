@@ -1,3 +1,10 @@
+libmastermind (6.3) lucid; urgency=low
+
+  * Added supprot for cached groups of mastermind
+  * Method get_symmetric_groups returns not only good groups but bad groups too
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 26 Sep 2013 16:54:19 +0400
+
 libmastermind (6.2) lucid; urgency=low
 
   * Added support for namespaces of mastermind
