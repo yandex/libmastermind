@@ -114,7 +114,7 @@ struct mastermind_t::data {
 	{
 		m_service_manager = cocaine::framework::service_manager_t::create(
 			cocaine::framework::service_manager_t::endpoint_t(host, port));
-		m_app = m_service_manager->get_service_async<cocaine::framework::app_service_t>("mastermind");
+		m_app = m_service_manager->get_service<cocaine::framework::app_service_t>("mastermind");
 		m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
 	}
 
@@ -132,6 +132,7 @@ struct mastermind_t::data {
 	}
 
 	bool collect_group_weights();
+	bool collect_bad_groups();
 	bool collect_symmetric_groups();
 	bool collect_cache_groups();
 	void collect_info_loop();
@@ -141,8 +142,11 @@ struct mastermind_t::data {
 	int                                                m_metabase_timeout;
 	uint64_t                                           m_metabase_current_stamp;
 
+	std::vector<std::vector<int>>                      m_bad_groups_cache;
+	std::recursive_mutex                               m_bad_groups_mutex;
+
 	std::map<int, std::vector<int>>                    m_symmetric_groups_cache;
-	std::mutex                                         m_symmetric_groups_mutex;
+	std::recursive_mutex                               m_symmetric_groups_mutex;
 
 	std::unique_ptr<group_weights_cache_interface_t>   m_weight_cache;
 	const int                                          m_group_info_update_period;
@@ -152,7 +156,7 @@ struct mastermind_t::data {
 	bool                                               m_done;
 
 	std::map<std::string, std::vector<int>>            m_cache_groups;
-	std::mutex                                         m_cache_groups_mutex;
+	std::recursive_mutex                               m_cache_groups_mutex;
 
 	std::shared_ptr<cocaine::framework::app_service_t> m_app;
 	std::shared_ptr<cocaine::framework::service_manager_t> m_service_manager;
@@ -172,7 +176,26 @@ bool mastermind_t::data::collect_group_weights() {
 
 		return m_weight_cache->update(resp);
 	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, ex.what());
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_group_weights: %s", ex.what());
+	}
+	return false;
+}
+
+bool mastermind_t::data::collect_bad_groups() {
+	try {
+		auto g = m_app->enqueue("get_bad_groups", "");
+		auto chunk = g.next();
+		auto cache = cocaine::framework::unpack<std::vector<std::vector<int>>>(chunk);
+
+		{
+			std::lock_guard<std::recursive_mutex> lock(m_bad_groups_mutex);
+			(void) lock;
+			m_bad_groups_cache.swap(cache);
+		}
+
+		return true;
+	} catch (const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_bad_groups: %s", ex.what());
 	}
 	return false;
 }
@@ -184,21 +207,27 @@ bool mastermind_t::data::collect_symmetric_groups() {
 		auto sym_groups = cocaine::framework::unpack<std::vector<std::vector<int>>>(chunk);
 
 		std::map<int, std::vector<int>> cache;
+
 		for (auto it = sym_groups.begin(); it != sym_groups.end(); ++it) {
-			auto b = it->begin();
-			auto e = it->end();
-			auto m = std::min_element(b, e);
-			cache.insert(std::make_pair(*m, *it));
+			for (auto ve = it->begin(); ve != it->end(); ++ve) {
+				cache[*ve] = *it;
+			}
+		}
+
+		for (auto it = m_bad_groups_cache.begin(); it != m_bad_groups_cache.end(); ++it) {
+			for (auto ve = it->begin(); ve != it->end(); ++ve) {
+				cache[*ve] = *it;
+			}
 		}
 
 		{
-			std::lock_guard<std::mutex> lock(m_symmetric_groups_mutex);
+			std::lock_guard<std::recursive_mutex> lock(m_symmetric_groups_mutex);
 			(void) lock;
 			m_symmetric_groups_cache.swap(cache);
 		}
 		return true;
 	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, ex.what());
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_symmetric_groups: %s", ex.what());
 	}
 	return false;
 }
@@ -215,13 +244,13 @@ bool mastermind_t::data::collect_cache_groups() {
 		}
 
 		{
-			std::lock_guard<std::mutex> lock(m_cache_groups_mutex);
+			std::lock_guard<std::recursive_mutex> lock(m_cache_groups_mutex);
 			(void) lock;
 			m_cache_groups.swap(cache);
 		}
 		return true;
 	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, ex.what());
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_cache_groups: %s", ex.what());
 	}
 	return false;
 }
@@ -239,8 +268,10 @@ void mastermind_t::data::collect_info_loop() {
 #endif
 	do {
 		collect_group_weights();
+		collect_bad_groups();
 		collect_symmetric_groups();
 		collect_cache_groups();
+
 		tm = timeout;
 		while(m_done == false)
 			tm = m_weight_cache_condition_variable.wait_for(lock,
@@ -266,7 +297,7 @@ std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std
 		}
 		return m_data->m_weight_cache->choose(count, name_space);
 	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
+		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_metabalancer_groups: %s", ex.what());
 		throw;
 	}
 }
@@ -279,26 +310,32 @@ group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
 		auto chunk = g.next();
 		return cocaine::framework::unpack<group_info_response_t>(chunk);
 	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
+		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_metabalancer_group_info: %s", ex.what());
 		throw;
 	}
 }
 
 std::map<int, std::vector<int>> mastermind_t::get_symmetric_groups() {
 	try {
+		std::lock_guard<std::recursive_mutex> lock(m_data->m_symmetric_groups_mutex);
+		(void) lock;
+
 		if (m_data->m_symmetric_groups_cache.empty()) {
 			m_data->collect_symmetric_groups();
 		}
 
 		return m_data->m_symmetric_groups_cache;
 	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
+		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_symmetric_groups: %s", ex.what());
 		throw;
 	}
 }
 
 std::vector<int> mastermind_t::get_symmetric_groups(int group) {
 	try {
+		std::lock_guard<std::recursive_mutex> lock(m_data->m_symmetric_groups_mutex);
+		(void) lock;
+
 		if (m_data->m_symmetric_groups_cache.empty()) {
 			m_data->collect_symmetric_groups();
 		}
@@ -309,18 +346,23 @@ std::vector<int> mastermind_t::get_symmetric_groups(int group) {
 		}
 		return it->second;
 	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
+		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_symmetric_groups(int): %s", ex.what());
 		throw;
 	}
 }
 
 std::vector<std::vector<int> > mastermind_t::get_bad_groups() {
 	try {
-		auto g = m_data->m_app->enqueue("get_bad_groups", "");
-		auto chunk = g.next();
-		return cocaine::framework::unpack<std::vector<std::vector<int>>>(chunk);
+		std::lock_guard<std::recursive_mutex> lock(m_data->m_bad_groups_mutex);
+		(void) lock;
+
+		if (m_data->m_bad_groups_cache.empty()) {
+			m_data->collect_bad_groups();
+		}
+
+		return m_data->m_bad_groups_cache;
 	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
+		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_bad_groups: %s", ex.what());
 		throw;
 	}
 }
@@ -328,28 +370,16 @@ std::vector<std::vector<int> > mastermind_t::get_bad_groups() {
 std::vector<int> mastermind_t::get_all_groups() {
 	std::vector<int> res;
 
-	{
-		auto r1 = get_symmetric_groups();
-		for (auto it = r1.begin(); it != r1.end(); ++it) {
-			res.insert(res.end(), it->second.begin(), it->second.end());
-		}
+	auto groups = get_symmetric_groups();
+	for (auto it = groups.begin(); it != groups.end(); ++it) {
+		res.push_back(it->first);
 	}
-
-	{
-		std::vector<std::vector<int> > r2 = get_bad_groups();
-		for (auto it = r2.begin(); it != r2.end(); ++it) {
-			res.insert(res.end(), it->begin(), it->end());
-		}
-	}
-
-	std::sort(res.begin(), res.end());
-	res.erase(std::unique(res.begin(), res.end()), res.end());
 
 	return res;
 }
 
 std::vector<int> mastermind_t::get_cache_groups(const std::string &key) {
-	std::lock_guard<std::mutex> lock(m_data->m_cache_groups_mutex);
+	std::lock_guard<std::recursive_mutex> lock(m_data->m_cache_groups_mutex);
 	(void) lock;
 
 	try {
@@ -362,7 +392,7 @@ std::vector<int> mastermind_t::get_cache_groups(const std::string &key) {
 			return it->second;
 		return std::vector<int>();
 	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, ex.what());
+		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_cache_groups: %s", ex.what());
 		throw;
 	}
 }
