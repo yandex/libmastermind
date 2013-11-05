@@ -9,7 +9,7 @@ string(REGEX MATCH "([0-9]+\\.[0-9]+)" DEBFULLVERSION "${DEBCHANGELOG}")
 string(REGEX MATCH "([0-9]+)" MAJOR_VERSION "${DEBFULLVERSION}")
 string (REGEX MATCH "([0-9]+$)" MINOR_VERSION "${DEBFULLVERSION}")
 
-set(CMAKE_CXX_FLAGS "-Wall -pedantic -std=c++0x")
+set(CMAKE_CXX_FLAGS "-Wall -pedantic -std=c++0x -O2 -g")
 
 set(REQUIRED_LIBRARIES
 	cocaine-core
