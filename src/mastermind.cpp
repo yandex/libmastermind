@@ -107,7 +107,7 @@ enum dnet_common_embed_types {
 };
 
 struct mastermind_t::data {
-	data(const remotes_t &remotes, std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60)
+	data(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60)
 		: m_logger(logger)
 		, m_remotes(remotes)
 		, m_next_remote(0)
@@ -159,9 +159,8 @@ struct mastermind_t::data {
 		size_t size = m_remotes.size();
 
 		do {
+			auto &remote = m_remotes[index];
 			try {
-				auto &remote = m_remotes[index];
-
 				if (!m_service_manager) {
 					m_service_manager = cocaine::framework::service_manager_t::create(
 						cocaine::framework::service_manager_t::endpoint_t(remote.first, remote.second));
@@ -171,6 +170,10 @@ struct mastermind_t::data {
 				g.wait_for(std::chrono::seconds(4));
 				if (g.ready() == false){
 					COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: cannot get app_service");
+
+					m_service_manager = cocaine::framework::service_manager_t::create(
+						cocaine::framework::service_manager_t::endpoint_t(remote.first, remote.second));
+
 					index = (index + 1) % size;
 					continue;
 				}
@@ -180,6 +183,16 @@ struct mastermind_t::data {
 
 				m_next_remote = (index + 1) % size;
 				return;
+			} catch (const cocaine::framework::service_error_t &ex) {
+				COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: service_error: %s", ex.what());
+				if (ex.code().category() == cocaine::framework::service_client_category()) {
+					try {
+						m_service_manager = cocaine::framework::service_manager_t::create(
+							cocaine::framework::service_manager_t::endpoint_t(remote.first, remote.second));
+					} catch (const std::exception &ex) {
+						COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect service_manager: %s", ex.what());
+					}
+				}
 			} catch (const std::exception &ex) {
 				COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
 			}
@@ -220,6 +233,9 @@ struct mastermind_t::data {
 			return cocaine::framework::unpack<R>(chunk);
 		} catch (const cocaine::framework::service_error_t &ex) {
 			COCAINE_LOG_ERROR(m_logger, "libmastermind: retry: %s", ex.what());
+			if (ex.code().category() == cocaine::framework::service_client_category()) {
+				reconnect();
+			}
 			throw;
 		} catch (const std::exception &ex) {
 			COCAINE_LOG_ERROR(m_logger, "libmastermind: retry: %s", ex.what());
@@ -378,7 +394,7 @@ void mastermind_t::data::collect_info_loop() {
 }
 
 
-mastermind_t::mastermind_t(const remotes_t &remotes, std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period)
+mastermind_t::mastermind_t(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period)
 	: m_data(new data(remotes, logger, group_info_update_period))
 {
 }
