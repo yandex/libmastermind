@@ -154,11 +154,6 @@ struct mastermind_t::data {
 	}
 
 	void reconnect() {
-		auto connected = cocaine::framework::service_status::connected;
-		if (m_app && m_app->status() == connected) {
-			return;
-		}
-
 		std::lock_guard<std::mutex> lock(m_reconnect_mutex);
 		(void) lock;
 
@@ -166,48 +161,45 @@ struct mastermind_t::data {
 		size_t index = m_next_remote;
 		size_t size = m_remotes.size();
 
-		if (!m_app || m_app->status() != connected) {
-			do {
-				auto &remote = m_remotes[index];
-				try {
-					if (!m_service_manager) {
-						m_service_manager = cocaine::framework::service_manager_t::create(
-							cocaine::framework::service_manager_t::endpoint_t(remote.first, remote.second));
-					}
+		do {
+			auto &remote = m_remotes[index];
+			try {
+				m_service_manager = cocaine::framework::service_manager_t::create(
+					cocaine::framework::service_manager_t::endpoint_t(remote.first, remote.second));
 
-					auto g = m_service_manager->get_service_async<cocaine::framework::app_service_t>("mastermind");
-					g.wait_for(std::chrono::seconds(4));
-					if (g.ready() == false){
-						COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: cannot get app_service");
-						m_service_manager.reset();
-						index = (index + 1) % size;
-						continue;
-					}
-					m_app = g.get();
-
-					COCAINE_LOG_INFO(m_logger, "libmastermind: reconnect: connected to %s:%d", remote.first.c_str(), static_cast<int>(remote.second));
-
-					m_next_remote = (index + 1) % size;
-					return;
-				} catch (const cocaine::framework::service_error_t &ex) {
-					COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: service_error: %s", ex.what());
-				} catch (const std::exception &ex) {
-					COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
+				auto g = m_service_manager->get_service_async<cocaine::framework::app_service_t>("mastermind");
+				g.wait_for(std::chrono::seconds(4));
+				if (g.ready() == false){
+					COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: cannot get app_service");
+					m_service_manager.reset();
+					index = (index + 1) % size;
+					continue;
 				}
+				m_app = g.get();
 
-				index = (index + 1) % size;
-			} while (index != end);
-		}
+				COCAINE_LOG_INFO(m_logger, "libmastermind: reconnect: connected to %s:%d", remote.first.c_str(), static_cast<int>(remote.second));
 
+				m_next_remote = (index + 1) % size;
+				return;
+			} catch (const cocaine::framework::service_error_t &ex) {
+				COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: service_error: %s", ex.what());
+			} catch (const std::exception &ex) {
+				COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
+			}
+
+			index = (index + 1) % size;
+		} while (index != end);
+
+		m_service_manager.reset();
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: cannot recconect to any host");
 		throw std::runtime_error("reconnect error: cannot reconnect to any host");
 	}
 
 	template <typename F, typename R, typename... Args>
-	auto retry(F func, R &res, Args &&... args) -> R {
+	void retry(F func, R &res, Args &&... args) {
 		bool already_tried = false;
 		try {
-			if (!m_app || m_app->status() != cocaine::framework::service_status::connected) {
+			if (!m_service_manager || !m_app || m_app->status() != cocaine::framework::service_status::connected) {
 				COCAINE_LOG_INFO(m_logger, "libmastermind: retry: preconnect");
 				already_tried = true;
 				reconnect();
@@ -226,10 +218,10 @@ struct mastermind_t::data {
 					throw std::runtime_error("cannot reprocess enqueue");
 				}
 				auto chunk = g.next();
-				return cocaine::framework::unpack<R>(chunk);
+				res = cocaine::framework::unpack<R>(chunk);
 			}
 			auto chunk = g.next();
-			return cocaine::framework::unpack<R>(chunk);
+			res = cocaine::framework::unpack<R>(chunk);
 		} catch (const cocaine::framework::service_error_t &ex) {
 			COCAINE_LOG_ERROR(m_logger, "libmastermind: retry: %s", ex.what());
 			throw;
@@ -293,7 +285,7 @@ bool mastermind_t::data::collect_group_weights() {
 bool mastermind_t::data::collect_bad_groups() {
 	try {
 		std::vector<std::vector<int>> cache;
-		auto g = retry(&cocaine::framework::app_service_t::enqueue<char [1]>, cache, "get_bad_groups", "");
+		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, cache, "get_bad_groups", "");
 
 		{
 			std::lock_guard<std::recursive_mutex> lock(m_bad_groups_mutex);
