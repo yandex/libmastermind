@@ -8,8 +8,8 @@ Build-Depends: debhelper (>= 5),
  libboost-dev,
  libboost-python-dev,
  libboost-thread-dev,
- cocaine-framework-native (>= 0.10.6.1),
- cocaine-framework-native-dev (>= 0.10.6.1),
+ cocaine-framework-native (>= 0.10.6.3),
+ cocaine-framework-native-dev (>= 0.10.6.3),
  libcocaine-core2 (>= 0.10.6.5),
  libcocaine-dev (>= 0.10.6.5),
  libmsgpack-dev
@@ -27,6 +27,6 @@ Description: Client for Mastermind service (debug symbols)
 
 Package: libmastermind-dev
 Architecture: any
-Depends: libmastermind (= ${Source-Version}), cocaine-framework-native-dev (>= 0.10.6.1)
+Depends: libmastermind (= ${Source-Version}), cocaine-framework-native-dev (>= 0.10.6.3)
 Description: Client for Mastermind service (developer files)
 
