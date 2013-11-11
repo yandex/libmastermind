@@ -1,3 +1,10 @@
+libmastermind (6.4) lucid; urgency=low
+
+  * Multiple mastermind host list is supported
+  * Added reconnect feature
+
+ --   <derikon@derikon.dev.yandex.net>  Mon, 11 Nov 2013 15:08:30 +0400
+
 libmastermind (6.3) lucid; urgency=low
 
   * Added supprot for cached groups of mastermind
