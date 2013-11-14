@@ -1,3 +1,9 @@
+libmastermind (6.5) lucid; urgency=low
+
+  * Fixed package depends of cocaine
+
+ --   <derikon@derikon.dev.yandex.net>  Thu, 14 Nov 2013 12:23:12 +0400
+
 libmastermind (6.4) lucid; urgency=low
 
   * Multiple mastermind host list is supported
