@@ -82,7 +82,11 @@ bool group_weights_cache_impl::update(metabase_group_weights_response_t &resp) {
 std::vector<int> group_weights_cache_impl::choose(uint64_t count, const std::string &name_space) {
 	boost::shared_lock<boost::shared_mutex> lock(shared_mutex_);
 	auto it = map_.find(name_space);
-	if (it == map_.end()) return std::vector<int>();
+	if (it == map_.end()) {
+		std::ostringstream oss;
+		oss << "libmastermind cannot find namespace \'" << name_space << "\' in group_weights_cache";
+		throw std::runtime_error(oss.str());
+	}
 	return it->second[count].get();
 }
 

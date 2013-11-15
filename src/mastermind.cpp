@@ -400,7 +400,7 @@ mastermind_t::~mastermind_t()
 std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std::string &name_space) {
 	try {
 		if(!m_data->m_weight_cache->initialized() && !m_data->collect_group_weights()) {
-			return std::vector<int>();
+			throw std::runtime_error("libmastermind cannot receive metabalancer groups");
 		}
 		return m_data->m_weight_cache->choose(count, name_space);
 	} catch(const std::exception &ex) {
