@@ -1,3 +1,9 @@
+libmastermind (6.6) lucid; urgency=low
+
+  * Libmastermind throws an exception if cannot receive metabalancer groups
+
+ --   <derikon@derikon.dev.yandex.net>  Fri, 15 Nov 2013 18:01:25 +0400
+
 libmastermind (6.5) lucid; urgency=low
 
   * Fixed package depends of cocaine
