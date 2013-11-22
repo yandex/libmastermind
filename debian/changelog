@@ -1,3 +1,10 @@
+libmastermind (6.7) lucid; urgency=low
+
+  * Added some logs
+  * Added methods to receiving info about cache
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Fri, 22 Nov 2013 13:56:13 +0400
+
 libmastermind (6.6) lucid; urgency=low
 
   * Libmastermind throws an exception if cannot receive metabalancer groups
