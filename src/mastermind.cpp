@@ -20,6 +20,7 @@
 #include <mutex>
 #include <algorithm>
 #include <type_traits>
+#include <chrono>
 
 #include "elliptics/mastermind.hpp"
 #include <msgpack.hpp>
@@ -29,6 +30,33 @@
 #include <cocaine/framework/common.hpp>
 
 #include "utils.hpp"
+
+namespace {
+
+class spent_time_printer_t {
+public:
+	spent_time_printer_t(const std::string &handler_name, std::shared_ptr<cocaine::framework::logger_t> &logger)
+	: m_handler_name(handler_name)
+	, m_logger(logger)
+	, m_beg_time(std::chrono::system_clock::now())
+	{
+		COCAINE_LOG_DEBUG(m_logger, "libmastermind: handling \'%s\'", m_handler_name.c_str());
+	}
+
+	~spent_time_printer_t() {
+		auto end_time = std::chrono::system_clock::now();
+		COCAINE_LOG_DEBUG(m_logger, "libmastermind: time spent for \'%s\': %d milliseconds"
+			, m_handler_name.c_str()
+			, static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(end_time - m_beg_time).count())
+			);
+	}
+private:
+	std::string m_handler_name;
+	std::shared_ptr<cocaine::framework::logger_t> &m_logger;
+	std::chrono::system_clock::time_point m_beg_time;
+};
+
+} // namespace
 
 namespace msgpack {
 inline elliptics::group_info_response_t &operator >> (object o, elliptics::group_info_response_t &v) {
@@ -179,6 +207,7 @@ struct mastermind_t::data {
 
 				COCAINE_LOG_INFO(m_logger, "libmastermind: reconnect: connected to %s:%d", remote.first.c_str(), static_cast<int>(remote.second));
 
+				m_current_remote = remote;
 				m_next_remote = (index + 1) % size;
 				return;
 			} catch (const cocaine::framework::service_error_t &ex) {
@@ -190,6 +219,7 @@ struct mastermind_t::data {
 			index = (index + 1) % size;
 		} while (index != end);
 
+		m_current_remote = remote_t();
 		m_service_manager.reset();
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: cannot recconect to any host");
 		throw std::runtime_error("reconnect error: cannot reconnect to any host");
@@ -240,18 +270,21 @@ struct mastermind_t::data {
 	std::shared_ptr<cocaine::framework::logger_t> m_logger;
 
 	remotes_t                                          m_remotes;
+	remote_t                                           m_current_remote;
 	size_t                                             m_next_remote;
 
 	int                                                m_metabase_timeout;
 	uint64_t                                           m_metabase_current_stamp;
 
-	std::vector<std::vector<int>>                      m_bad_groups_cache;
+	std::shared_ptr<std::vector<std::vector<int>>>     m_bad_groups_cache;
 	std::recursive_mutex                               m_bad_groups_mutex;
 
-	std::map<int, std::vector<int>>                    m_symmetric_groups_cache;
+	std::shared_ptr<std::map<int, std::vector<int>>>   m_symmetric_groups_cache;
 	std::recursive_mutex                               m_symmetric_groups_mutex;
 
-	std::unique_ptr<group_weights_cache_interface_t>   m_weight_cache;
+	std::shared_ptr<group_weights_cache_interface_t>   m_weight_cache;
+	std::recursive_mutex                               m_weight_cache_mutex;
+
 	const int                                          m_group_info_update_period;
 	std::thread                                        m_weight_cache_update_thread;
 	std::condition_variable                            m_weight_cache_condition_variable;
@@ -259,7 +292,7 @@ struct mastermind_t::data {
 	bool                                               m_done;
 	std::mutex                                         m_reconnect_mutex;
 
-	std::map<std::string, std::vector<int>>            m_cache_groups;
+	std::shared_ptr<std::map<std::string, std::vector<int>>> m_cache_groups;
 	std::recursive_mutex                               m_cache_groups_mutex;
 
 	std::shared_ptr<cocaine::framework::app_service_t> m_app;
@@ -268,6 +301,7 @@ struct mastermind_t::data {
 
 bool mastermind_t::data::collect_group_weights() {
 	try {
+		auto cache = get_group_weighs_cache();
 		metabase_group_weights_request_t req;
 		metabase_group_weights_response_t resp;
 
@@ -275,7 +309,15 @@ bool mastermind_t::data::collect_group_weights() {
 
 		retry(&cocaine::framework::app_service_t::enqueue<decltype(req)>, resp, "get_group_weights", req);
 
-		return m_weight_cache->update(resp);
+		auto g = cache->update(resp);
+
+		{
+			std::lock_guard<std::recursive_mutex> lock(m_weight_cache_mutex);
+			(void) lock;
+			m_weight_cache.swap(cache);
+		}
+
+		return g;
 	} catch(const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_group_weights: %s", ex.what());
 	}
@@ -284,8 +326,8 @@ bool mastermind_t::data::collect_group_weights() {
 
 bool mastermind_t::data::collect_bad_groups() {
 	try {
-		std::vector<std::vector<int>> cache;
-		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, cache, "get_bad_groups", "");
+		auto cache = std::make_shared<std::vector<std::vector<int>>>();
+		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, *cache, "get_bad_groups", "");
 
 		{
 			std::lock_guard<std::recursive_mutex> lock(m_bad_groups_mutex);
@@ -305,17 +347,17 @@ bool mastermind_t::data::collect_symmetric_groups() {
 		std::vector<std::vector<int>> sym_groups;
 		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, sym_groups, "get_symmetric_groups", "");
 
-		std::map<int, std::vector<int>> cache;
+		auto cache = std::make_shared<std::map<int, std::vector<int>>>();
 
 		for (auto it = sym_groups.begin(); it != sym_groups.end(); ++it) {
 			for (auto ve = it->begin(); ve != it->end(); ++ve) {
-				cache[*ve] = *it;
+				(*cache)[*ve] = *it;
 			}
 		}
 
-		for (auto it = m_bad_groups_cache.begin(); it != m_bad_groups_cache.end(); ++it) {
+		for (auto it = m_bad_groups_cache->begin(); it != m_bad_groups_cache->end(); ++it) {
 			for (auto ve = it->begin(); ve != it->end(); ++ve) {
-				cache[*ve] = *it;
+				(*cache)[*ve] = *it;
 			}
 		}
 
@@ -336,9 +378,9 @@ bool mastermind_t::data::collect_cache_groups() {
 		std::vector<std::pair<std::string, std::vector<int>>> cache_groups;
 		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, cache_groups, "get_cached_keys", "");
 
-		std::map<std::string, std::vector<int>> cache;
+		auto cache = std::make_shared<std::map<std::string, std::vector<int>>>();
 		for (auto it = cache_groups.begin(); it != cache_groups.end(); ++it) {
-			cache.insert(*it);
+			cache->insert(*it);
 		}
 
 		{
@@ -366,12 +408,54 @@ void mastermind_t::data::collect_info_loop() {
 #endif
 	COCAINE_LOG_INFO(m_logger, "libmastermind: collect_info_loop: update period is %d", static_cast<int>(m_group_info_update_period));
 	do {
-		COCAINE_LOG_INFO(m_logger, "libmastermind: collect_info_loop: begin");
-		collect_group_weights();
-		collect_bad_groups();
-		collect_symmetric_groups();
-		collect_cache_groups();
-		COCAINE_LOG_INFO(m_logger, "libmastermind: collect_info_loop: end");
+		if (m_logger->verbosity() >= cocaine::logging::info) {
+			auto current_remote = m_current_remote;
+			std::ostringstream oss;
+			oss << "libmastermind: collect_info_loop: begin; current host: ";
+			if (current_remote.first.empty()) {
+				oss << "none";
+			} else {
+				oss << current_remote.first << ':' << m_current_remote.second;
+			}
+			COCAINE_LOG_INFO(m_logger, "%s", oss.str().c_str());
+		}
+
+		auto beg_time = std::chrono::system_clock::now();
+
+		{
+			spent_time_printer_t helper("collect_group_weights", m_logger);
+			collect_group_weights();
+		}
+		{
+			spent_time_printer_t helper("collect_bad_groups", m_logger);
+			collect_bad_groups();
+		}
+		{
+			spent_time_printer_t helper("collect_symmetric_groups", m_logger);
+			collect_symmetric_groups();
+		}
+		{
+			spent_time_printer_t helper("collect_cache_groups", m_logger);
+			collect_cache_groups();
+		}
+
+		auto end_time = std::chrono::system_clock::now();
+
+		if (m_logger->verbosity() >= cocaine::logging::info) {
+			auto current_remote = m_current_remote;
+			std::ostringstream oss;
+			oss << "libmastermind: collect_info_loop: end; current host: ";
+			if (current_remote.first.empty()) {
+				oss << "none";
+			} else {
+				oss << current_remote.first << ':' << m_current_remote.second;
+			}
+			oss
+				<< "; spent time: "
+				<< std::chrono::duration_cast<std::chrono::milliseconds>(end_time - beg_time).count()
+				<< " milliseconds";
+			COCAINE_LOG_INFO(m_logger, "%s", oss.str().c_str());
+		}
 
 		tm = timeout;
 		do {
@@ -399,6 +483,9 @@ mastermind_t::~mastermind_t()
 
 std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std::string &name_space) {
 	try {
+		std::lock_guard<std::recursive_mutex> lock(m_data->m_weight_cache_mutex);
+		(void) lock;
+
 		if(!m_data->m_weight_cache->initialized() && !m_data->collect_group_weights()) {
 			throw std::runtime_error("libmastermind cannot receive metabalancer groups");
 		}
@@ -426,11 +513,11 @@ std::map<int, std::vector<int>> mastermind_t::get_symmetric_groups() {
 		std::lock_guard<std::recursive_mutex> lock(m_data->m_symmetric_groups_mutex);
 		(void) lock;
 
-		if (m_data->m_symmetric_groups_cache.empty()) {
+		if (m_data->m_symmetric_groups_cache->empty()) {
 			m_data->collect_symmetric_groups();
 		}
 
-		return m_data->m_symmetric_groups_cache;
+		return *m_data->m_symmetric_groups_cache;
 	} catch(const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_symmetric_groups: %s", ex.what());
 		throw;
@@ -442,12 +529,12 @@ std::vector<int> mastermind_t::get_symmetric_groups(int group) {
 		std::lock_guard<std::recursive_mutex> lock(m_data->m_symmetric_groups_mutex);
 		(void) lock;
 
-		if (m_data->m_symmetric_groups_cache.empty()) {
+		if (m_data->m_symmetric_groups_cache->empty()) {
 			m_data->collect_symmetric_groups();
 		}
 
-		auto it = m_data->m_symmetric_groups_cache.find(group);
-		if (it == m_data->m_symmetric_groups_cache.end()) {
+		auto it = m_data->m_symmetric_groups_cache->find(group);
+		if (it == m_data->m_symmetric_groups_cache->end()) {
 			return std::vector<int>();
 		}
 		return it->second;
@@ -462,11 +549,11 @@ std::vector<std::vector<int> > mastermind_t::get_bad_groups() {
 		std::lock_guard<std::recursive_mutex> lock(m_data->m_bad_groups_mutex);
 		(void) lock;
 
-		if (m_data->m_bad_groups_cache.empty()) {
+		if (m_data->m_bad_groups_cache->empty()) {
 			m_data->collect_bad_groups();
 		}
 
-		return m_data->m_bad_groups_cache;
+		return *m_data->m_bad_groups_cache;
 	} catch(const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_bad_groups: %s", ex.what());
 		throw;
@@ -489,18 +576,116 @@ std::vector<int> mastermind_t::get_cache_groups(const std::string &key) {
 	(void) lock;
 
 	try {
-		//if (m_data->m_cache_groups.empty()) {
-		//	m_data->collect_cache_groups();
-		//}
+		if (m_data->m_cache_groups->empty()) {
+			m_data->collect_cache_groups();
+		}
 
-		auto it = m_data->m_cache_groups.find(key);
-		if (it != m_data->m_cache_groups.end())
+		auto it = m_data->m_cache_groups->find(key);
+		if (it != m_data->m_cache_groups->end())
 			return it->second;
 		return std::vector<int>();
 	} catch(const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_cache_groups: %s", ex.what());
 		throw;
 	}
+}
+
+std::string mastermind_t::json_group_weights() {
+	std::shared_ptr<group_weights_cache_interface_t> cache;
+	{
+		std::lock_guard<std::recursive_mutex> lock(m_data->m_weight_cache_mutex);
+		(void) lock;
+		cache = m_data->m_weight_cache;
+	}
+	return cache->to_string();
+}
+
+std::string mastermind_t::json_symmetric_groups() {
+	std::shared_ptr<std::map<int, std::vector<int>>> cache;
+	{
+		std::lock_guard<std::recursive_mutex> lock(m_data->m_symmetric_groups_mutex);
+		(void) lock;
+		cache = m_data->m_symmetric_groups_cache;
+	}
+
+	std::ostringstream oss;
+	oss << "{" << std::endl;
+	for (auto it = cache->begin(), ite = --cache->end(); it != cache->end(); ++it) {
+		oss << "\t\"" << it->first << "\" : [";
+		for (auto it2b = it->second.begin(), it2 = it2b; it2 != it->second.end(); ++it2) {
+			if (it2 != it2b) {
+				oss << ", ";
+			}
+			oss << *it2;
+		}
+		oss << "]";
+		if (it != ite) {
+			oss << ',';
+		}
+		oss << std::endl;
+	}
+	oss << "}";
+
+	return oss.str();
+}
+
+std::string mastermind_t::json_bad_groups() {
+	std::shared_ptr<std::vector<std::vector<int>>> cache;
+	{
+		std::lock_guard<std::recursive_mutex> lock(m_data->m_bad_groups_mutex);
+		(void) lock;
+		cache = m_data->m_bad_groups_cache;
+	}
+
+	std::ostringstream oss;
+	oss << "{" << std::endl;
+	for (auto it = cache->begin(), ite = --cache->end(); it != cache->end(); ++it) {
+		oss << "\t[";
+		for (auto it2 = it->begin(); it2 != it->end(); ++it2) {
+			if (it2 != it->begin()) {
+				oss << ", ";
+			}
+			oss << *it2;
+		}
+		oss << "]";
+		if (it != ite) {
+			oss << ',';
+		}
+		oss << std::endl;
+	}
+	oss << "}";
+
+	return oss.str();
+}
+
+std::string mastermind_t::json_cache_groups() {
+	std::shared_ptr<std::map<std::string, std::vector<int>>> cache;
+	{
+		std::lock_guard<std::recursive_mutex> lock(m_data->m_cache_groups_mutex);
+		(void) lock;
+		cache = m_data->m_cache_groups;
+	}
+
+	std::ostringstream oss;
+	oss << "{" << std::endl;
+	for (auto it = cache->begin(), ite = --cache->end(); it != cache->end(); ++it) {
+		oss << "\t\"" << it->first << "\" : [";
+		for (auto it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+			if (it2 != it->second.begin()) {
+				oss << ", ";
+			}
+			oss << *it2;
+		}
+
+		oss << "]";
+		if (it != ite) {
+			oss << ',';
+		}
+		oss << std::endl;
+	}
+	oss << "}";
+
+	return oss.str();
 }
 
 } // namespace elliptics

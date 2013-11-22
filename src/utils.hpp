@@ -2,6 +2,8 @@
 #define SRC__UTILS_HPP
 
 #include <msgpack.hpp>
+#include <string>
+#include <memory>
 
 namespace elliptics {
 
@@ -37,9 +39,10 @@ public:
   virtual bool update(metabase_group_weights_response_t &resp) = 0;
   virtual std::vector<int> choose(uint64_t count, const std::string &name_space) = 0;
   virtual bool initialized() = 0;
+  virtual std::string to_string() = 0;
 };
 
-std::unique_ptr<group_weights_cache_interface_t> get_group_weighs_cache();
+std::shared_ptr<group_weights_cache_interface_t> get_group_weighs_cache();
 
 enum GROUP_INFO_STATUS {
   GROUP_INFO_STATUS_OK,

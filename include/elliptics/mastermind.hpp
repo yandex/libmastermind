@@ -50,6 +50,12 @@ public:
 	std::vector<std::vector<int> > get_bad_groups();
 	std::vector<int> get_all_groups();
 	std::vector<int> get_cache_groups(const std::string &key);
+
+	std::string json_group_weights();
+	std::string json_symmetric_groups();
+	std::string json_bad_groups();
+	std::string json_cache_groups();
+
 private:
 	struct data;
 	std::unique_ptr<data> m_data;
