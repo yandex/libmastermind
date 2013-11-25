@@ -1,3 +1,9 @@
+libmastermind (6.8) lucid; urgency=low
+
+  * Fixed sigfault
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 25 Nov 2013 17:44:04 +0400
+
 libmastermind (6.7) lucid; urgency=low
 
   * Added some logs
