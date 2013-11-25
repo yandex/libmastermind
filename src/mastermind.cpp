@@ -143,6 +143,11 @@ struct mastermind_t::data {
 		, m_group_info_update_period(group_info_update_period)
 		, m_done(false)
 	{
+		m_bad_groups_cache = std::make_shared<std::vector<std::vector<int>>>();
+		m_symmetric_groups_cache = std::make_shared<std::map<int, std::vector<int>>>();
+		m_weight_cache = std::make_shared<group_weights_cache_interface_t>();
+		m_cache_groups = std::make_shared<std::map<std::string, std::vector<int>>>();
+
 		try {
 			reconnect();
 		} catch (const std::exception &ex) {
@@ -159,6 +164,11 @@ struct mastermind_t::data {
 		, m_group_info_update_period(group_info_update_period)
 		, m_done(false)
 	{
+		m_bad_groups_cache = std::make_shared<std::vector<std::vector<int>>>();
+		m_symmetric_groups_cache = std::make_shared<std::map<int, std::vector<int>>>();
+		m_weight_cache = std::make_shared<group_weights_cache_interface_t>();
+		m_cache_groups = std::make_shared<std::map<std::string, std::vector<int>>>();
+
 		m_remotes.emplace_back(host, port);
 		try {
 			reconnect();
