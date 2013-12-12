@@ -10,7 +10,7 @@ Build-Depends: debhelper (>= 5),
  libboost-thread-dev,
  cocaine-framework-native (>= 0.11),
  cocaine-framework-native-dev (>= 0.11),
- libcocaine-core2 (>= 0.11)
+ libcocaine-core2 (>= 0.11),
  libcocaine-dev (>= 0.11),
  libmsgpack-dev
 Standards-Version: 3.9.1
