@@ -21,6 +21,8 @@
 #include <algorithm>
 #include <type_traits>
 #include <chrono>
+#include <iterator>
+#include <fstream>
 
 #include "elliptics/mastermind.hpp"
 #include <msgpack.hpp>
@@ -28,6 +30,7 @@
 #include <cocaine/framework/service.hpp>
 #include <cocaine/framework/services/app.hpp>
 #include <cocaine/framework/common.hpp>
+#include <cocaine/traits/tuple.hpp>
 
 #include "utils.hpp"
 
@@ -150,6 +153,9 @@ struct mastermind_t::data {
 	bool collect_cache_groups();
 	void collect_info_loop();
 
+	void serialize();
+	void deserialize();
+
 	std::shared_ptr<cocaine::framework::logger_t> m_logger;
 
 	remotes_t                                          m_remotes;
@@ -194,6 +200,8 @@ mastermind_t::data::data(const remotes_t &remotes, const std::shared_ptr<cocaine
 	m_symmetric_groups_cache = std::make_shared<std::map<int, std::vector<int>>>();
 	m_cache_groups = std::make_shared<std::map<std::string, std::vector<int>>>();
 
+	deserialize();
+
 	try {
 		reconnect();
 	} catch (const std::exception &ex) {
@@ -213,6 +221,8 @@ mastermind_t::data::data(const std::string &host, uint16_t port, const std::shar
 	m_bad_groups_cache = std::make_shared<std::vector<std::vector<int>>>();
 	m_symmetric_groups_cache = std::make_shared<std::map<int, std::vector<int>>>();
 	m_cache_groups = std::make_shared<std::map<std::string, std::vector<int>>>();
+
+	deserialize();
 
 	m_remotes.emplace_back(host, port);
 	try {
@@ -456,6 +466,8 @@ void mastermind_t::data::collect_info_loop() {
 			collect_cache_groups();
 		}
 
+		serialize();
+
 		auto end_time = std::chrono::system_clock::now();
 
 		if (m_logger->verbosity() >= cocaine::logging::info) {
@@ -483,6 +495,41 @@ void mastermind_t::data::collect_info_loop() {
 	} while(m_done == false);
 }
 
+void mastermind_t::data::serialize() {
+	msgpack::sbuffer sbuf;
+	msgpack::pack(&sbuf, std::make_tuple(
+		*m_bad_groups_cache, *m_symmetric_groups_cache, *m_cache_groups, m_weight_cache->serialize()
+	));
+	std::ofstream output("/tmp/libmastermind.cache");
+	std::copy(sbuf.data(), sbuf.data() + sbuf.size(), std::ostreambuf_iterator<char>(output));
+}
+
+void mastermind_t::data::deserialize() {
+	std::string file;
+	{
+		std::ifstream input("/tmp/libmastermind.cache");
+		if (input.is_open() == false) {
+			return;
+		}
+		typedef std::istreambuf_iterator<char> it_t;
+		file.assign(it_t(input), it_t());
+	}
+
+	msgpack::unpacked msg;
+	msgpack::unpack(&msg, file.data(), file.size());
+	msgpack::object obj = msg.get();
+
+	typedef std::tuple<
+		 std::vector<std::vector<int>>
+		, std::map<int, std::vector<int>>
+		, std::map<std::string, std::vector<int>>
+		, std::string> cache_type;
+	cache_type ct;
+	obj.convert(&ct);
+	std::string weight_cache;
+	std::tie(*m_bad_groups_cache, *m_symmetric_groups_cache, *m_cache_groups, weight_cache) = ct;
+	m_weight_cache->deserialize(weight_cache);
+}
 
 mastermind_t::mastermind_t(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period)
 	: m_data(new data(remotes, logger, group_info_update_period))
@@ -627,7 +674,9 @@ std::string mastermind_t::json_symmetric_groups() {
 
 	std::ostringstream oss;
 	oss << "{" << std::endl;
-	for (auto it = cache->begin(), ite = --cache->end(); it != cache->end(); ++it) {
+	auto ite = cache->end();
+	if (cache->begin() != cache->end()) --ite;
+	for (auto it = cache->begin(); it != cache->end(); ++it) {
 		oss << "\t\"" << it->first << "\" : [";
 		for (auto it2b = it->second.begin(), it2 = it2b; it2 != it->second.end(); ++it2) {
 			if (it2 != it2b) {
@@ -656,7 +705,9 @@ std::string mastermind_t::json_bad_groups() {
 
 	std::ostringstream oss;
 	oss << "{" << std::endl;
-	for (auto it = cache->begin(), ite = --cache->end(); it != cache->end(); ++it) {
+	auto ite = cache->end();
+	if (cache->begin() != cache->end()) --ite;
+	for (auto it = cache->begin(); it != cache->end(); ++it) {
 		oss << "\t[";
 		for (auto it2 = it->begin(); it2 != it->end(); ++it2) {
 			if (it2 != it->begin()) {
@@ -685,7 +736,9 @@ std::string mastermind_t::json_cache_groups() {
 
 	std::ostringstream oss;
 	oss << "{" << std::endl;
-	for (auto it = cache->begin(), ite = --cache->end(); it != cache->end(); ++it) {
+	auto ite = cache->end();
+	if (cache->begin() != cache->end()) --ite;
+	for (auto it = cache->begin(); it != cache->end(); ++it) {
 		oss << "\t\"" << it->first << "\" : [";
 		for (auto it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
 			if (it2 != it->second.begin()) {

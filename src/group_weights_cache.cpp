@@ -18,6 +18,9 @@ public:
 private:
 	uint64_t total_weight_;
 	std::map<uint64_t, std::vector<int> > map_;
+
+public:
+	MSGPACK_DEFINE(total_weight_, map_)
 };
 
 weighted_groups::weighted_groups() :
@@ -48,6 +51,9 @@ public:
 	virtual std::vector<int> choose(uint64_t count, const std::string &name_space);
 	virtual bool initialized();
 	virtual std::string to_string();
+
+	virtual std::string serialize();
+	virtual void deserialize(const std::string &buf);
 private:
 	std::map<std::string, std::map<uint64_t, weighted_groups>> map_;
 };
@@ -97,15 +103,23 @@ bool group_weights_cache_impl::initialized() {
 std::string group_weights_cache_impl::to_string() {
 	std::ostringstream oss;
 	oss << "{" << std::endl;
-	for (auto it = map_.begin(), ite = --map_.end(); it != map_.end(); ++it) {
+	auto ite = map_.end();
+	if (map_.begin() != map_.end()) --ite;
+	for (auto it = map_.begin(); it != map_.end(); ++it) {
 		oss << "\t\"" << it->first << "\" : {" << std::endl;
 
-		for (auto it2 = it->second.begin(), it2e = --it->second.end(); it2 != it->second.end(); ++it2) {
+		auto it2e = it->second.end();
+		if (it->second.begin() != it->second.end()) --it2e;
+		for (auto it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
 			oss << "\t\t\"" << it2->first << "\" : {" << std::endl;
 
-			for (auto it3 = it2->second.data().begin(), it3e = --it2->second.data().end(); it3 != it2->second.data().end(); ++it3) {
+			auto it3e = it2->second.data().end();
+			if (it2->second.data().begin() != it2->second.data().end()) --it3e;
+			for (auto it3 = it2->second.data().begin(); it3 != it2->second.data().end(); ++it3) {
 				oss << "\t\t\t\"" << it3->first << "\" : [";
-				for (auto it4 = it3->second.begin(), it4e = --it3->second.end(); it4 != it3->second.end(); ++it4) {
+				auto it4e = it3->second.end();
+				if (it3->second.begin() != it3->second.end()) --it4e;
+				for (auto it4 = it3->second.begin(); it4 != it3->second.end(); ++it4) {
 					oss << *it4;
 					if (it4 != it4e) oss << ", ";
 				}
@@ -131,6 +145,19 @@ std::string group_weights_cache_impl::to_string() {
 	}
 	oss << "}";
 	return oss.str();
+}
+
+std::string group_weights_cache_impl::serialize() {
+	msgpack::sbuffer sbuf;
+	msgpack::pack(&sbuf, map_);
+	return std::string(sbuf.data(), sbuf.data() + sbuf.size());
+}
+
+void group_weights_cache_impl::deserialize(const std::string &buf) {
+	msgpack::unpacked msg;
+	msgpack::unpack(&msg, buf.data(), buf.size());
+	msgpack::object obj = msg.get();
+	obj.convert(&map_);
 }
 
 std::shared_ptr<group_weights_cache_interface_t> get_group_weighs_cache() {

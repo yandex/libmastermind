@@ -40,6 +40,9 @@ public:
   virtual std::vector<int> choose(uint64_t count, const std::string &name_space) = 0;
   virtual bool initialized() = 0;
   virtual std::string to_string() = 0;
+
+  virtual std::string serialize() = 0;
+  virtual void deserialize(const std::string &buf) = 0;
 };
 
 std::shared_ptr<group_weights_cache_interface_t> get_group_weighs_cache();
