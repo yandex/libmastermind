@@ -1,3 +1,9 @@
+libmastermind (6.10-cocaine11) lucid; urgency=low
+
+  * Cache is serialized into /var/tmp/libmastermind.cache
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Tue, 17 Dec 2013 20:03:04 +0400
+
 libmastermind (6.9-cocaine11) lucid; urgency=low
 
   * Added serialization of cache
