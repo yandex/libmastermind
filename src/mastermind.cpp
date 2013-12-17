@@ -500,14 +500,14 @@ void mastermind_t::data::serialize() {
 	msgpack::pack(&sbuf, std::make_tuple(
 		*m_bad_groups_cache, *m_symmetric_groups_cache, *m_cache_groups, m_weight_cache->serialize()
 	));
-	std::ofstream output("/tmp/libmastermind.cache");
+	std::ofstream output("/var/tmp/libmastermind.cache");
 	std::copy(sbuf.data(), sbuf.data() + sbuf.size(), std::ostreambuf_iterator<char>(output));
 }
 
 void mastermind_t::data::deserialize() {
 	std::string file;
 	{
-		std::ifstream input("/tmp/libmastermind.cache");
+		std::ifstream input("/var/tmp/libmastermind.cache");
 		if (input.is_open() == false) {
 			return;
 		}
