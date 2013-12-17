@@ -1,3 +1,10 @@
+libmastermind (6.9-cocaine11) lucid; urgency=low
+
+  * Added serialization of cache
+  * Added serialization of mastermind-cache
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Tue, 17 Dec 2013 17:43:43 +0400
+
 libmastermind (6.8-cocaine11) lucid; urgency=low
 
   * Use cocaine >= 0.11
