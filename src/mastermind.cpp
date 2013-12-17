@@ -135,139 +135,14 @@ enum dnet_common_embed_types {
 };
 
 struct mastermind_t::data {
-	data(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60)
-		: m_logger(logger)
-		, m_remotes(remotes)
-		, m_next_remote(0)
-		, m_weight_cache(get_group_weighs_cache())
-		, m_group_info_update_period(group_info_update_period)
-		, m_done(false)
-	{
-		m_bad_groups_cache = std::make_shared<std::vector<std::vector<int>>>();
-		m_symmetric_groups_cache = std::make_shared<std::map<int, std::vector<int>>>();
-		m_cache_groups = std::make_shared<std::map<std::string, std::vector<int>>>();
+	data(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60);
+	data(const std::string &host, uint16_t port, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60);
+	~data();
 
-		try {
-			reconnect();
-		} catch (const std::exception &ex) {
-			COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
-		}
-
-		m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
-	}
-
-	data(const std::string &host, uint16_t port, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60)
-		: m_logger(logger)
-		, m_next_remote(0)
-		, m_weight_cache(get_group_weighs_cache())
-		, m_group_info_update_period(group_info_update_period)
-		, m_done(false)
-	{
-		m_bad_groups_cache = std::make_shared<std::vector<std::vector<int>>>();
-		m_symmetric_groups_cache = std::make_shared<std::map<int, std::vector<int>>>();
-		m_cache_groups = std::make_shared<std::map<std::string, std::vector<int>>>();
-
-		m_remotes.emplace_back(host, port);
-		try {
-			reconnect();
-		} catch (const std::exception &ex) {
-			COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
-		}
-		m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
-	}
-
-	~data() {
-		try {
-			{
-				std::lock_guard<std::mutex> lock(m_mutex);
-				(void)lock;
-				m_done = true;
-				m_weight_cache_condition_variable.notify_one();
-			}
-			m_weight_cache_update_thread.join();
-		} catch (const std::system_error &) {
-		}
-	}
-
-	void reconnect() {
-		std::lock_guard<std::mutex> lock(m_reconnect_mutex);
-		(void) lock;
-
-		size_t end = m_next_remote;
-		size_t index = m_next_remote;
-		size_t size = m_remotes.size();
-
-		do {
-			auto &remote = m_remotes[index];
-			try {
-				m_service_manager = cocaine::framework::service_manager_t::create(
-					cocaine::framework::service_manager_t::endpoint_t(remote.first, remote.second));
-
-				auto g = m_service_manager->get_service_async<cocaine::framework::app_service_t>("mastermind");
-				g.wait_for(std::chrono::seconds(4));
-				if (g.ready() == false){
-					COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: cannot get app_service");
-					m_service_manager.reset();
-					index = (index + 1) % size;
-					continue;
-				}
-				m_app = g.get();
-
-				COCAINE_LOG_INFO(m_logger, "libmastermind: reconnect: connected to %s:%d", remote.first.c_str(), static_cast<int>(remote.second));
-
-				m_current_remote = remote;
-				m_next_remote = (index + 1) % size;
-				return;
-			} catch (const cocaine::framework::service_error_t &ex) {
-				COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: service_error: %s", ex.what());
-			} catch (const std::exception &ex) {
-				COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
-			}
-
-			index = (index + 1) % size;
-		} while (index != end);
-
-		m_current_remote = remote_t();
-		m_service_manager.reset();
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: cannot recconect to any host");
-		throw std::runtime_error("reconnect error: cannot reconnect to any host");
-	}
+	void reconnect();
 
 	template <typename F, typename R, typename... Args>
-	void retry(F func, R &res, Args &&... args) {
-		bool already_tried = false;
-		try {
-			if (!m_service_manager || !m_app || m_app->status() != cocaine::framework::service_status::connected) {
-				COCAINE_LOG_INFO(m_logger, "libmastermind: retry: preconnect");
-				already_tried = true;
-				reconnect();
-			}
-			auto g = (m_app.get()->*func)(std::forward<Args>(args)...);
-			g.wait_for(std::chrono::seconds(4));
-			if (g.ready() == false) {
-				if (already_tried) {
-					throw std::runtime_error("cannot process enqueue");
-				}
-				COCAINE_LOG_INFO(m_logger, "libmastermind: retry: try to reconnect");
-				reconnect();
-				auto g = (m_app.get()->*func)(std::forward<Args>(args)...);
-				g.wait_for(std::chrono::seconds(4));
-				if (g.ready() == false) {
-					throw std::runtime_error("cannot reprocess enqueue");
-				}
-				auto chunk = g.next();
-				res = cocaine::framework::unpack<R>(chunk);
-			}
-			auto chunk = g.next();
-			res = cocaine::framework::unpack<R>(chunk);
-		} catch (const cocaine::framework::service_error_t &ex) {
-			COCAINE_LOG_ERROR(m_logger, "libmastermind: retry: %s", ex.what());
-			throw;
-		} catch (const std::exception &ex) {
-			COCAINE_LOG_ERROR(m_logger, "libmastermind: retry: %s", ex.what());
-			throw;
-		}
-	}
+	void retry(F func, R &res, Args &&... args);
 
 	bool collect_group_weights();
 	bool collect_bad_groups();
@@ -306,6 +181,140 @@ struct mastermind_t::data {
 	std::shared_ptr<cocaine::framework::app_service_t> m_app;
 	std::shared_ptr<cocaine::framework::service_manager_t> m_service_manager;
 };
+
+mastermind_t::data::data(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period)
+	: m_logger(logger)
+	, m_remotes(remotes)
+	, m_next_remote(0)
+	, m_weight_cache(get_group_weighs_cache())
+	, m_group_info_update_period(group_info_update_period)
+	, m_done(false)
+{
+	m_bad_groups_cache = std::make_shared<std::vector<std::vector<int>>>();
+	m_symmetric_groups_cache = std::make_shared<std::map<int, std::vector<int>>>();
+	m_cache_groups = std::make_shared<std::map<std::string, std::vector<int>>>();
+
+	try {
+		reconnect();
+	} catch (const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
+	}
+
+	m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
+}
+
+mastermind_t::data::data(const std::string &host, uint16_t port, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period)
+	: m_logger(logger)
+	, m_next_remote(0)
+	, m_weight_cache(get_group_weighs_cache())
+	, m_group_info_update_period(group_info_update_period)
+	, m_done(false)
+{
+	m_bad_groups_cache = std::make_shared<std::vector<std::vector<int>>>();
+	m_symmetric_groups_cache = std::make_shared<std::map<int, std::vector<int>>>();
+	m_cache_groups = std::make_shared<std::map<std::string, std::vector<int>>>();
+
+	m_remotes.emplace_back(host, port);
+	try {
+		reconnect();
+	} catch (const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
+	}
+	m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
+}
+
+mastermind_t::data::~data() {
+	try {
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			(void)lock;
+			m_done = true;
+			m_weight_cache_condition_variable.notify_one();
+		}
+		m_weight_cache_update_thread.join();
+	} catch (const std::system_error &) {
+	}
+}
+
+void mastermind_t::data::reconnect() {
+	std::lock_guard<std::mutex> lock(m_reconnect_mutex);
+	(void) lock;
+
+	size_t end = m_next_remote;
+	size_t index = m_next_remote;
+	size_t size = m_remotes.size();
+
+	do {
+		auto &remote = m_remotes[index];
+		try {
+			m_service_manager = cocaine::framework::service_manager_t::create(
+				cocaine::framework::service_manager_t::endpoint_t(remote.first, remote.second));
+
+			auto g = m_service_manager->get_service_async<cocaine::framework::app_service_t>("mastermind");
+			g.wait_for(std::chrono::seconds(4));
+			if (g.ready() == false){
+				COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: cannot get app_service");
+				m_service_manager.reset();
+				index = (index + 1) % size;
+				continue;
+			}
+			m_app = g.get();
+
+			COCAINE_LOG_INFO(m_logger, "libmastermind: reconnect: connected to %s:%d", remote.first.c_str(), static_cast<int>(remote.second));
+
+			m_current_remote = remote;
+			m_next_remote = (index + 1) % size;
+			return;
+		} catch (const cocaine::framework::service_error_t &ex) {
+			COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: service_error: %s", ex.what());
+		} catch (const std::exception &ex) {
+			COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
+		}
+
+		index = (index + 1) % size;
+	} while (index != end);
+
+	m_current_remote = remote_t();
+	m_service_manager.reset();
+	COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: cannot recconect to any host");
+	throw std::runtime_error("reconnect error: cannot reconnect to any host");
+}
+
+template <typename F, typename R, typename... Args>
+void mastermind_t::data::retry(F func, R &res, Args &&... args) {
+	bool already_tried = false;
+	try {
+		if (!m_service_manager || !m_app || m_app->status() != cocaine::framework::service_status::connected) {
+			COCAINE_LOG_INFO(m_logger, "libmastermind: retry: preconnect");
+			already_tried = true;
+			reconnect();
+		}
+		auto g = (m_app.get()->*func)(std::forward<Args>(args)...);
+		g.wait_for(std::chrono::seconds(4));
+		if (g.ready() == false) {
+			if (already_tried) {
+				throw std::runtime_error("cannot process enqueue");
+			}
+			COCAINE_LOG_INFO(m_logger, "libmastermind: retry: try to reconnect");
+			reconnect();
+			auto g = (m_app.get()->*func)(std::forward<Args>(args)...);
+			g.wait_for(std::chrono::seconds(4));
+			if (g.ready() == false) {
+				throw std::runtime_error("cannot reprocess enqueue");
+			}
+			auto chunk = g.next();
+			res = cocaine::framework::unpack<R>(chunk);
+		}
+		auto chunk = g.next();
+		res = cocaine::framework::unpack<R>(chunk);
+	} catch (const cocaine::framework::service_error_t &ex) {
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: retry: %s", ex.what());
+		throw;
+	} catch (const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: retry: %s", ex.what());
+		throw;
+	}
+}
 
 bool mastermind_t::data::collect_group_weights() {
 	try {
