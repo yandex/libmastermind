@@ -515,20 +515,26 @@ void mastermind_t::data::deserialize() {
 		file.assign(it_t(input), it_t());
 	}
 
-	msgpack::unpacked msg;
-	msgpack::unpack(&msg, file.data(), file.size());
-	msgpack::object obj = msg.get();
+	try {
+		msgpack::unpacked msg;
+		msgpack::unpack(&msg, file.data(), file.size());
+		msgpack::object obj = msg.get();
 
-	typedef std::tuple<
-		 std::vector<std::vector<int>>
-		, std::map<int, std::vector<int>>
-		, std::map<std::string, std::vector<int>>
-		, std::string> cache_type;
-	cache_type ct;
-	obj.convert(&ct);
-	std::string weight_cache;
-	std::tie(*m_bad_groups_cache, *m_symmetric_groups_cache, *m_cache_groups, weight_cache) = ct;
-	m_weight_cache->deserialize(weight_cache);
+		typedef std::tuple<
+			 std::vector<std::vector<int>>
+			, std::map<int, std::vector<int>>
+			, std::map<std::string, std::vector<int>>
+			, std::string> cache_type;
+		cache_type ct;
+		obj.convert(&ct);
+		std::string weight_cache;
+		std::tie(*m_bad_groups_cache, *m_symmetric_groups_cache, *m_cache_groups, weight_cache) = ct;
+		m_weight_cache->deserialize(weight_cache);
+	} catch (const std::exception &ex) {
+		COCAINE_LOG_WARNING(m_logger, "libmastermind: deserialize: cannot read libmastermind.cache: %s", ex.what());
+	} catch (...) {
+		COCAINE_LOG_WARNING(m_logger, "libmastermind: deserialize: cannot read libmastermind.cache");
+	}
 }
 
 mastermind_t::mastermind_t(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period)
