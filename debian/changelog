@@ -1,3 +1,9 @@
+libmastermind (6.11-cocaine11) lucid; urgency=low
+
+  * Handle errors caused by incorrect cache file
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 30 Jan 2014 15:22:53 +0400
+
 libmastermind (6.10-cocaine11) lucid; urgency=low
 
   * Cache is serialized into /var/tmp/libmastermind.cache
