@@ -1,51 +1,56 @@
 #ifndef SRC__UTILS_HPP
 #define SRC__UTILS_HPP
 
-#include <msgpack.hpp>
+#include "elliptics/mastermind.hpp"
+
+#include <cocaine/framework/logging.hpp>
+
 #include <string>
-#include <memory>
+#include <tuple>
+#include <functional>
+#include <chrono>
 
 namespace elliptics {
 
-struct metabase_group_weights_request_t {
-  uint64_t stamp;
-  MSGPACK_DEFINE(stamp)
-};
-
-struct metabase_group_weights_response_t {
-  struct GroupWithWeight {
-	std::vector<int> group_ids;
-	uint64_t weight;
-	MSGPACK_DEFINE(group_ids, weight)
-  };
-  struct SizedGroups {
-	uint64_t size;
-	std::vector<GroupWithWeight> weighted_groups;
-	MSGPACK_DEFINE(size, weighted_groups)
-  };
-  struct NamedGroups {
-	std::string name;
-	std::vector<SizedGroups> sized_groups;
-	MSGPACK_DEFINE(name, sized_groups)
-  };
-  std::vector<NamedGroups> info;
-  MSGPACK_DEFINE(info)
-};
-
-class group_weights_cache_interface_t {
+class spent_time_printer_t {
 public:
-  virtual ~group_weights_cache_interface_t() {};
+	spent_time_printer_t(const std::string &handler_name, std::shared_ptr<cocaine::framework::logger_t> &logger);
 
-  virtual bool update(metabase_group_weights_response_t &resp) = 0;
-  virtual std::vector<int> choose(uint64_t count, const std::string &name_space) = 0;
-  virtual bool initialized() = 0;
-  virtual std::string to_string() = 0;
+	~spent_time_printer_t();
 
-  virtual std::string serialize() = 0;
-  virtual void deserialize(const std::string &buf) = 0;
+private:
+	std::string m_handler_name;
+	std::shared_ptr<cocaine::framework::logger_t> &m_logger;
+	std::chrono::system_clock::time_point m_beg_time;
 };
 
-std::shared_ptr<group_weights_cache_interface_t> get_group_weighs_cache();
+class metabalancer_groups_info_t {
+public:
+	typedef std::vector<int> couple_t;
+	typedef std::tuple<couple_t, uint64_t, uint64_t> couple_with_info_t;
+	typedef std::vector<couple_with_info_t> couples_with_info_t;
+	typedef std::map<uint64_t, couples_with_info_t> couples_t;
+	typedef std::map<std::string, couples_t> namespaces_t;
+
+	metabalancer_groups_info_t(namespaces_t &&namespaces);
+
+	std::vector<int> get_couple(uint64_t count, const std::string &name, uint64_t size);
+	bool empty();
+	std::string to_string();
+	const namespaces_t &data() const;
+
+private:
+	static bool couples_with_info_comp(const couple_with_info_t &c1, const couple_with_info_t &c2);
+
+	typedef std::reference_wrapper<const couple_t> const_couple_ref_t;
+	typedef std::map<uint64_t, const_couple_ref_t> weighted_couples_t;
+	typedef std::map<uint64_t, weighted_couples_t> couples_by_avalible_memory_t;
+	typedef std::map<uint64_t, couples_by_avalible_memory_t> couples_by_groups_count_t;
+	typedef std::map<std::string, couples_by_groups_count_t> couples_by_namespaces_t;
+
+	namespaces_t m_namespaces;
+	couples_by_namespaces_t m_couples;
+};
 
 enum GROUP_INFO_STATUS {
   GROUP_INFO_STATUS_OK,
@@ -53,11 +58,10 @@ enum GROUP_INFO_STATUS {
   GROUP_INFO_STATUS_COUPLED
 };
 
-struct group_info_request_t {
-  int group;
-  MSGPACK_DEFINE(group)
-};
+} // namespace elliptics
 
-}
+namespace msgpack {
+elliptics::group_info_response_t &operator >> (object o, elliptics::group_info_response_t &v);
+} // namespace msgpack
 
 #endif /* SRC__UTILS_HPP */
