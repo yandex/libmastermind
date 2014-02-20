@@ -1,7 +1,7 @@
 #ifndef SRC__MASTERMIND_IMPL_HPP
 #define SRC__MASTERMIND_IMPL_HPP
 
-#include "elliptics/mastermind.hpp"
+#include "libmastermind/mastermind.hpp"
 #include "utils.hpp"
 
 #include <thread>

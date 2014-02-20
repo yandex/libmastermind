@@ -1,7 +1,7 @@
 #ifndef SRC__UTILS_HPP
 #define SRC__UTILS_HPP
 
-#include "elliptics/mastermind.hpp"
+#include "libmastermind/mastermind.hpp"
 
 #include <cocaine/framework/logging.hpp>
 
