@@ -46,8 +46,11 @@ std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std
 		}
 
 		return m_data->m_metabalancer_groups_info->get_couple(count, name_space, size);
-	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_metabalancer_groups: %s", ex.what());
+	} catch(const std::system_error &ex) {
+		COCAINE_LOG_ERROR(
+			m_data->m_logger,
+			"libmastermind: get_metabalancer_groups: count = %llu; namespace = %s; size = %llu; \"%s\"",
+			count, name_space.c_str(), size, ex.code().message());
 		throw;
 	}
 }
@@ -58,8 +61,11 @@ group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
 
 		m_data->retry(&cocaine::framework::app_service_t::enqueue<decltype(group)>, resp, "get_group_info", group);
 		return resp;
-	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_metabalancer_group_info: %s", ex.what());
+	} catch(const std::system_error &ex) {
+		COCAINE_LOG_ERROR(
+			m_data->m_logger,
+			"libmastermind: get_metabalancer_group_info: group = %d; \"%s\"",
+			group, ex.code().message());
 		throw;
 	}
 }
@@ -74,8 +80,8 @@ std::map<int, std::vector<int>> mastermind_t::get_symmetric_groups() {
 		}
 
 		return *m_data->m_symmetric_groups_cache;
-	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_symmetric_groups: %s", ex.what());
+	} catch(const std::system_error &ex) {
+		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_symmetric_groups: \"%s\"", ex.code().message());
 		throw;
 	}
 }
@@ -94,8 +100,11 @@ std::vector<int> mastermind_t::get_symmetric_groups(int group) {
 			return std::vector<int>();
 		}
 		return it->second;
-	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_symmetric_groups(int): %s", ex.what());
+	} catch(const std::system_error &ex) {
+		COCAINE_LOG_ERROR(
+			m_data->m_logger,
+			"libmastermind: get_symmetric_groups: group = %d; \"%s\"",
+			group, ex.code().message());
 		throw;
 	}
 }
@@ -110,8 +119,8 @@ std::vector<std::vector<int> > mastermind_t::get_bad_groups() {
 		}
 
 		return *m_data->m_bad_groups_cache;
-	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_bad_groups: %s", ex.what());
+	} catch(const std::system_error &ex) {
+		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_bad_groups: \"%s\"", ex.code().message());
 		throw;
 	}
 }
@@ -140,8 +149,11 @@ std::vector<int> mastermind_t::get_cache_groups(const std::string &key) {
 		if (it != m_data->m_cache_groups->end())
 			return it->second;
 		return std::vector<int>();
-	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_cache_groups: %s", ex.what());
+	} catch(const std::system_error &ex) {
+		COCAINE_LOG_ERROR(
+			m_data->m_logger,
+			"libmastermind: get_cache_groups: key = %s; \"%s\"",
+			key.c_str(), ex.code().message());
 		throw;
 	}
 }

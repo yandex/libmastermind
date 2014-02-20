@@ -5,6 +5,7 @@
 #include <boost/thread.hpp>
 
 #include "utils.hpp"
+#include "libmastermind/error.hpp"
 
 namespace elliptics {
 
@@ -68,24 +69,24 @@ metabalancer_groups_info_t::metabalancer_groups_info_t(namespaces_t &&namespaces
 std::vector<int> metabalancer_groups_info_t::get_couple(uint64_t count, const std::string &name, uint64_t size) {
 	auto nit = m_couples.find(name);
 	if (nit == m_couples.end()) {
-		throw std::runtime_error("Unknown namespace");
+		throw unknown_namespace_error();
 	}
 
 	auto &groups_in_couple = nit->second;
 	auto gicit = groups_in_couple.find(count);
 	if (gicit == groups_in_couple.end()) {
-		throw std::runtime_error("Unavalible count of groups in couple");
+		throw invalid_groups_count_error();
 	}
 
 	auto &avalible_memory = gicit->second;
 	auto amit = avalible_memory.lower_bound(size);
 	if (amit == avalible_memory.end()) {
-		throw std::runtime_error("Not enought memory");
+		throw not_enough_memory_error();
 	}
 
 	auto &weighted_groups = amit->second;
 	if (weighted_groups.empty()) {
-		throw std::runtime_error("Couple not found");
+		throw couple_not_found_error();
 	}
 
 	auto total_weight = weighted_groups.rbegin()->first;
@@ -93,7 +94,7 @@ std::vector<int> metabalancer_groups_info_t::get_couple(uint64_t count, const st
 	auto it = weighted_groups.lower_bound(uint64_t(shoot_point));
 
 	if (it == weighted_groups.end()) {
-		throw std::runtime_error("Couple not found");
+		throw couple_not_found_error();
 	}
 
 	return it->second;

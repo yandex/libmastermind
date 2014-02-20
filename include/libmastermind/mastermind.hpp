@@ -18,6 +18,8 @@
 #ifndef INCLUDE__LIBMASTERMIND__MASTERMIND_HPP
 #define INCLUDE__LIBMASTERMIND__MASTERMIND_HPP
 
+#include <libmastermind/error.hpp>
+
 #include <cocaine/framework/logging.hpp>
 
 #include <map>
