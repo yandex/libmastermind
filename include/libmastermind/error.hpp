@@ -3,7 +3,7 @@
 
 #include <system_error>
 
-namespace elliptics {
+namespace mastermind {
 
 namespace libmastermind_error {
 
@@ -57,12 +57,12 @@ public:
 	invalid_groups_count_error();
 };
 
-} // namespace elliptics
+} // namespace mastermind
 
 namespace std {
 
 template<>
-struct is_error_code_enum<elliptics::libmastermind_error::libmastermind_error_t>
+struct is_error_code_enum<mastermind::libmastermind_error::libmastermind_error_t>
 	: public true_type
 {};
 

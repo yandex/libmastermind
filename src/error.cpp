@@ -1,6 +1,6 @@
 #include "libmastermind/error.hpp"
 
-namespace elliptics {
+namespace mastermind {
 
 const char *libmastermind_category_impl::name() const {
 	return "libmastermind";
@@ -50,5 +50,5 @@ invalid_groups_count_error::invalid_groups_count_error()
 	: std::system_error(make_error_code(libmastermind_error::invalid_groups_count))
 {}
 
-} // namespace elliptics
+} // namespace mastermind
 

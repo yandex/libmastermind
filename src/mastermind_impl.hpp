@@ -15,7 +15,7 @@
 #include <cocaine/framework/common.hpp>
 #include <cocaine/traits/tuple.hpp>
 
-namespace elliptics {
+namespace mastermind {
 
 struct mastermind_t::data {
 	data(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60);
@@ -104,6 +104,6 @@ void mastermind_t::data::retry(F func, R &res, Args &&... args) {
 	}
 }
 
-} // namespace elliptics
+} // namespace mastermind
 
 #endif /* SRC__MASTERMIND_IMPL_HPP */

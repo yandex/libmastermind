@@ -7,7 +7,7 @@
 #include "utils.hpp"
 #include "libmastermind/error.hpp"
 
-namespace elliptics {
+namespace mastermind {
 
 spent_time_printer_t::spent_time_printer_t(const std::string &handler_name, std::shared_ptr<cocaine::framework::logger_t> &logger)
 : m_handler_name(handler_name)
@@ -156,10 +156,10 @@ bool metabalancer_groups_info_t::couples_with_info_comp(const couple_with_info_t
 	return std::get<2>(c1) < std::get<2>(c2);
 }
 
-} // namespace elliptics
+} // namespace mastermind
 
 namespace msgpack {
-elliptics::group_info_response_t &operator >> (object o, elliptics::group_info_response_t &v) {
+mastermind::group_info_response_t &operator >> (object o, mastermind::group_info_response_t &v) {
 	if (o.type != type::MAP) {
 		throw type_error();
 	}
@@ -182,9 +182,9 @@ elliptics::group_info_response_t &operator >> (object o, elliptics::group_info_r
 			std::string status;
 			p->val.convert(&status);
 			if (!status.compare("bad")) {
-				v.status = elliptics::GROUP_INFO_STATUS_BAD;
+				v.status = mastermind::GROUP_INFO_STATUS_BAD;
 			} else if (!status.compare("coupled")) {
-				v.status = elliptics::GROUP_INFO_STATUS_COUPLED;
+				v.status = mastermind::GROUP_INFO_STATUS_COUPLED;
 			}
 		} else if (!key.compare("namespace")) {
 			p->val.convert(&v.name_space);

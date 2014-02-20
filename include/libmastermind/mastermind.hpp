@@ -27,7 +27,7 @@
 #include <vector>
 #include <memory>
 
-namespace elliptics {
+namespace mastermind {
 
 struct group_info_response_t {
 	std::vector<std::string> nodes;
@@ -63,7 +63,7 @@ private:
 	std::unique_ptr<data> m_data;
 };
 
-} // namespace elliptics
+} // namespace mastermind
 
 #endif /* INCLUDE__LIBMASTERMIND__MASTERMIND_HPP */
 

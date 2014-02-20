@@ -1,6 +1,6 @@
 #include "mastermind_impl.hpp"
 
-namespace elliptics {
+namespace mastermind {
 
 mastermind_t::data::data(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period)
 	: m_logger(logger)
@@ -307,4 +307,4 @@ void mastermind_t::data::deserialize() {
 	}
 }
 
-} // namespace elliptics
+} // namespace mastermind

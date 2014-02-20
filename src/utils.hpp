@@ -10,7 +10,7 @@
 #include <functional>
 #include <chrono>
 
-namespace elliptics {
+namespace mastermind {
 
 class spent_time_printer_t {
 public:
@@ -58,10 +58,10 @@ enum GROUP_INFO_STATUS {
   GROUP_INFO_STATUS_COUPLED
 };
 
-} // namespace elliptics
+} // namespace mastermind
 
 namespace msgpack {
-elliptics::group_info_response_t &operator >> (object o, elliptics::group_info_response_t &v);
+mastermind::group_info_response_t &operator >> (object o, mastermind::group_info_response_t &v);
 } // namespace msgpack
 
 #endif /* SRC__UTILS_HPP */

@@ -19,8 +19,7 @@
 
 #include "mastermind_impl.hpp"
 
-
-namespace elliptics {
+namespace mastermind {
 
 mastermind_t::mastermind_t(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period)
 	: m_data(new data(remotes, logger, group_info_update_period))
@@ -262,4 +261,4 @@ std::string mastermind_t::json_cache_groups() {
 	return oss.str();
 }
 
-} // namespace elliptics
+} // namespace mastermind
