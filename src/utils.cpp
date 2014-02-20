@@ -193,4 +193,39 @@ mastermind::group_info_response_t &operator >> (object o, mastermind::group_info
 
 	return v;
 }
+
+std::vector<mastermind::namespace_settings_t> &operator >> (object o, std::vector<mastermind::namespace_settings_t> &v) {
+	if (o.type != type::MAP) {
+		throw type_error();
+	}
+
+	for (msgpack::object_kv *nit = o.via.map.ptr, *nit_end = nit + o.via.map.size; nit < nit_end; ++nit) {
+		mastermind::namespace_settings_t item;
+
+		nit->key.convert(&item.name);
+
+		if (nit->val.type != type::MAP) {
+			throw type_error();
+		}
+
+		for (msgpack::object_kv *it = nit->val.via.map.ptr, *it_end = it + nit->val.via.map.size; it < it_end; ++it) {
+			std::string key;
+			it->key.convert(&key);
+			if (!key.compare("groups-count")) {
+				it->val.convert(&item.groups_count);
+			} else if (!key.compare("success-copies-num")) {
+				it->val.convert(&item.success_copies_num);
+			} else if (!key.compare("auth-key")) {
+				it->val.convert(&item.auth_key);
+			} else if (!key.compare("static-couple")) {
+				it->val.convert(&item.static_couple);
+			}
+		}
+
+		v.push_back(item);
+	}
+
+	return v;
+}
+
 } // namespace msgpack

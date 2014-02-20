@@ -36,6 +36,14 @@ struct group_info_response_t {
 	std::string name_space;
 };
 
+struct namespace_settings_t {
+	std::string name;
+	int groups_count;
+	std::string success_copies_num;
+	std::string auth_key;
+	std::vector<int> static_couple;
+};
+
 class mastermind_t {
 public:
 	typedef std::pair<std::string, uint16_t> remote_t;
@@ -52,11 +60,13 @@ public:
 	std::vector<std::vector<int> > get_bad_groups();
 	std::vector<int> get_all_groups();
 	std::vector<int> get_cache_groups(const std::string &key);
+	std::vector<namespace_settings_t> get_namespaces_settings();
 
 	std::string json_group_weights();
 	std::string json_symmetric_groups();
 	std::string json_bad_groups();
 	std::string json_cache_groups();
+	std::string json_namespaces_settings();
 
 private:
 	struct data;

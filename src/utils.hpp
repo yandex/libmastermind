@@ -62,6 +62,7 @@ enum GROUP_INFO_STATUS {
 
 namespace msgpack {
 mastermind::group_info_response_t &operator >> (object o, mastermind::group_info_response_t &v);
+std::vector<mastermind::namespace_settings_t> &operator >> (object o, std::vector<mastermind::namespace_settings_t> &v);
 } // namespace msgpack
 
 #endif /* SRC__UTILS_HPP */

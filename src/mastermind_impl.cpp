@@ -12,6 +12,7 @@ mastermind_t::data::data(const remotes_t &remotes, const std::shared_ptr<cocaine
 	m_bad_groups_cache = std::make_shared<std::vector<std::vector<int>>>();
 	m_symmetric_groups_cache = std::make_shared<std::map<int, std::vector<int>>>();
 	m_cache_groups = std::make_shared<std::map<std::string, std::vector<int>>>();
+	m_namespaces_settings_cache = std::make_shared<std::vector<namespace_settings_t>>();
 
 	deserialize();
 
@@ -33,6 +34,7 @@ mastermind_t::data::data(const std::string &host, uint16_t port, const std::shar
 	m_bad_groups_cache = std::make_shared<std::vector<std::vector<int>>>();
 	m_symmetric_groups_cache = std::make_shared<std::map<int, std::vector<int>>>();
 	m_cache_groups = std::make_shared<std::map<std::string, std::vector<int>>>();
+	m_namespaces_settings_cache = std::make_shared<std::vector<namespace_settings_t>>();
 
 	deserialize();
 
@@ -192,6 +194,23 @@ bool mastermind_t::data::collect_cache_groups() {
 	return false;
 }
 
+bool mastermind_t::data::collect_namespaces_settings() {
+	try {
+		auto cache = std::make_shared<std::vector<namespace_settings_t>>();
+		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, *cache, "get_namespaces_settings", "");
+
+		{
+			std::lock_guard<std::recursive_mutex> lock(m_namespaces_settings_mutex);
+			(void) lock;
+			m_namespaces_settings_cache.swap(cache);
+		}
+		return true;
+	} catch(const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_namespaces_settings: %s", ex.what());
+	}
+	return false;
+}
+
 void mastermind_t::data::collect_info_loop() {
 	std::unique_lock<std::mutex> lock(m_mutex);
 #if __GNUC_MINOR__ >= 6
@@ -234,6 +253,10 @@ void mastermind_t::data::collect_info_loop() {
 		{
 			spent_time_printer_t helper("collect_cache_groups", m_logger);
 			collect_cache_groups();
+		}
+		{
+			spent_time_printer_t helper("collect_namespaces_settings", m_logger);
+			collect_namespaces_settings();
 		}
 
 		serialize();

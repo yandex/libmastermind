@@ -157,6 +157,25 @@ std::vector<int> mastermind_t::get_cache_groups(const std::string &key) {
 	}
 }
 
+std::vector<namespace_settings_t> mastermind_t::get_namespaces_settings() {
+	std::lock_guard<std::recursive_mutex> lock(m_data->m_namespaces_settings_mutex);
+	(void) lock;
+
+	try {
+		if (m_data->m_namespaces_settings_cache->empty()) {
+			m_data->collect_namespaces_settings();
+		}
+
+		return *m_data->m_namespaces_settings_cache;
+	} catch(const std::system_error &ex) {
+		COCAINE_LOG_ERROR(
+			m_data->m_logger,
+			"libmastermind: get_namespaces_settings; \"%s\"",
+			ex.code().message().c_str());
+		throw;
+	}
+}
+
 std::string mastermind_t::json_group_weights() {
 	std::shared_ptr<metabalancer_groups_info_t> cache;
 	{
@@ -257,6 +276,42 @@ std::string mastermind_t::json_cache_groups() {
 		oss << std::endl;
 	}
 	oss << "}";
+
+	return oss.str();
+}
+
+std::string mastermind_t::json_namespaces_settings() {
+	std::shared_ptr<std::vector<namespace_settings_t>> cache;
+	{
+		std::lock_guard<std::recursive_mutex> lock(m_data->m_namespaces_settings_mutex);
+		(void) lock;
+		cache = m_data->m_namespaces_settings_cache;
+	}
+
+	std::ostringstream oss;
+	oss << "{" << std::endl;
+
+	for (auto bit = cache->begin(), it = bit; it != cache->end(); ++it) {
+		if (it != bit) oss << "," << std::endl;
+
+		oss << "\t\"" << it->name << "\" : {" << std::endl;
+
+		oss << "\t\t\"groups-count\" : " << it->groups_count << "," << std::endl;
+		oss << "\t\t\"success-copies-num\" : \"" << it->success_copies_num << "\"," << std::endl;
+		oss << "\t\t\"auth-key\" : \"" << it->auth_key << "\"," << std::endl;
+		oss << "\t\t\"static-couple\" : [";
+
+		for (auto bcit = it->static_couple.begin(), cit = bcit; cit != it->static_couple.end(); ++cit) {
+			if (cit != bcit) oss << ", ";
+			oss << *cit;
+		}
+
+		oss << "]" << std::endl;
+
+		oss << "\t}";
+	}
+
+	oss << std::endl << "}";
 
 	return oss.str();
 }

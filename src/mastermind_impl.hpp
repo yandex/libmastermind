@@ -31,6 +31,7 @@ struct mastermind_t::data {
 	bool collect_bad_groups();
 	bool collect_symmetric_groups();
 	bool collect_cache_groups();
+	bool collect_namespaces_settings();
 	void collect_info_loop();
 
 	void serialize();
@@ -53,6 +54,9 @@ struct mastermind_t::data {
 
 	std::shared_ptr<metabalancer_groups_info_t>        m_metabalancer_groups_info;
 	std::recursive_mutex                               m_weight_cache_mutex;
+
+	std::shared_ptr<std::vector<namespace_settings_t>> m_namespaces_settings_cache;
+	std::recursive_mutex                               m_namespaces_settings_mutex;
 
 	const int                                          m_group_info_update_period;
 	std::thread                                        m_weight_cache_update_thread;
