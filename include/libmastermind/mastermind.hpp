@@ -15,8 +15,8 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
-#ifndef INCLUDE__ELLIPTICS__MASTERMIND_HPP
-#define INCLUDE__ELLIPTICS__MASTERMIND_HPP
+#ifndef INCLUDE__LIBMASTERMIND__MASTERMIND_HPP
+#define INCLUDE__LIBMASTERMIND__MASTERMIND_HPP
 
 #include <cocaine/framework/logging.hpp>
 
@@ -63,5 +63,5 @@ private:
 
 } // namespace elliptics
 
-#endif /* INCLUDE__ELLIPTICS__MASTERMIND_HPP */
+#endif /* INCLUDE__LIBMASTERMIND__MASTERMIND_HPP */
 
