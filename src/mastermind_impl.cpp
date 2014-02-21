@@ -291,7 +291,11 @@ void mastermind_t::data::collect_info_loop() {
 void mastermind_t::data::serialize() {
 	msgpack::sbuffer sbuf;
 	msgpack::pack(&sbuf, std::make_tuple(
-		*m_bad_groups_cache, *m_symmetric_groups_cache, *m_cache_groups, m_metabalancer_groups_info->data()
+		  *m_bad_groups_cache
+		, *m_symmetric_groups_cache
+		, *m_cache_groups
+		, m_metabalancer_groups_info->data()
+		, *m_namespaces_settings_cache
 	));
 	std::ofstream output("/var/tmp/libmastermind.cache");
 	std::copy(sbuf.data(), sbuf.data() + sbuf.size(), std::ostreambuf_iterator<char>(output));
@@ -317,11 +321,19 @@ void mastermind_t::data::deserialize() {
 			 std::vector<std::vector<int>>
 			, std::map<int, std::vector<int>>
 			, std::map<std::string, std::vector<int>>
-			, metabalancer_groups_info_t::namespaces_t> cache_type;
+			, metabalancer_groups_info_t::namespaces_t
+			, std::vector<namespace_settings_t>
+			> cache_type;
 		cache_type ct;
 		obj.convert(&ct);
 		metabalancer_groups_info_t::namespaces_t namespaces;
-		std::tie(*m_bad_groups_cache, *m_symmetric_groups_cache, *m_cache_groups, namespaces) = ct;
+		std::tie(
+			  *m_bad_groups_cache
+			, *m_symmetric_groups_cache
+			, *m_cache_groups
+			, namespaces
+			, *m_namespaces_settings_cache
+			) = ct;
 		m_metabalancer_groups_info = std::make_shared<metabalancer_groups_info_t>(std::move(namespaces));
 	} catch (const std::exception &ex) {
 		COCAINE_LOG_WARNING(m_logger, "libmastermind: deserialize: cannot read libmastermind.cache: %s", ex.what());

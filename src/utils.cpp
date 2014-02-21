@@ -228,4 +228,28 @@ std::vector<mastermind::namespace_settings_t> &operator >> (object o, std::vecto
 	return v;
 }
 
+packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::namespace_settings_t> &v) {
+	o.pack_map(v.size());
+
+	for (auto it = v.begin(); it != v.end(); ++it) {
+		o.pack(it->name);
+
+		o.pack_map(4);
+
+		o.pack(std::string("groups-count"));
+		o.pack(it->groups_count);
+
+		o.pack(std::string("success-copies-num"));
+		o.pack(it->success_copies_num);
+
+		o.pack(std::string("auth-key"));
+		o.pack(it->auth_key);
+
+		o.pack(std::string("static-couple"));
+		o.pack(it->static_couple);
+	}
+
+	return o;
+}
+
 } // namespace msgpack
