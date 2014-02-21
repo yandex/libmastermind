@@ -1,3 +1,14 @@
+libmastermind (7.0) lucid; urgency=low
+
+  * Using memory info from mastermind
+  * Moved public headers to libmastermind/ from elliptics/
+  * Added system error codes
+  * Changed general namespace from elliptics to mastermind
+  * Added get_namespaces_settings handler
+  * Added serailazation for namespaces settings
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Fri, 21 Feb 2014 14:30:34 +0400
+
 libmastermind (6.11-cocaine11) lucid; urgency=low
 
   * Handle errors caused by incorrect cache file
