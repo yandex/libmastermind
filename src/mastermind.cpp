@@ -49,7 +49,7 @@ std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std
 		COCAINE_LOG_ERROR(
 			m_data->m_logger,
 			"libmastermind: get_metabalancer_groups: count = %llu; namespace = %s; size = %llu; \"%s\"",
-			count, name_space.c_str(), size, ex.code().message());
+			count, name_space.c_str(), size, ex.code().message().c_str());
 		throw;
 	}
 }
@@ -64,7 +64,7 @@ group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
 		COCAINE_LOG_ERROR(
 			m_data->m_logger,
 			"libmastermind: get_metabalancer_group_info: group = %d; \"%s\"",
-			group, ex.code().message());
+			group, ex.code().message().c_str());
 		throw;
 	}
 }
@@ -80,7 +80,7 @@ std::map<int, std::vector<int>> mastermind_t::get_symmetric_groups() {
 
 		return *m_data->m_symmetric_groups_cache;
 	} catch(const std::system_error &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_symmetric_groups: \"%s\"", ex.code().message());
+		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_symmetric_groups: \"%s\"", ex.code().message().c_str());
 		throw;
 	}
 }
@@ -103,7 +103,7 @@ std::vector<int> mastermind_t::get_symmetric_groups(int group) {
 		COCAINE_LOG_ERROR(
 			m_data->m_logger,
 			"libmastermind: get_symmetric_groups: group = %d; \"%s\"",
-			group, ex.code().message());
+			group, ex.code().message().c_str());
 		throw;
 	}
 }
@@ -119,7 +119,7 @@ std::vector<std::vector<int> > mastermind_t::get_bad_groups() {
 
 		return *m_data->m_bad_groups_cache;
 	} catch(const std::system_error &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_bad_groups: \"%s\"", ex.code().message());
+		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_bad_groups: \"%s\"", ex.code().message().c_str());
 		throw;
 	}
 }
@@ -152,7 +152,7 @@ std::vector<int> mastermind_t::get_cache_groups(const std::string &key) {
 		COCAINE_LOG_ERROR(
 			m_data->m_logger,
 			"libmastermind: get_cache_groups: key = %s; \"%s\"",
-			key.c_str(), ex.code().message());
+			key.c_str(), ex.code().message().c_str());
 		throw;
 	}
 }
