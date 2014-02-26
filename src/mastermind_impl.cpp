@@ -77,7 +77,10 @@ void mastermind_t::data::reconnect() {
 			auto g = m_service_manager->get_service_async<cocaine::framework::app_service_t>("mastermind");
 			g.wait_for(std::chrono::seconds(4));
 			if (g.ready() == false){
-				COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: cannot get app_service");
+				COCAINE_LOG_ERROR(
+					m_logger,
+					"libmastermind: reconnect: cannot get mastermind-service in 4 seconds from %s:%d",
+					remote.first.c_str(), static_cast<int>(remote.second));
 				m_service_manager.reset();
 				index = (index + 1) % size;
 				continue;
@@ -90,9 +93,15 @@ void mastermind_t::data::reconnect() {
 			m_next_remote = (index + 1) % size;
 			return;
 		} catch (const cocaine::framework::service_error_t &ex) {
-			COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: service_error: %s", ex.what());
+			COCAINE_LOG_ERROR(
+				m_logger,
+				"libmastermind: reconnect: service_error: %s; host: %s:%d",
+				ex.what(), remote.first.c_str(), static_cast<int>(remote.second));
 		} catch (const std::exception &ex) {
-			COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
+			COCAINE_LOG_ERROR(
+				m_logger,
+				"libmastermind: reconnect: %s; host: %s:%d",
+				ex.what(), remote.first.c_str(), static_cast<int>(remote.second));
 		}
 
 		index = (index + 1) % size;
