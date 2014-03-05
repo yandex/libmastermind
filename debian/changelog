@@ -1,3 +1,10 @@
+libmastermind (7.1) lucid; urgency=low
+
+  * Added host for error messages occurring in reconnect method
+  * Using c-strings instead of std::strings for logging
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Wed, 26 Feb 2014 21:38:35 +0400
+
 libmastermind (7.0) lucid; urgency=low
 
   * Using memory info from mastermind
