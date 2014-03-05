@@ -15,6 +15,7 @@ set(REQUIRED_LIBRARIES
 	cocaine-core
 	cocaine-framework
 	boost_thread
+	boost_system
 	)
 	
 include_directories(BEFORE ${PROJECT_SOURCE_DIR}/include)
