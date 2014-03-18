@@ -58,7 +58,12 @@ group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
 	try {
 		group_info_response_t resp;
 
-		m_data->retry(&cocaine::framework::app_service_t::enqueue<decltype(group)>, resp, "get_group_info", group);
+		{
+			std::lock_guard<std::mutex> lock(m_data->m_mutex);
+			(void) lock;
+
+			m_data->retry(&cocaine::framework::app_service_t::enqueue<decltype(group)>, resp, "get_group_info", group);
+		}
 		return resp;
 	} catch(const std::system_error &ex) {
 		COCAINE_LOG_ERROR(

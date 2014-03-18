@@ -71,6 +71,7 @@ void mastermind_t::data::reconnect() {
 	do {
 		auto &remote = m_remotes[index];
 		try {
+			m_app.reset();
 			m_service_manager = cocaine::framework::service_manager_t::create(
 				cocaine::framework::service_manager_t::endpoint_t(remote.first, remote.second));
 
