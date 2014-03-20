@@ -58,6 +58,8 @@ mastermind_t::data::~data() {
 		m_weight_cache_update_thread.join();
 	} catch (const std::system_error &) {
 	}
+	m_app.reset();
+	m_service_manager.reset();
 }
 
 void mastermind_t::data::reconnect() {
