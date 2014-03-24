@@ -321,4 +321,12 @@ std::string mastermind_t::json_namespaces_settings() {
 	return oss.str();
 }
 
+void mastermind_t::cache_force_update() {
+	m_data->cache_force_update();
+}
+
+void mastermind_t::set_update_cache_callback(const std::function<void (void)> &callback) {
+	m_data->set_update_cache_callback(callback);
+}
+
 } // namespace mastermind

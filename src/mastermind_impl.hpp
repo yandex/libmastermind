@@ -9,6 +9,7 @@
 #include <mutex>
 #include <chrono>
 #include <fstream>
+#include <functional>
 
 #include <cocaine/framework/service.hpp>
 #include <cocaine/framework/services/app.hpp>
@@ -32,10 +33,14 @@ struct mastermind_t::data {
 	bool collect_symmetric_groups();
 	bool collect_cache_groups();
 	bool collect_namespaces_settings();
+	void collect_info_loop_impl();
 	void collect_info_loop();
 
 	void serialize();
 	void deserialize();
+
+	void cache_force_update();
+	void set_update_cache_callback(const std::function<void (void)> &callback);
 
 	std::shared_ptr<cocaine::framework::logger_t> m_logger;
 
@@ -62,6 +67,7 @@ struct mastermind_t::data {
 	std::thread                                        m_weight_cache_update_thread;
 	std::condition_variable                            m_weight_cache_condition_variable;
 	std::mutex                                         m_mutex;
+	std::function<void (void)>                         m_cache_update_callback;
 	bool                                               m_done;
 	std::mutex                                         m_reconnect_mutex;
 

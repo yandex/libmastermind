@@ -223,6 +223,63 @@ bool mastermind_t::data::collect_namespaces_settings() {
 	return false;
 }
 
+void mastermind_t::data::collect_info_loop_impl() {
+	if (m_logger->verbosity() >= cocaine::logging::info) {
+		auto current_remote = m_current_remote;
+		std::ostringstream oss;
+		oss << "libmastermind: collect_info_loop: begin; current host: ";
+		if (current_remote.first.empty()) {
+			oss << "none";
+		} else {
+			oss << current_remote.first << ':' << m_current_remote.second;
+		}
+		COCAINE_LOG_INFO(m_logger, "%s", oss.str().c_str());
+	}
+
+	auto beg_time = std::chrono::system_clock::now();
+
+	{
+		spent_time_printer_t helper("collect_group_weights", m_logger);
+		collect_group_weights();
+	}
+	{
+		spent_time_printer_t helper("collect_bad_groups", m_logger);
+		collect_bad_groups();
+	}
+	{
+		spent_time_printer_t helper("collect_symmetric_groups", m_logger);
+		collect_symmetric_groups();
+	}
+	{
+		spent_time_printer_t helper("collect_cache_groups", m_logger);
+		collect_cache_groups();
+	}
+	{
+		spent_time_printer_t helper("collect_namespaces_settings", m_logger);
+		collect_namespaces_settings();
+	}
+
+	serialize();
+
+	auto end_time = std::chrono::system_clock::now();
+
+	if (m_logger->verbosity() >= cocaine::logging::info) {
+		auto current_remote = m_current_remote;
+		std::ostringstream oss;
+		oss << "libmastermind: collect_info_loop: end; current host: ";
+		if (current_remote.first.empty()) {
+			oss << "none";
+		} else {
+			oss << current_remote.first << ':' << m_current_remote.second;
+		}
+		oss
+			<< "; spent time: "
+			<< std::chrono::duration_cast<std::chrono::milliseconds>(end_time - beg_time).count()
+			<< " milliseconds";
+		COCAINE_LOG_INFO(m_logger, "%s", oss.str().c_str());
+	}
+}
+
 void mastermind_t::data::collect_info_loop() {
 	std::unique_lock<std::mutex> lock(m_mutex);
 #if __GNUC_MINOR__ >= 6
@@ -236,59 +293,10 @@ void mastermind_t::data::collect_info_loop() {
 #endif
 	COCAINE_LOG_INFO(m_logger, "libmastermind: collect_info_loop: update period is %d", static_cast<int>(m_group_info_update_period));
 	do {
-		if (m_logger->verbosity() >= cocaine::logging::info) {
-			auto current_remote = m_current_remote;
-			std::ostringstream oss;
-			oss << "libmastermind: collect_info_loop: begin; current host: ";
-			if (current_remote.first.empty()) {
-				oss << "none";
-			} else {
-				oss << current_remote.first << ':' << m_current_remote.second;
-			}
-			COCAINE_LOG_INFO(m_logger, "%s", oss.str().c_str());
-		}
+		collect_info_loop_impl();
 
-		auto beg_time = std::chrono::system_clock::now();
-
-		{
-			spent_time_printer_t helper("collect_group_weights", m_logger);
-			collect_group_weights();
-		}
-		{
-			spent_time_printer_t helper("collect_bad_groups", m_logger);
-			collect_bad_groups();
-		}
-		{
-			spent_time_printer_t helper("collect_symmetric_groups", m_logger);
-			collect_symmetric_groups();
-		}
-		{
-			spent_time_printer_t helper("collect_cache_groups", m_logger);
-			collect_cache_groups();
-		}
-		{
-			spent_time_printer_t helper("collect_namespaces_settings", m_logger);
-			collect_namespaces_settings();
-		}
-
-		serialize();
-
-		auto end_time = std::chrono::system_clock::now();
-
-		if (m_logger->verbosity() >= cocaine::logging::info) {
-			auto current_remote = m_current_remote;
-			std::ostringstream oss;
-			oss << "libmastermind: collect_info_loop: end; current host: ";
-			if (current_remote.first.empty()) {
-				oss << "none";
-			} else {
-				oss << current_remote.first << ':' << m_current_remote.second;
-			}
-			oss
-				<< "; spent time: "
-				<< std::chrono::duration_cast<std::chrono::milliseconds>(end_time - beg_time).count()
-				<< " milliseconds";
-			COCAINE_LOG_INFO(m_logger, "%s", oss.str().c_str());
+		if (m_cache_update_callback) {
+			m_cache_update_callback();
 		}
 
 		tm = timeout;
@@ -352,6 +360,16 @@ void mastermind_t::data::deserialize() {
 	} catch (...) {
 		COCAINE_LOG_WARNING(m_logger, "libmastermind: deserialize: cannot read libmastermind.cache");
 	}
+}
+
+void mastermind_t::data::cache_force_update() {
+	std::lock_guard<std::mutex> lock(m_mutex);
+	(void) lock;
+	collect_info_loop_impl();
+}
+
+void mastermind_t::data::set_update_cache_callback(const std::function<void (void)> &callback) {
+	m_cache_update_callback = callback;
 }
 
 } // namespace mastermind

@@ -68,6 +68,9 @@ public:
 	std::string json_cache_groups();
 	std::string json_namespaces_settings();
 
+	void cache_force_update();
+	void set_update_cache_callback(const std::function<void (void)> &callback);
+
 private:
 	struct data;
 	std::unique_ptr<data> m_data;
