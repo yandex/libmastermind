@@ -10,6 +10,7 @@
 #include <chrono>
 #include <fstream>
 #include <functional>
+#include <utility>
 
 #include <cocaine/framework/service.hpp>
 #include <cocaine/framework/services/app.hpp>
@@ -51,17 +52,38 @@ struct mastermind_t::data {
 	int                                                m_metabase_timeout;
 	uint64_t                                           m_metabase_current_stamp;
 
-	std::shared_ptr<std::vector<std::vector<int>>>     m_bad_groups_cache;
-	std::recursive_mutex                               m_bad_groups_mutex;
+	template <typename T>
+	struct cache_t {
+		typedef T cache_type;
+		typedef std::shared_ptr<cache_type> cache_ptr_type;
+		cache_ptr_type cache;
+		std::recursive_mutex mutex;
 
-	std::shared_ptr<std::map<int, std::vector<int>>>   m_symmetric_groups_cache;
-	std::recursive_mutex                               m_symmetric_groups_mutex;
+		cache_t() {
+			cache = std::make_shared<cache_type>();
+		}
 
-	std::shared_ptr<metabalancer_groups_info_t>        m_metabalancer_groups_info;
-	std::recursive_mutex                               m_weight_cache_mutex;
+		template <typename... Args>
+		static cache_ptr_type create(Args&&... args) {
+			return std::make_shared<cache_type>(std::forward<Args>(args)...);
+		}
 
-	std::shared_ptr<std::vector<namespace_settings_t>> m_namespaces_settings_cache;
-	std::recursive_mutex                               m_namespaces_settings_mutex;
+		void swap(cache_ptr_type &ob) {
+			std::lock_guard<std::recursive_mutex> lock(mutex);
+			cache.swap(ob);
+		}
+
+		cache_ptr_type copy() {
+			std::lock_guard<std::recursive_mutex> lock(mutex);
+			return cache;
+		}
+	};
+
+	cache_t<std::vector<std::vector<int>>> m_bad_groups;
+	cache_t<std::map<int, std::vector<int>>> m_symmetric_groups;
+	cache_t<metabalancer_groups_info_t> m_metabalancer_groups_info;
+	cache_t<std::vector<namespace_settings_t>> m_namespaces_settings;
+	cache_t<std::map<std::string, std::vector<int>>> m_cache_groups;
 
 	const int                                          m_group_info_update_period;
 	std::thread                                        m_weight_cache_update_thread;
@@ -70,9 +92,6 @@ struct mastermind_t::data {
 	std::function<void (void)>                         m_cache_update_callback;
 	bool                                               m_done;
 	std::mutex                                         m_reconnect_mutex;
-
-	std::shared_ptr<std::map<std::string, std::vector<int>>> m_cache_groups;
-	std::recursive_mutex                               m_cache_groups_mutex;
 
 	std::shared_ptr<cocaine::framework::app_service_t> m_app;
 	std::shared_ptr<cocaine::framework::service_manager_t> m_service_manager;

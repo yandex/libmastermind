@@ -25,6 +25,9 @@ spent_time_printer_t::~spent_time_printer_t() {
 		);
 }
 
+metabalancer_groups_info_t::metabalancer_groups_info_t() {
+}
+
 metabalancer_groups_info_t::metabalancer_groups_info_t(namespaces_t &&namespaces) {
 	m_namespaces = std::move(namespaces);
 	couples_by_namespaces_t cbn_tmp;

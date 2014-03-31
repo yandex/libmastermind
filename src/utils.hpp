@@ -32,6 +32,7 @@ public:
 	typedef std::map<uint64_t, couples_with_info_t> couples_t;
 	typedef std::map<std::string, couples_t> namespaces_t;
 
+	metabalancer_groups_info_t();
 	metabalancer_groups_info_t(namespaces_t &&namespaces);
 
 	std::vector<int> get_couple(uint64_t count, const std::string &name, uint64_t size);

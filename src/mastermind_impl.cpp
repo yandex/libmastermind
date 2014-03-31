@@ -9,11 +9,6 @@ mastermind_t::data::data(const remotes_t &remotes, const std::shared_ptr<cocaine
 	, m_group_info_update_period(group_info_update_period)
 	, m_done(false)
 {
-	m_bad_groups_cache = std::make_shared<std::vector<std::vector<int>>>();
-	m_symmetric_groups_cache = std::make_shared<std::map<int, std::vector<int>>>();
-	m_cache_groups = std::make_shared<std::map<std::string, std::vector<int>>>();
-	m_namespaces_settings_cache = std::make_shared<std::vector<namespace_settings_t>>();
-
 	deserialize();
 
 	try {
@@ -31,11 +26,6 @@ mastermind_t::data::data(const std::string &host, uint16_t port, const std::shar
 	, m_group_info_update_period(group_info_update_period)
 	, m_done(false)
 {
-	m_bad_groups_cache = std::make_shared<std::vector<std::vector<int>>>();
-	m_symmetric_groups_cache = std::make_shared<std::map<int, std::vector<int>>>();
-	m_cache_groups = std::make_shared<std::map<std::string, std::vector<int>>>();
-	m_namespaces_settings_cache = std::make_shared<std::vector<namespace_settings_t>>();
-
 	deserialize();
 
 	m_remotes.emplace_back(host, port);
@@ -119,15 +109,9 @@ void mastermind_t::data::reconnect() {
 bool mastermind_t::data::collect_group_weights() {
 	try {
 		metabalancer_groups_info_t::namespaces_t resp;
-
 		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, resp, "get_group_weights", "");
-
-		{
-			std::lock_guard<std::recursive_mutex> lock(m_weight_cache_mutex);
-			(void) lock;
-			m_metabalancer_groups_info = std::make_shared<metabalancer_groups_info_t>(std::move(resp));
-		}
-
+		auto cache = m_metabalancer_groups_info.create(std::move(resp));
+		m_metabalancer_groups_info.swap(cache);
 		return true;
 	} catch(const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_group_weights: %s", ex.what());
@@ -137,15 +121,9 @@ bool mastermind_t::data::collect_group_weights() {
 
 bool mastermind_t::data::collect_bad_groups() {
 	try {
-		auto cache = std::make_shared<std::vector<std::vector<int>>>();
+		auto cache = m_bad_groups.create();
 		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, *cache, "get_bad_groups", "");
-
-		{
-			std::lock_guard<std::recursive_mutex> lock(m_bad_groups_mutex);
-			(void) lock;
-			m_bad_groups_cache.swap(cache);
-		}
-
+		m_bad_groups.swap(cache);
 		return true;
 	} catch (const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_bad_groups: %s", ex.what());
@@ -157,8 +135,7 @@ bool mastermind_t::data::collect_symmetric_groups() {
 	try {
 		std::vector<std::vector<int>> sym_groups;
 		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, sym_groups, "get_symmetric_groups", "");
-
-		auto cache = std::make_shared<std::map<int, std::vector<int>>>();
+		auto cache = m_symmetric_groups.create();
 
 		for (auto it = sym_groups.begin(); it != sym_groups.end(); ++it) {
 			for (auto ve = it->begin(); ve != it->end(); ++ve) {
@@ -166,17 +143,13 @@ bool mastermind_t::data::collect_symmetric_groups() {
 			}
 		}
 
-		for (auto it = m_bad_groups_cache->begin(); it != m_bad_groups_cache->end(); ++it) {
+		for (auto it = m_bad_groups.cache->begin(); it != m_bad_groups.cache->end(); ++it) {
 			for (auto ve = it->begin(); ve != it->end(); ++ve) {
 				(*cache)[*ve] = *it;
 			}
 		}
 
-		{
-			std::lock_guard<std::recursive_mutex> lock(m_symmetric_groups_mutex);
-			(void) lock;
-			m_symmetric_groups_cache.swap(cache);
-		}
+		m_symmetric_groups.swap(cache);
 		return true;
 	} catch(const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_symmetric_groups: %s", ex.what());
@@ -189,16 +162,13 @@ bool mastermind_t::data::collect_cache_groups() {
 		std::vector<std::pair<std::string, std::vector<int>>> cache_groups;
 		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, cache_groups, "get_cached_keys", "");
 
-		auto cache = std::make_shared<std::map<std::string, std::vector<int>>>();
+		auto cache = m_cache_groups.create();
+
 		for (auto it = cache_groups.begin(); it != cache_groups.end(); ++it) {
 			cache->insert(*it);
 		}
 
-		{
-			std::lock_guard<std::recursive_mutex> lock(m_cache_groups_mutex);
-			(void) lock;
-			m_cache_groups.swap(cache);
-		}
+		m_cache_groups.swap(cache);
 		return true;
 	} catch(const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_cache_groups: %s", ex.what());
@@ -208,14 +178,9 @@ bool mastermind_t::data::collect_cache_groups() {
 
 bool mastermind_t::data::collect_namespaces_settings() {
 	try {
-		auto cache = std::make_shared<std::vector<namespace_settings_t>>();
+		auto cache = m_namespaces_settings.create();
 		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, *cache, "get_namespaces_settings", "");
-
-		{
-			std::lock_guard<std::recursive_mutex> lock(m_namespaces_settings_mutex);
-			(void) lock;
-			m_namespaces_settings_cache.swap(cache);
-		}
+		m_namespaces_settings.swap(cache);
 		return true;
 	} catch(const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_namespaces_settings: %s", ex.what());
@@ -311,11 +276,11 @@ void mastermind_t::data::collect_info_loop() {
 void mastermind_t::data::serialize() {
 	msgpack::sbuffer sbuf;
 	msgpack::pack(&sbuf, std::make_tuple(
-		  *m_bad_groups_cache
-		, *m_symmetric_groups_cache
-		, *m_cache_groups
-		, m_metabalancer_groups_info->data()
-		, *m_namespaces_settings_cache
+		  *m_bad_groups.cache
+		, *m_symmetric_groups.cache
+		, *m_cache_groups.cache
+		, m_metabalancer_groups_info.cache->data()
+		, *m_namespaces_settings.cache
 	));
 	std::ofstream output("/var/tmp/libmastermind.cache");
 	std::copy(sbuf.data(), sbuf.data() + sbuf.size(), std::ostreambuf_iterator<char>(output));
@@ -348,13 +313,13 @@ void mastermind_t::data::deserialize() {
 		obj.convert(&ct);
 		metabalancer_groups_info_t::namespaces_t namespaces;
 		std::tie(
-			  *m_bad_groups_cache
-			, *m_symmetric_groups_cache
-			, *m_cache_groups
+			  *m_bad_groups.cache
+			, *m_symmetric_groups.cache
+			, *m_cache_groups.cache
 			, namespaces
-			, *m_namespaces_settings_cache
+			, *m_namespaces_settings.cache
 			) = ct;
-		m_metabalancer_groups_info = std::make_shared<metabalancer_groups_info_t>(std::move(namespaces));
+		m_metabalancer_groups_info.cache = std::make_shared<metabalancer_groups_info_t>(std::move(namespaces));
 	} catch (const std::exception &ex) {
 		COCAINE_LOG_WARNING(m_logger, "libmastermind: deserialize: cannot read libmastermind.cache: %s", ex.what());
 	} catch (...) {
