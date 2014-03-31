@@ -11,7 +11,7 @@ std::string libmastermind_category_impl::message(int ev) const {
 	case libmastermind_error::couple_not_found:
 		return "Couple not found";
 	case libmastermind_error::not_enough_memory:
-		return "There is no couple with enough memory";
+		return "There is no couple with enough disk space";
 	case libmastermind_error::unknown_namespace:
 		return "Unknown namespace";
 	case libmastermind_error::invalid_groups_count:
