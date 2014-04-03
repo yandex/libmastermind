@@ -1,3 +1,12 @@
+libmastermind (8.0) lucid; urgency=low
+
+  * Added cache force update and callback
+  * Added namespace option 'signature'
+  * Made error messages more clear
+  * Changed API of namespaces
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 03 Apr 2014 19:19:20 +0400
+
 libmastermind (7.2) lucid; urgency=low
 
   * Fixed race condition
