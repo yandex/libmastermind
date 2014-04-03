@@ -17,6 +17,8 @@
 #include <cocaine/framework/common.hpp>
 #include <cocaine/traits/tuple.hpp>
 
+#include <boost/lexical_cast.hpp>
+
 namespace mastermind {
 
 struct mastermind_t::data {

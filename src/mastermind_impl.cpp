@@ -318,7 +318,7 @@ void mastermind_t::data::deserialize() {
 			, *m_cache_groups.cache
 			, namespaces
 			, *m_namespaces_settings.cache
-			) = ct;
+			) = std::move(ct);
 		m_metabalancer_groups_info.cache = std::make_shared<metabalancer_groups_info_t>(std::move(namespaces));
 	} catch (const std::exception &ex) {
 		COCAINE_LOG_WARNING(m_logger, "libmastermind: deserialize: cannot read libmastermind.cache: %s", ex.what());

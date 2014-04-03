@@ -37,11 +37,28 @@ struct group_info_response_t {
 };
 
 struct namespace_settings_t {
-	std::string name;
-	int groups_count;
-	std::string success_copies_num;
-	std::string auth_key;
-	std::vector<int> static_couple;
+	struct data;
+
+	namespace_settings_t();
+	namespace_settings_t(const namespace_settings_t &ns);
+	namespace_settings_t(namespace_settings_t &&ns);
+	namespace_settings_t(data &&d);
+
+	~namespace_settings_t();
+
+	namespace_settings_t &operator =(namespace_settings_t &&ns);
+
+	const std::string &name() const;
+	int groups_count() const;
+	const std::string &success_copies_num() const;
+	const std::string &auth_key() const;
+	const std::vector<int> &static_couple() const;
+	const std::string &sign_token() const;
+	const std::string &sign_path_prefix() const;
+	const std::string &sign_port() const;
+
+private:
+	std::unique_ptr<data> m_data;
 };
 
 class mastermind_t {

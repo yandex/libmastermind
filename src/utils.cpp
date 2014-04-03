@@ -3,7 +3,9 @@
 #include <sstream>
 
 #include <boost/thread.hpp>
+#include <boost/lexical_cast.hpp>
 
+#include "namespace_p.hpp"
 #include "utils.hpp"
 #include "libmastermind/error.hpp"
 
@@ -203,7 +205,7 @@ std::vector<mastermind::namespace_settings_t> &operator >> (object o, std::vecto
 	}
 
 	for (msgpack::object_kv *nit = o.via.map.ptr, *nit_end = nit + o.via.map.size; nit < nit_end; ++nit) {
-		mastermind::namespace_settings_t item;
+		mastermind::namespace_settings_t::data item;
 
 		nit->key.convert(&item.name);
 
@@ -222,10 +224,30 @@ std::vector<mastermind::namespace_settings_t> &operator >> (object o, std::vecto
 				it->val.convert(&item.auth_key);
 			} else if (!key.compare("static-couple")) {
 				it->val.convert(&item.static_couple);
+			} else if (!key.compare("signature")) {
+				if (it->val.type != type::MAP) {
+					throw type_error();
+				}
+
+				for (msgpack::object_kv *sit = it->val.via.map.ptr, *sit_end = sit + it->val.via.map.size;
+						sit < sit_end; ++sit) {
+					std::string key;
+					sit->key.convert(&key);
+
+					if (!key.compare("token")) {
+						sit->val.convert(&item.sign_token);
+					} else if (!key.compare("path_prefix")) {
+						sit->val.convert(&item.sign_path_prefix);
+					} else if (!key.compare("port")) {
+						int port;
+						sit->val.convert(&port);
+						item.sign_port = boost::lexical_cast<std::string>(port);
+					}
+				}
 			}
 		}
 
-		v.push_back(item);
+		v.emplace_back(std::move(item));
 	}
 
 	return v;
@@ -235,21 +257,33 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::
 	o.pack_map(v.size());
 
 	for (auto it = v.begin(); it != v.end(); ++it) {
-		o.pack(it->name);
+		o.pack(it->name());
 
-		o.pack_map(4);
+		o.pack_map(5);
 
 		o.pack(std::string("groups-count"));
-		o.pack(it->groups_count);
+		o.pack(it->groups_count());
 
 		o.pack(std::string("success-copies-num"));
-		o.pack(it->success_copies_num);
+		o.pack(it->success_copies_num());
 
 		o.pack(std::string("auth-key"));
-		o.pack(it->auth_key);
+		o.pack(it->auth_key());
 
 		o.pack(std::string("static-couple"));
-		o.pack(it->static_couple);
+		o.pack(it->static_couple());
+
+		o.pack(std::string("signature"));
+		o.pack_map(3);
+
+		o.pack(std::string("token"));
+		o.pack(it->sign_token());
+
+		o.pack(std::string("path_prefix"));
+		o.pack(it->sign_path_prefix());
+
+		o.pack(std::string("port"));
+		o.pack(it->sign_port());
 	}
 
 	return o;

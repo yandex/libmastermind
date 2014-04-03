@@ -274,19 +274,25 @@ std::string mastermind_t::json_namespaces_settings() {
 	for (auto bit = cache->begin(), it = bit; it != cache->end(); ++it) {
 		if (it != bit) oss << "," << std::endl;
 
-		oss << "\t\"" << it->name << "\" : {" << std::endl;
+		oss << "\t\"" << it->name() << "\" : {" << std::endl;
 
-		oss << "\t\t\"groups-count\" : " << it->groups_count << "," << std::endl;
-		oss << "\t\t\"success-copies-num\" : \"" << it->success_copies_num << "\"," << std::endl;
-		oss << "\t\t\"auth-key\" : \"" << it->auth_key << "\"," << std::endl;
+		oss << "\t\t\"groups-count\" : " << it->groups_count() << "," << std::endl;
+		oss << "\t\t\"success-copies-num\" : \"" << it->success_copies_num() << "\"," << std::endl;
+		oss << "\t\t\"auth-key\" : \"" << it->auth_key() << "\"," << std::endl;
 		oss << "\t\t\"static-couple\" : [";
 
-		for (auto bcit = it->static_couple.begin(), cit = bcit; cit != it->static_couple.end(); ++cit) {
+		for (auto bcit = it->static_couple().begin(), cit = bcit; cit != it->static_couple().end(); ++cit) {
 			if (cit != bcit) oss << ", ";
 			oss << *cit;
 		}
 
 		oss << "]" << std::endl;
+
+		oss << "\t\t\"signature\" : {" << std::endl;
+		oss << "\t\t\t\"token\" : \"" << it->sign_token() << "\"," << std::endl;
+		oss << "\t\t\t\"path_prefix\" : \"" << it->sign_path_prefix() << "\"," << std::endl;
+		oss << "\t\t\t\"port\" : \"" << it->sign_port() << "\"," << std::endl;
+		oss << "\t\t}" << std::endl;
 
 		oss << "\t}";
 	}
