@@ -1,3 +1,9 @@
+libmastermind (8.1) lucid; urgency=low
+
+  * Added metabalncer_info support
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Wed, 16 Apr 2014 14:00:31 +0400
+
 libmastermind (8.0) lucid; urgency=low
 
   * Added cache force update and callback
