@@ -289,4 +289,176 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::
 	return o;
 }
 
+mastermind::metabalancer_info_t &operator >> (object o, mastermind::metabalancer_info_t &r) {
+	if (o.type != type::ARRAY) {
+		throw type_error();
+	}
+
+	for (auto array_ptr = o.via.array.ptr, array_end = array_ptr + o.via.array.size;
+			array_ptr != array_end; ++array_ptr)
+	{
+		if (array_ptr->type != type::MAP) {
+			throw type_error();
+		}
+
+		auto couple_info = std::make_shared<mastermind::couple_info_t>();
+
+		for (auto couple_kv = array_ptr->via.map.ptr,
+				couple_kv_end = couple_kv + array_ptr->via.map.size;
+				couple_kv_end != couple_kv;
+				++couple_kv)
+		{
+			std::string key;
+			couple_kv->key.convert(&key);
+
+			if (key == "id") {
+				couple_kv->val.convert(&couple_info->id);
+			} else if (key == "namespace") {
+				couple_kv->val.convert(&couple_info->ns);
+			} else if (key == "tuple") {
+				couple_kv->val.convert(&couple_info->tuple);
+			} else if (key == "used_space") {
+				couple_kv->val.convert(&couple_info->used_space);
+			} else if (key == "free_space") {
+				couple_kv->val.convert(&couple_info->free_space);
+			} else if (key == "free_effective_space") {
+				couple_kv->val.convert(&couple_info->free_effective_space);
+			} else if (key == "couple_status") {
+				std::string couple_status;
+				couple_kv->val.convert(&couple_status);
+				if (couple_status == "OK") {
+					couple_info->couple_status = mastermind::couple_info_t::OK;
+				} else {
+					couple_info->couple_status = mastermind::couple_info_t::UNKNOWN;
+				}
+			} else if (key == "groups") {
+				if (couple_kv->val.type != type::ARRAY) {
+					throw type_error();
+				}
+
+				auto group_info = std::make_shared<mastermind::group_info_t>();
+
+				for (auto group_array = couple_kv->val.via.array.ptr,
+						group_array_end = group_array + couple_kv->val.via.array.size;
+						group_array != group_array_end;
+						++group_array)
+				{
+					if (group_array->type != type::MAP) {
+						throw type_error();
+					}
+
+					for (auto group_kv = group_array->via.map.ptr,
+							group_kv_end = group_kv + group_array->via.map.size;
+							group_kv != group_kv_end;
+							++group_kv)
+					{
+						std::string key;
+						group_kv->key.convert(&key);
+
+						if (key == "id") {
+							group_kv->val.convert(&group_info->id);
+						} else if (key == "namespace") {
+							group_kv->val.convert(&group_info->ns);
+						} else if (key == "status") {
+							std::string status;
+							group_kv->val.convert(&status);
+
+							if (status == "COUPLED") {
+								group_info->group_status = mastermind::group_info_t::COUPLED;
+							} else if (status == "BAD") {
+								group_info->group_status = mastermind::group_info_t::BAD;
+							} else {
+								group_info->group_status = mastermind::group_info_t::UNKNOWN;
+							}
+						} else if (key == "couple"){
+							group_kv->val.convert(&group_info->couple);
+						}
+					}
+					group_info->couple_info = mastermind::couple_info_weak_ptr_t(couple_info);
+					auto insert_res = r.group_info_map.insert(std::make_pair(group_info->id, group_info));
+					if (insert_res.second) {
+						couple_info->group_info.emplace_back(group_info);
+					}
+				}
+
+			}
+		}
+
+		r.couple_info_map.insert(std::make_pair(couple_info->id, couple_info));
+	}
+
+	return r;
+}
+
+packer<sbuffer> &operator << (packer<sbuffer> &o, const mastermind::metabalancer_info_t &r) {
+	o.pack_array(r.couple_info_map.size());
+
+	for (auto cit = r.couple_info_map.begin(), cit_end = r.couple_info_map.end(); cit != cit_end; ++cit) {
+		o.pack_map(8);
+
+		o.pack(std::string("id"));
+		o.pack(cit->second->id);
+
+		o.pack(std::string("namespace"));
+		o.pack(cit->second->ns);
+
+		o.pack(std::string("tuple"));
+		o.pack(cit->second->tuple);
+
+		o.pack(std::string("used_space"));
+		o.pack(cit->second->used_space);
+
+		o.pack(std::string("free_space"));
+		o.pack(cit->second->free_space);
+
+		o.pack(std::string("free_effective_space"));
+		o.pack(cit->second->free_effective_space);
+
+		o.pack(std::string("couple_status"));
+		switch (cit->second->couple_status) {
+		case mastermind::couple_info_t::OK:
+			o.pack(std::string("OK"));
+			break;
+		default:
+			o.pack(std::string("UNKNOWN"));
+		}
+
+		o.pack(std::string("groups"));
+		o.pack_array(cit->second->tuple.size());
+
+		for (auto git = cit->second->tuple.begin(), git_end = cit->second->tuple.end();
+				git != git_end; ++git)
+		{
+			auto it = r.group_info_map.find(*git);
+			if (it == r.group_info_map.end()) {
+				continue;
+			}
+
+			o.pack_map(4);
+
+			o.pack(std::string("id"));
+			o.pack(it->second->id);
+
+			o.pack(std::string("namespace"));
+			o.pack(it->second->ns);
+
+			o.pack(std::string("status"));
+			switch (it->second->group_status) {
+			case mastermind::group_info_t::COUPLED:
+				o.pack(std::string("COUPLED"));
+				break;
+			case mastermind::group_info_t::BAD:
+				o.pack(std::string("BAD"));
+				break;
+			default:
+				o.pack(std::string("UNKNOWN"));
+			}
+
+			o.pack(std::string("couple"));
+			o.pack(it->second->couple);
+		}
+	}
+	return o;
+}
+
 } // namespace msgpack

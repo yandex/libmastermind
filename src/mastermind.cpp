@@ -181,6 +181,21 @@ std::vector<namespace_settings_t> mastermind_t::get_namespaces_settings() {
 	}
 }
 
+uint64_t mastermind_t::free_effective_space_in_couple_by_group(size_t group) {
+	auto cache = m_data->m_metabalancer_info.copy();
+
+	auto git = cache->group_info_map.find(group);
+	if (git == cache->group_info_map.end()) {
+		return 0;
+	}
+
+	if (auto p = git->second->couple_info.lock()) {
+		return p->free_effective_space;
+	}
+
+	return 0;
+}
+
 std::string mastermind_t::json_group_weights() {
 	auto cache = m_data->m_metabalancer_groups_info.copy();
 	return cache->to_string();
@@ -261,6 +276,43 @@ std::string mastermind_t::json_cache_groups() {
 		oss << std::endl;
 	}
 	oss << "}";
+
+	return oss.str();
+}
+
+std::string mastermind_t::json_metabalancer_info() {
+	auto cache = m_data->m_metabalancer_info.copy();
+
+	std::ostringstream oss;
+	oss << "{" << std::endl;
+	oss << "\t[" << std::endl;
+
+	for (auto cit_beg = cache->couple_info_map.begin(),
+			cit_end = cache->couple_info_map.end(),
+			cit = cit_beg;
+			cit != cit_end; ++cit)
+	{
+		if (cit != cit_beg) {
+			oss << ',' << std::endl;
+		}
+		oss << "\t\t{" << std::endl;
+		oss << "\t\t\t\"id\" : \"" << cit->second->id << "\"," << std::endl;
+		oss << "\t\t\t\"free_effective_space\" : " << cit->second->free_effective_space << ',' << std::endl;
+		oss << "\t\t\t\"free_space\" : " << cit->second->free_space << ',' << std::endl;
+		oss << "\t\t\t\"used_space\" : " << cit->second->used_space << ',' << std::endl;
+		oss << "\t\t\t\"namespace\" : \"" << cit->second->ns << "\"" << std::endl;
+		oss << "\t\t\t\"couple_status\" : ";
+		switch (cit->second->couple_status) {
+		case couple_info_t::OK:
+			oss << "\"OK\"";
+			break;
+		default:
+			oss << "\"UNKNOWN\"";
+		}
+		oss << std::endl << "\t\t}";
+	}
+
+	oss << std::endl << "\t]" << std::endl << "}";
 
 	return oss.str();
 }

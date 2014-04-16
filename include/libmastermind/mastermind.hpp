@@ -79,10 +79,13 @@ public:
 	std::vector<int> get_cache_groups(const std::string &key);
 	std::vector<namespace_settings_t> get_namespaces_settings();
 
+	uint64_t free_effective_space_in_couple_by_group(size_t group);
+
 	std::string json_group_weights();
 	std::string json_symmetric_groups();
 	std::string json_bad_groups();
 	std::string json_cache_groups();
+	std::string json_metabalancer_info();
 	std::string json_namespaces_settings();
 
 	void cache_force_update();

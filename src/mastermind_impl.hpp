@@ -36,6 +36,7 @@ struct mastermind_t::data {
 	bool collect_symmetric_groups();
 	bool collect_cache_groups();
 	bool collect_namespaces_settings();
+	bool collect_metabalancer_info();
 	void collect_info_loop_impl();
 	void collect_info_loop();
 
@@ -86,6 +87,7 @@ struct mastermind_t::data {
 	cache_t<metabalancer_groups_info_t> m_metabalancer_groups_info;
 	cache_t<std::vector<namespace_settings_t>> m_namespaces_settings;
 	cache_t<std::map<std::string, std::vector<int>>> m_cache_groups;
+	cache_t<metabalancer_info_t> m_metabalancer_info;
 
 	const int                                          m_group_info_update_period;
 	std::thread                                        m_weight_cache_update_thread;

@@ -188,6 +188,21 @@ bool mastermind_t::data::collect_namespaces_settings() {
 	return false;
 }
 
+bool mastermind_t::data::collect_metabalancer_info() {
+	try {
+		auto cache = m_metabalancer_info.create();
+		typedef std::vector<std::map<std::string, std::string>> arg_type;
+		arg_type arg;
+		arg.push_back(std::map<std::string, std::string>());
+		retry(&cocaine::framework::app_service_t::enqueue<arg_type>, *cache, "get_couples_list", arg);
+		m_metabalancer_info.swap(cache);
+		return true;
+	} catch (const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_metabalancer_info: %s", ex.what());
+	}
+	return false;
+}
+
 void mastermind_t::data::collect_info_loop_impl() {
 	if (m_logger->verbosity() >= cocaine::logging::info) {
 		auto current_remote = m_current_remote;
@@ -218,6 +233,10 @@ void mastermind_t::data::collect_info_loop_impl() {
 	{
 		spent_time_printer_t helper("collect_cache_groups", m_logger);
 		collect_cache_groups();
+	}
+	{
+		spent_time_printer_t helper("collect_metabalancer_info", m_logger);
+		collect_metabalancer_info();
 	}
 	{
 		spent_time_printer_t helper("collect_namespaces_settings", m_logger);
@@ -281,6 +300,7 @@ void mastermind_t::data::serialize() {
 		, *m_cache_groups.cache
 		, m_metabalancer_groups_info.cache->data()
 		, *m_namespaces_settings.cache
+		, *m_metabalancer_info.cache
 	));
 	std::ofstream output("/var/tmp/libmastermind.cache");
 	std::copy(sbuf.data(), sbuf.data() + sbuf.size(), std::ostreambuf_iterator<char>(output));
@@ -308,6 +328,7 @@ void mastermind_t::data::deserialize() {
 			, std::map<std::string, std::vector<int>>
 			, metabalancer_groups_info_t::namespaces_t
 			, std::vector<namespace_settings_t>
+			, mastermind::metabalancer_info_t
 			> cache_type;
 		cache_type ct;
 		obj.convert(&ct);
@@ -318,6 +339,7 @@ void mastermind_t::data::deserialize() {
 			, *m_cache_groups.cache
 			, namespaces
 			, *m_namespaces_settings.cache
+			, *m_metabalancer_info.cache
 			) = std::move(ct);
 		m_metabalancer_groups_info.cache = std::make_shared<metabalancer_groups_info_t>(std::move(namespaces));
 	} catch (const std::exception &ex) {
