@@ -137,7 +137,7 @@ std::string metabalancer_groups_info_t::to_string() {
 				oss << "]\" : {" << std::endl;
 
 				oss << "\t\t\t\t\"weight\" : " << std::get<1>(*cwiit) << "," << std::endl;
-				oss << "\t\t\t\t\"memory\" : " << std::get<2>(*cwiit) << std::endl;
+				oss << "\t\t\t\t\"space\" : " << std::get<2>(*cwiit) << std::endl;
 
 				oss << "\t\t\t}";
 			}
