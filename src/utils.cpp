@@ -274,7 +274,13 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::
 		o.pack(it->static_couple());
 
 		o.pack(std::string("signature"));
-		o.pack_map(3);
+
+		const auto &sp = it->sign_port();
+		if (!sp.empty()) {
+			o.pack_map(3);
+		} else {
+			o.pack_map(2);
+		}
 
 		o.pack(std::string("token"));
 		o.pack(it->sign_token());
@@ -282,8 +288,10 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::
 		o.pack(std::string("path_prefix"));
 		o.pack(it->sign_path_prefix());
 
-		o.pack(std::string("port"));
-		o.pack(it->sign_port());
+		if (!sp.empty()) {
+			o.pack(std::string("port"));
+			o.pack(boost::lexical_cast<int>(sp));
+		}
 	}
 
 	return o;
