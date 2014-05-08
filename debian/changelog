@@ -1,3 +1,9 @@
+libmastermind (8.2) lucid; urgency=low
+
+  * Fixed bug: reading cache file
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 08 May 2014 15:44:36 +0400
+
 libmastermind (8.1) lucid; urgency=low
 
   * Added metabalncer_info support
