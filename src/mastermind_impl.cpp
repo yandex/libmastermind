@@ -101,6 +101,7 @@ void mastermind_t::data::reconnect() {
 	} while (index != end);
 
 	m_current_remote = remote_t();
+	m_app.reset();
 	m_service_manager.reset();
 	COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: cannot recconect to any host");
 	throw std::runtime_error("reconnect error: cannot reconnect to any host");
