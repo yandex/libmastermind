@@ -1,3 +1,9 @@
+libmastermind (8.3) lucid; urgency=low
+
+  * Reset m_app if reconnect failed just in case
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 22 May 2014 17:27:18 +0400
+
 libmastermind (8.2) lucid; urgency=low
 
   * Fixed bug: reading cache file
