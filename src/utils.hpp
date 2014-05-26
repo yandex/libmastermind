@@ -35,7 +35,7 @@ public:
 	metabalancer_groups_info_t();
 	metabalancer_groups_info_t(namespaces_t &&namespaces);
 
-	std::vector<int> get_couple(uint64_t count, const std::string &name, uint64_t size);
+	couple_with_info_t get_couple(uint64_t count, const std::string &name, uint64_t size);
 	bool empty();
 	std::string to_string();
 	const namespaces_t &data() const;
@@ -43,7 +43,7 @@ public:
 private:
 	static bool couples_with_info_comp(const couple_with_info_t &c1, const couple_with_info_t &c2);
 
-	typedef std::reference_wrapper<const couple_t> const_couple_ref_t;
+	typedef std::reference_wrapper<const couple_with_info_t> const_couple_ref_t;
 	typedef std::map<uint64_t, const_couple_ref_t> weighted_couples_t;
 	typedef std::map<uint64_t, weighted_couples_t> couples_by_avalible_memory_t;
 	typedef std::map<uint64_t, couples_by_avalible_memory_t> couples_by_groups_count_t;

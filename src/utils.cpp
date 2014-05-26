@@ -56,7 +56,7 @@ metabalancer_groups_info_t::metabalancer_groups_info_t(namespaces_t &&namespaces
 					}
 					total_weight += weight;
 					cbam_tmp[avalible_memory].insert(
-						std::make_pair(total_weight, std::cref(std::get<0>(couple_with_info)))
+						std::make_pair(total_weight, std::cref(couple_with_info))
 					);
 				}
 			}
@@ -71,7 +71,7 @@ metabalancer_groups_info_t::metabalancer_groups_info_t(namespaces_t &&namespaces
 
 }
 
-std::vector<int> metabalancer_groups_info_t::get_couple(uint64_t count, const std::string &name, uint64_t size) {
+metabalancer_groups_info_t::couple_with_info_t metabalancer_groups_info_t::get_couple(uint64_t count, const std::string &name, uint64_t size) {
 	auto nit = m_couples.find(name);
 	if (nit == m_couples.end()) {
 		throw unknown_namespace_error();

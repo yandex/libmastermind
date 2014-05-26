@@ -44,7 +44,30 @@ std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std
 			m_data->collect_group_weights();
 		}
 
-		return m_data->m_metabalancer_groups_info.cache->get_couple(count, name_space, size);
+		auto couple = m_data->m_metabalancer_groups_info.cache->get_couple(count, name_space, size);
+
+		{
+			std::ostringstream oss;
+			oss
+				<< "libmastermind: get_metabalancer_groups: request={group-count=" << count
+				<< ", namespace=" << name_space << ", size=" << size
+				<< "}; response={"
+				<< "couple=[";
+			{
+				auto &&groups = std::get<0>(couple);
+				for (auto beg = groups.begin(), it = beg, end = groups.end(); it != end; ++it) {
+					if (beg != it) oss << ", ";
+					oss << *it;
+				}
+			}
+			oss << "], weight=" << std::get<1>(couple) << ", free-space=" << std::get<2>(couple)
+				<< "};";
+
+			auto msg = oss.str();
+			COCAINE_LOG_INFO(m_data->m_logger, "%s", msg.c_str());
+		}
+
+		return std::get<0>(couple);
 	} catch(const std::system_error &ex) {
 		COCAINE_LOG_ERROR(
 			m_data->m_logger,
