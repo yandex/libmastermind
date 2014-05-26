@@ -1,3 +1,9 @@
+libmastermind (8.5) lucid; urgency=low
+
+  * Fixed sort of couples by available memory
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 26 May 2014 18:40:53 +0400
+
 libmastermind (8.4) lucid; urgency=low
 
   * Added request-response log for get_metabalancer_groups
