@@ -158,7 +158,7 @@ const metabalancer_groups_info_t::namespaces_t &metabalancer_groups_info_t::data
 }
 
 bool metabalancer_groups_info_t::couples_with_info_comp(const couple_with_info_t &c1, const couple_with_info_t &c2) {
-	return std::get<2>(c1) < std::get<2>(c2);
+	return std::get<2>(c1) > std::get<2>(c2);
 }
 
 } // namespace mastermind
