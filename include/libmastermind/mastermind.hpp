@@ -56,6 +56,8 @@ struct namespace_settings_t {
 	const std::string &sign_token() const;
 	const std::string &sign_path_prefix() const;
 	const std::string &sign_port() const;
+	const std::string &auth_key_for_write() const;
+	const std::string &auth_key_for_read() const;
 
 private:
 	std::unique_ptr<data> m_data;

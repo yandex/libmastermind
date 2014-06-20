@@ -222,6 +222,22 @@ std::vector<mastermind::namespace_settings_t> &operator >> (object o, std::vecto
 				it->val.convert(&item.success_copies_num);
 			} else if (!key.compare("auth-key")) {
 				it->val.convert(&item.auth_key);
+			} else if (!key.compare("auth-keys")) {
+				if (it->val.type != type::MAP) {
+					throw type_error();
+				}
+
+				for (msgpack::object_kv *sit = it->val.via.map.ptr, *sit_end = sit + it->val.via.map.size;
+						sit < sit_end; ++sit) {
+					std::string key;
+					sit->key.convert(&key);
+
+					if (!key.compare("read")) {
+						sit->val.convert(&item.auth_key_for_read);
+					} else if (!key.compare("write")) {
+						sit->val.convert(&item.auth_key_for_write);
+					}
+				}
 			} else if (!key.compare("static-couple")) {
 				it->val.convert(&item.static_couple);
 			} else if (!key.compare("signature")) {
@@ -259,7 +275,7 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::
 	for (auto it = v.begin(); it != v.end(); ++it) {
 		o.pack(it->name());
 
-		o.pack_map(5);
+		o.pack_map(6);
 
 		o.pack(std::string("groups-count"));
 		o.pack(it->groups_count());
@@ -269,6 +285,15 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::
 
 		o.pack(std::string("auth-key"));
 		o.pack(it->auth_key());
+
+		o.pack(std::string("auth-keys"));
+		o.pack_map(2);
+
+		o.pack(std::string("write"));
+		o.pack(it->auth_key_for_write());
+
+		o.pack(std::string("read"));
+		o.pack(it->auth_key_for_read());
 
 		o.pack(std::string("static-couple"));
 		o.pack(it->static_couple());

@@ -353,7 +353,12 @@ std::string mastermind_t::json_namespaces_settings() {
 
 		oss << "\t\t\"groups-count\" : " << it->groups_count() << "," << std::endl;
 		oss << "\t\t\"success-copies-num\" : \"" << it->success_copies_num() << "\"," << std::endl;
-		oss << "\t\t\"auth-key\" : \"" << it->auth_key() << "\"," << std::endl;
+
+		oss << "\t\t\"auth-keys\" : {" << std::endl;
+		oss << "\t\t\t\"write\" : \"" << it->auth_key_for_write() << "\"," << std::endl;
+		oss << "\t\t\t\"read\" : \"" << it->auth_key_for_read() << "\"" << std::endl;
+		oss << "\t\t}," << std::endl;
+
 		oss << "\t\t\"static-couple\" : [";
 
 		for (auto bcit = it->static_couple().begin(), cit = bcit; cit != it->static_couple().end(); ++cit) {

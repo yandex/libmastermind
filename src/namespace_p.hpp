@@ -17,6 +17,9 @@ struct namespace_settings_t::data {
 	std::string auth_key;
 	std::vector<int> static_couple;
 
+	std::string auth_key_for_write;
+	std::string auth_key_for_read;
+
 	std::string sign_token;
 	std::string sign_path_prefix;
 	std::string sign_port;

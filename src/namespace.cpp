@@ -11,6 +11,8 @@ namespace_settings_t::data::data(const namespace_settings_t::data &d)
 	, success_copies_num(d.success_copies_num)
 	, auth_key(d.auth_key)
 	, static_couple(d.static_couple)
+	, auth_key_for_write(d.auth_key_for_write)
+	, auth_key_for_read(d.auth_key_for_read)
 	, sign_token(d.sign_token)
 	, sign_path_prefix(d.sign_path_prefix)
 	, sign_port(d.sign_port)
@@ -23,6 +25,8 @@ namespace_settings_t::data::data(namespace_settings_t::data &&d)
 	, success_copies_num(std::move(d.success_copies_num))
 	, auth_key(std::move(d.auth_key))
 	, static_couple(std::move(d.static_couple))
+	, auth_key_for_write(std::move(d.auth_key_for_write))
+	, auth_key_for_read(std::move(d.auth_key_for_read))
 	, sign_token(std::move(d.sign_token))
 	, sign_path_prefix(std::move(d.sign_path_prefix))
 	, sign_port(std::move(d.sign_port))
@@ -67,7 +71,7 @@ const std::string &namespace_settings_t::success_copies_num () const {
 }
 
 const std::string &namespace_settings_t::auth_key () const {
-	return m_data->auth_key;
+	return m_data->auth_key.empty() ? m_data->auth_key_for_write : m_data->auth_key;
 }
 
 const std::vector<int> &namespace_settings_t::static_couple () const {
@@ -84,6 +88,14 @@ const std::string &namespace_settings_t::sign_path_prefix () const {
 
 const std::string &namespace_settings_t::sign_port () const {
 	return m_data->sign_port;
+}
+
+const std::string &namespace_settings_t::auth_key_for_write() const {
+	return m_data->auth_key_for_write.empty() ? m_data->auth_key : m_data->auth_key_for_write;
+}
+
+const std::string &namespace_settings_t::auth_key_for_read() const {
+	return m_data->auth_key_for_read;
 }
 
 } //mastermind
