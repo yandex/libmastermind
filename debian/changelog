@@ -1,3 +1,9 @@
+libmastermind (8.6) lucid; urgency=low
+
+  * Added support for read&write auth-keys
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Fri, 20 Jun 2014 19:20:15 +0400
+
 libmastermind (8.5) lucid; urgency=low
 
   * Fixed sort of couples by available memory
