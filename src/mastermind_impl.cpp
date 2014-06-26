@@ -11,12 +11,6 @@ mastermind_t::data::data(const remotes_t &remotes, const std::shared_ptr<cocaine
 {
 	deserialize();
 
-	try {
-		reconnect();
-	} catch (const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
-	}
-
 	m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
 }
 
@@ -29,11 +23,7 @@ mastermind_t::data::data(const std::string &host, uint16_t port, const std::shar
 	deserialize();
 
 	m_remotes.emplace_back(host, port);
-	try {
-		reconnect();
-	} catch (const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
-	}
+
 	m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
 }
 
@@ -275,6 +265,12 @@ void mastermind_t::data::collect_info_loop_impl() {
 }
 
 void mastermind_t::data::collect_info_loop() {
+	try {
+		reconnect();
+	} catch (const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
+	}
+
 	std::unique_lock<std::mutex> lock(m_mutex);
 #if __GNUC_MINOR__ >= 6
 	auto no_timeout = std::cv_status::no_timeout;
