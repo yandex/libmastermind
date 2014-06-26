@@ -37,14 +37,8 @@ mastermind_t::~mastermind_t()
 
 std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std::string &name_space, uint64_t size) {
 	try {
-		std::lock_guard<std::recursive_mutex> lock(m_data->m_metabalancer_groups_info.mutex);
-		(void) lock;
-
-		if (m_data->m_metabalancer_groups_info.cache->empty()) {
-			m_data->collect_group_weights();
-		}
-
-		auto couple = m_data->m_metabalancer_groups_info.cache->get_couple(count, name_space, size);
+		auto cache = m_data->m_metabalancer_groups_info.copy();
+		auto couple = cache->get_couple(count, name_space, size);
 
 		{
 			std::ostringstream oss;
@@ -99,14 +93,8 @@ group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
 
 std::map<int, std::vector<int>> mastermind_t::get_symmetric_groups() {
 	try {
-		std::lock_guard<std::recursive_mutex> lock(m_data->m_symmetric_groups.mutex);
-		(void) lock;
-
-		if (m_data->m_symmetric_groups.cache->empty()) {
-			m_data->collect_symmetric_groups();
-		}
-
-		return *m_data->m_symmetric_groups.cache;
+		auto cache = m_data->m_symmetric_groups.copy();
+		return *cache;
 	} catch(const std::system_error &ex) {
 		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_symmetric_groups: \"%s\"", ex.code().message().c_str());
 		throw;
@@ -115,15 +103,9 @@ std::map<int, std::vector<int>> mastermind_t::get_symmetric_groups() {
 
 std::vector<int> mastermind_t::get_symmetric_groups(int group) {
 	try {
-		std::lock_guard<std::recursive_mutex> lock(m_data->m_symmetric_groups.mutex);
-		(void) lock;
-
-		if (m_data->m_symmetric_groups.cache->empty()) {
-			m_data->collect_symmetric_groups();
-		}
-
-		auto it = m_data->m_symmetric_groups.cache->find(group);
-		if (it == m_data->m_symmetric_groups.cache->end()) {
+		auto cache = m_data->m_symmetric_groups.copy();
+		auto it = cache->find(group);
+		if (it == cache->end()) {
 			return std::vector<int>();
 		}
 		return it->second;
@@ -138,14 +120,8 @@ std::vector<int> mastermind_t::get_symmetric_groups(int group) {
 
 std::vector<std::vector<int> > mastermind_t::get_bad_groups() {
 	try {
-		std::lock_guard<std::recursive_mutex> lock(m_data->m_bad_groups.mutex);
-		(void) lock;
-
-		if (m_data->m_bad_groups.cache->empty()) {
-			m_data->collect_bad_groups();
-		}
-
-		return *m_data->m_bad_groups.cache;
+		auto cache = m_data->m_bad_groups.copy();
+		return *cache;
 	} catch(const std::system_error &ex) {
 		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_bad_groups: \"%s\"", ex.code().message().c_str());
 		throw;
@@ -164,16 +140,11 @@ std::vector<int> mastermind_t::get_all_groups() {
 }
 
 std::vector<int> mastermind_t::get_cache_groups(const std::string &key) {
-	std::lock_guard<std::recursive_mutex> lock(m_data->m_cache_groups.mutex);
-	(void) lock;
-
 	try {
-		if (m_data->m_cache_groups.cache->empty()) {
-			m_data->collect_cache_groups();
-		}
+		auto cache = m_data->m_cache_groups.copy();
 
-		auto it = m_data->m_cache_groups.cache->find(key);
-		if (it != m_data->m_cache_groups.cache->end())
+		auto it = cache->find(key);
+		if (it != cache->end())
 			return it->second;
 		return std::vector<int>();
 	} catch(const std::system_error &ex) {
@@ -186,15 +157,9 @@ std::vector<int> mastermind_t::get_cache_groups(const std::string &key) {
 }
 
 std::vector<namespace_settings_t> mastermind_t::get_namespaces_settings() {
-	std::lock_guard<std::recursive_mutex> lock(m_data->m_namespaces_settings.mutex);
-	(void) lock;
-
 	try {
-		if (m_data->m_namespaces_settings.cache->empty()) {
-			m_data->collect_namespaces_settings();
-		}
-
-		return *m_data->m_namespaces_settings.cache;
+		auto cache = m_data->m_namespaces_settings.copy();
+		return *cache;
 	} catch(const std::system_error &ex) {
 		COCAINE_LOG_ERROR(
 			m_data->m_logger,
