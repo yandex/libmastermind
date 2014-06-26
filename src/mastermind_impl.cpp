@@ -110,7 +110,7 @@ void mastermind_t::data::reconnect() {
 bool mastermind_t::data::collect_group_weights() {
 	try {
 		metabalancer_groups_info_t::namespaces_t resp;
-		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, resp, "get_group_weights", "");
+		enqueue("get_group_weights", "", resp);
 		auto cache = m_metabalancer_groups_info.create(std::move(resp));
 		m_metabalancer_groups_info.swap(cache);
 		return true;
@@ -123,7 +123,7 @@ bool mastermind_t::data::collect_group_weights() {
 bool mastermind_t::data::collect_bad_groups() {
 	try {
 		auto cache = m_bad_groups.create();
-		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, *cache, "get_bad_groups", "");
+		enqueue("get_bad_groups", "", *cache);
 		m_bad_groups.swap(cache);
 		return true;
 	} catch (const std::exception &ex) {
@@ -135,7 +135,7 @@ bool mastermind_t::data::collect_bad_groups() {
 bool mastermind_t::data::collect_symmetric_groups() {
 	try {
 		std::vector<std::vector<int>> sym_groups;
-		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, sym_groups, "get_symmetric_groups", "");
+		enqueue("get_symmetric_groups", "", sym_groups);
 		auto cache = m_symmetric_groups.create();
 
 		for (auto it = sym_groups.begin(); it != sym_groups.end(); ++it) {
@@ -161,7 +161,7 @@ bool mastermind_t::data::collect_symmetric_groups() {
 bool mastermind_t::data::collect_cache_groups() {
 	try {
 		std::vector<std::pair<std::string, std::vector<int>>> cache_groups;
-		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, cache_groups, "get_cached_keys", "");
+		enqueue("get_cached_keys", "", cache_groups);
 
 		auto cache = m_cache_groups.create();
 
@@ -180,7 +180,7 @@ bool mastermind_t::data::collect_cache_groups() {
 bool mastermind_t::data::collect_namespaces_settings() {
 	try {
 		auto cache = m_namespaces_settings.create();
-		retry(&cocaine::framework::app_service_t::enqueue<char [1]>, *cache, "get_namespaces_settings", "");
+		enqueue("get_namespaces_settings", "", *cache);
 		m_namespaces_settings.swap(cache);
 		return true;
 	} catch(const std::exception &ex) {
@@ -195,7 +195,7 @@ bool mastermind_t::data::collect_metabalancer_info() {
 		typedef std::vector<std::map<std::string, std::string>> arg_type;
 		arg_type arg;
 		arg.push_back(std::map<std::string, std::string>());
-		retry(&cocaine::framework::app_service_t::enqueue<arg_type>, *cache, "get_couples_list", arg);
+		enqueue("get_couples_list", arg, *cache);
 		m_metabalancer_info.swap(cache);
 		return true;
 	} catch (const std::exception &ex) {

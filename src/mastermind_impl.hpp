@@ -28,8 +28,11 @@ struct mastermind_t::data {
 
 	void reconnect();
 
-	template <typename F, typename R, typename... Args>
-	void retry(F func, R &res, Args &&... args);
+	template <typename R, typename T>
+	bool simple_enqueue(const std::string &event, const T &chunk, R &result);
+
+	template <typename R, typename T>
+	void enqueue(const std::string &event, const T &chunk, R &result);
 
 	bool collect_group_weights();
 	bool collect_bad_groups();
@@ -101,38 +104,55 @@ struct mastermind_t::data {
 	std::shared_ptr<cocaine::framework::service_manager_t> m_service_manager;
 };
 
-template <typename F, typename R, typename... Args>
-void mastermind_t::data::retry(F func, R &res, Args &&... args) {
-	bool already_tried = false;
+template <typename R, typename T>
+bool mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk, R &result) {
+	try {
+		auto g = m_app->enqueue(event, chunk);
+		g.wait_for(std::chrono::seconds(4));
+
+		if (g.ready() == false) {
+			return false;
+		}
+
+		auto chunk = g.next();
+		result = cocaine::framework::unpack<R>(chunk);
+		return true;
+	} catch (const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: enqueue_impl: %s", ex.what());
+	}
+	return false;
+}
+
+template <typename R, typename T>
+void mastermind_t::data::enqueue(const std::string &event, const T &chunk, R &result) {
+	bool tried_to_reconnect = false;
 	try {
 		if (!m_service_manager || !m_app || m_app->status() != cocaine::framework::service_status::connected) {
-			COCAINE_LOG_INFO(m_logger, "libmastermind: retry: preconnect");
-			already_tried = true;
+			COCAINE_LOG_INFO(m_logger, "libmastermind: enqueue: preconnect");
+			tried_to_reconnect = true;
 			reconnect();
 		}
-		auto g = (m_app.get()->*func)(std::forward<Args>(args)...);
-		g.wait_for(std::chrono::seconds(4));
-		if (g.ready() == false) {
-			if (already_tried) {
-				throw std::runtime_error("cannot process enqueue");
-			}
-			COCAINE_LOG_INFO(m_logger, "libmastermind: retry: try to reconnect");
-			reconnect();
-			auto g = (m_app.get()->*func)(std::forward<Args>(args)...);
-			g.wait_for(std::chrono::seconds(4));
-			if (g.ready() == false) {
-				throw std::runtime_error("cannot reprocess enqueue");
-			}
-			auto chunk = g.next();
-			res = cocaine::framework::unpack<R>(chunk);
+
+		if (simple_enqueue(event, chunk, result)) {
+			return;
 		}
-		auto chunk = g.next();
-		res = cocaine::framework::unpack<R>(chunk);
+
+		if (tried_to_reconnect) {
+			throw std::runtime_error("cannot process enqueue");
+		}
+
+		reconnect();
+
+		if (simple_enqueue(event, chunk, result)) {
+			return;
+		}
+
+		throw std::runtime_error("cannot reprocess enqueue");
 	} catch (const cocaine::framework::service_error_t &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: retry: %s", ex.what());
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: enqueue: %s", ex.what());
 		throw;
 	} catch (const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: retry: %s", ex.what());
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: enqueue: %s", ex.what());
 		throw;
 	}
 }
