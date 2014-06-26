@@ -362,6 +362,9 @@ void mastermind_t::data::cache_force_update() {
 }
 
 void mastermind_t::data::set_update_cache_callback(const std::function<void (void)> &callback) {
+	std::lock_guard<std::mutex> lock(m_mutex);
+	(void) lock;
+
 	m_cache_update_callback = callback;
 }
 
