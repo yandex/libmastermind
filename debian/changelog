@@ -1,3 +1,14 @@
+libmastermind (8.7) lucid; urgency=low
+
+  * Added log before connecting to cocaine
+  * Only read local cache on start
+    Connect to cocaine is estabilished later in background thread
+  * Fixed race condition in set_update_cache_callback
+  * Clients can obtain data only from cache
+    It is a buisiness of libmastermind to choose a time to update cache from mastermind
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 26 Jun 2014 18:33:39 +0400
+
 libmastermind (8.6) lucid; urgency=low
 
   * Added support for read&write auth-keys
