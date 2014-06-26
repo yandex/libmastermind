@@ -63,9 +63,16 @@ void mastermind_t::data::reconnect() {
 	do {
 		auto &remote = m_remotes[index];
 		try {
+			COCAINE_LOG_INFO(m_logger,
+					"libmastermind: reconnect: try to connect to locator %s:%d",
+					remote.first.c_str(), static_cast<int>(remote.second));
+
 			m_app.reset();
 			m_service_manager = cocaine::framework::service_manager_t::create(
 				cocaine::framework::service_manager_t::endpoint_t(remote.first, remote.second));
+
+			COCAINE_LOG_INFO(m_logger,
+					"libmastermind: reconnect: connected to locator, getting mastermind service");
 
 			auto g = m_service_manager->get_service_async<cocaine::framework::app_service_t>("mastermind");
 			g.wait_for(std::chrono::seconds(4));
@@ -80,7 +87,9 @@ void mastermind_t::data::reconnect() {
 			}
 			m_app = g.get();
 
-			COCAINE_LOG_INFO(m_logger, "libmastermind: reconnect: connected to %s:%d", remote.first.c_str(), static_cast<int>(remote.second));
+			COCAINE_LOG_INFO(m_logger,
+					"libmastermind: reconnect: connected to mastermind via locator %s:%d"
+					, remote.first.c_str(), static_cast<int>(remote.second));
 
 			m_current_remote = remote;
 			m_next_remote = (index + 1) % size;
