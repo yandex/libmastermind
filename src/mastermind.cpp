@@ -102,20 +102,18 @@ std::map<int, std::vector<int>> mastermind_t::get_symmetric_groups() {
 }
 
 std::vector<int> mastermind_t::get_symmetric_groups(int group) {
-	try {
-		auto cache = m_data->m_symmetric_groups.copy();
-		auto it = cache->find(group);
-		if (it == cache->end()) {
-			return std::vector<int>();
-		}
-		return it->second;
-	} catch(const std::system_error &ex) {
-		COCAINE_LOG_ERROR(
-			m_data->m_logger,
-			"libmastermind: get_symmetric_groups: group = %d; \"%s\"",
-			group, ex.code().message().c_str());
-		throw;
+	auto cache = m_data->m_metabalancer_info.copy();
+
+	auto git = cache->group_info_map.find(group);
+	if (git == cache->group_info_map.end()) {
+		return {group};
 	}
+
+	// TODO: use uniform types
+	auto r = git->second->couple;
+
+	std::vector<int> res(r.begin(), r.end());
+	return res;
 }
 
 std::vector<std::vector<int> > mastermind_t::get_bad_groups() {

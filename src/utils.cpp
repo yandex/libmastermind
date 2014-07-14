@@ -403,7 +403,7 @@ mastermind::metabalancer_info_t &operator >> (object o, mastermind::metabalancer
 							} else {
 								group_info->group_status = mastermind::group_info_t::UNKNOWN;
 							}
-						} else if (key == "couple"){
+						} else if (key == "couples"){
 							group_kv->val.convert(&group_info->couple);
 						}
 					}
