@@ -1,3 +1,9 @@
+libmastermind (8.8) lucid; urgency=low
+
+  * Uses couple_list to find couple by group
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 14 Jul 2014 15:35:32 +0400
+
 libmastermind (8.7) lucid; urgency=low
 
   * Added log before connecting to cocaine
