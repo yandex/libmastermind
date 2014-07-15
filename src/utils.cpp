@@ -487,7 +487,7 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const mastermind::metabalancer
 				o.pack(std::string("UNKNOWN"));
 			}
 
-			o.pack(std::string("couple"));
+			o.pack(std::string("couples"));
 			o.pack(it->second->couple);
 		}
 	}
