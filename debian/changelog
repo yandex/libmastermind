@@ -1,3 +1,10 @@
+libmastermind (8.9) lucid; urgency=low
+
+  * Fixed name of metabalancer_info.groups.couples in cache serialization
+  * Added debug log for get_symmetric_groups
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Tue, 15 Jul 2014 19:15:26 +0400
+
 libmastermind (8.8) lucid; urgency=low
 
   * Uses couple_list to find couple by group
