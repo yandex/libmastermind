@@ -23,6 +23,8 @@ struct namespace_settings_t::data {
 	std::string sign_token;
 	std::string sign_path_prefix;
 	std::string sign_port;
+
+	size_t content_length_threshold;
 };
 
 } // mastermind

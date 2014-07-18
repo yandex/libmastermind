@@ -260,6 +260,8 @@ std::vector<mastermind::namespace_settings_t> &operator >> (object o, std::vecto
 						item.sign_port = boost::lexical_cast<std::string>(port);
 					}
 				}
+			} else if (!key.compare("content_length_threshold")) {
+				it->val.convert(&item.content_length_threshold);
 			}
 		}
 
@@ -275,7 +277,7 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::
 	for (auto it = v.begin(); it != v.end(); ++it) {
 		o.pack(it->name());
 
-		o.pack_map(6);
+		o.pack_map(7);
 
 		o.pack(std::string("groups-count"));
 		o.pack(it->groups_count());
@@ -317,6 +319,9 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::
 			o.pack(std::string("port"));
 			o.pack(boost::lexical_cast<int>(sp));
 		}
+
+		o.pack(std::string("content_length_threshold"));
+		o.pack(it->content_length_threshold());
 	}
 
 	return o;

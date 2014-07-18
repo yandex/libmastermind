@@ -98,5 +98,9 @@ const std::string &namespace_settings_t::auth_key_for_read() const {
 	return m_data->auth_key_for_read;
 }
 
+size_t namespace_settings_t::content_length_threshold() const {
+	return m_data->content_length_threshold;
+}
+
 } //mastermind
 

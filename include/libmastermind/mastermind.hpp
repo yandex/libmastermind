@@ -58,6 +58,7 @@ struct namespace_settings_t {
 	const std::string &sign_port() const;
 	const std::string &auth_key_for_write() const;
 	const std::string &auth_key_for_read() const;
+	size_t content_length_threshold() const;
 
 private:
 	std::unique_ptr<data> m_data;
