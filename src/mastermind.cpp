@@ -33,6 +33,7 @@ mastermind_t::mastermind_t(const std::string &host, uint16_t port, const std::sh
 
 mastermind_t::~mastermind_t()
 {
+	m_data->stop();
 }
 
 std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std::string &name_space, uint64_t size) {

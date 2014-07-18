@@ -28,6 +28,9 @@ mastermind_t::data::data(const std::string &host, uint16_t port, const std::shar
 }
 
 mastermind_t::data::~data() {
+}
+
+void mastermind_t::data::stop() {
 	try {
 		{
 			std::lock_guard<std::mutex> lock(m_mutex);
@@ -265,13 +268,19 @@ void mastermind_t::data::collect_info_loop_impl() {
 }
 
 void mastermind_t::data::collect_info_loop() {
+	std::unique_lock<std::mutex> lock(m_mutex);
+
+	if (m_done) {
+		COCAINE_LOG_INFO(m_logger, "libmastermind: have to stop immediately");
+		return;
+	}
+
 	try {
 		reconnect();
 	} catch (const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
 	}
 
-	std::unique_lock<std::mutex> lock(m_mutex);
 #if __GNUC_MINOR__ >= 6
 	auto no_timeout = std::cv_status::no_timeout;
 	auto timeout = std::cv_status::timeout;

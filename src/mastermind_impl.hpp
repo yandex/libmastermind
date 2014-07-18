@@ -26,6 +26,8 @@ struct mastermind_t::data {
 	data(const std::string &host, uint16_t port, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60);
 	~data();
 
+	void stop();
+
 	void reconnect();
 
 	template <typename R, typename T>
