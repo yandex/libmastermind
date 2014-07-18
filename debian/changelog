@@ -1,3 +1,10 @@
+libmastermind (8.10) lucid; urgency=low
+
+  * Added content_length_threshold option
+  * Stop background thread before dtor of mastermind_t is done
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Fri, 18 Jul 2014 21:04:23 +0400
+
 libmastermind (8.9) lucid; urgency=low
 
   * Fixed name of metabalancer_info.groups.couples in cache serialization
