@@ -9,7 +9,7 @@ DEB_DH_MAKESHLIBS_ARGS := -V "libmastermind (>= $(MASTERMIND_VERSION))"
 
 DEB_CMAKE_EXTRA_FLAGS := -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_SKIP_RPATH=OFF
 
-DEB_DH_STRIP_ARGS := --dbg-package=libmastermind-dbg
+DEB_DH_STRIP_ARGS := --dbg-package=libmastermind
 
 #DEB_MAKE_CHECK_TARGET := test ARGS="-V"
 

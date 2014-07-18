@@ -21,11 +21,6 @@ Architecture: any
 Depends: ${shlibs:Depends}, cocaine-framework-native (>= 0.11.1), libcocaine-core2 (>= 0.11)
 Description: Client for Mastermind service
 
-Package: libmastermind-dbg
-Architecture: any
-Depends: libmastermind (= ${Source-Version})
-Description: Client for Mastermind service (debug symbols)
-
 Package: libmastermind-dev
 Architecture: any
 Depends: libmastermind (= ${Source-Version})
