@@ -1,3 +1,9 @@
+libmastermind (8.11) lucid; urgency=low
+
+  * Added namespaces_statistics cache
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 04 Aug 2014 17:25:07 +0400
+
 libmastermind (8.10) lucid; urgency=low
 
   * Added content_length_threshold option
