@@ -366,6 +366,31 @@ std::string mastermind_t::json_namespaces_settings() {
 	return oss.str();
 }
 
+std::string mastermind_t::json_namespace_statistics(const std::string &ns) {
+	auto cache = m_data->m_namespaces_statistics.copy();
+
+	auto nit = cache->find(ns);
+
+	if (nit == cache->end()) {
+		return std::string();
+	}
+
+	std::ostringstream oss;
+	oss << "{" << std::endl;
+
+	for (auto begin = nit->second.begin(), it = begin, end = nit->second.end(); it != end; ++it) {
+		if (it != begin) {
+			oss << "," << std::endl;
+		}
+
+		oss << "\t\"" << it->first << "\": " << it->second;
+	}
+
+	oss << std::endl << "}";
+
+	return oss.str();
+}
+
 void mastermind_t::cache_force_update() {
 	m_data->cache_force_update();
 }

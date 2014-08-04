@@ -106,6 +106,8 @@ struct metabalancer_info_t {
 	group_info_map_t group_info_map;
 };
 
+typedef std::map<std::string, std::map<std::string, uint64_t>> namespaces_statistics_t;
+
 } // namespace mastermind
 
 namespace msgpack {

@@ -42,6 +42,8 @@ struct mastermind_t::data {
 	bool collect_cache_groups();
 	bool collect_namespaces_settings();
 	bool collect_metabalancer_info();
+	bool collect_namespaces_statistics();
+
 	void collect_info_loop_impl();
 	void collect_info_loop();
 
@@ -93,6 +95,7 @@ struct mastermind_t::data {
 	cache_t<std::vector<namespace_settings_t>> m_namespaces_settings;
 	cache_t<std::map<std::string, std::vector<int>>> m_cache_groups;
 	cache_t<metabalancer_info_t> m_metabalancer_info;
+	cache_t<namespaces_statistics_t> m_namespaces_statistics;
 
 	const int                                          m_group_info_update_period;
 	std::thread                                        m_weight_cache_update_thread;
@@ -117,6 +120,7 @@ bool mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk
 		}
 
 		auto chunk = g.next();
+
 		result = cocaine::framework::unpack<R>(chunk);
 		return true;
 	} catch (const std::exception &ex) {

@@ -90,6 +90,7 @@ public:
 	std::string json_cache_groups();
 	std::string json_metabalancer_info();
 	std::string json_namespaces_settings();
+	std::string json_namespace_statistics(const std::string &ns);
 
 	void cache_force_update();
 	void set_update_cache_callback(const std::function<void (void)> &callback);

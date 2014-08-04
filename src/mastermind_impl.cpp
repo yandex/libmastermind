@@ -206,6 +206,18 @@ bool mastermind_t::data::collect_metabalancer_info() {
 	return false;
 }
 
+bool mastermind_t::data::collect_namespaces_statistics() {
+	try {
+		auto cache = m_namespaces_statistics.create();
+		enqueue("get_namespaces_statistics", "", *cache);
+		m_namespaces_statistics.swap(cache);
+		return true;
+	} catch (const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_namespaces_statistics: %s", ex.what());
+	}
+	return false;
+}
+
 void mastermind_t::data::collect_info_loop_impl() {
 	if (m_logger->verbosity() >= cocaine::logging::info) {
 		auto current_remote = m_current_remote;
@@ -244,6 +256,10 @@ void mastermind_t::data::collect_info_loop_impl() {
 	{
 		spent_time_printer_t helper("collect_namespaces_settings", m_logger);
 		collect_namespaces_settings();
+	}
+	{
+		spent_time_printer_t helper("collect_namespaces_statistics", m_logger);
+		collect_namespaces_statistics();
 	}
 
 	serialize();
@@ -316,6 +332,7 @@ void mastermind_t::data::serialize() {
 		, m_metabalancer_groups_info.cache->data()
 		, *m_namespaces_settings.cache
 		, *m_metabalancer_info.cache
+		, *m_namespaces_statistics.cache
 	));
 	std::ofstream output("/var/tmp/libmastermind.cache");
 	std::copy(sbuf.data(), sbuf.data() + sbuf.size(), std::ostreambuf_iterator<char>(output));
@@ -344,6 +361,7 @@ void mastermind_t::data::deserialize() {
 			, metabalancer_groups_info_t::namespaces_t
 			, std::vector<namespace_settings_t>
 			, mastermind::metabalancer_info_t
+			, namespaces_statistics_t
 			> cache_type;
 		cache_type ct;
 		obj.convert(&ct);
@@ -355,6 +373,7 @@ void mastermind_t::data::deserialize() {
 			, namespaces
 			, *m_namespaces_settings.cache
 			, *m_metabalancer_info.cache
+			, *m_namespaces_statistics.cache
 			) = std::move(ct);
 		m_metabalancer_groups_info.cache = std::make_shared<metabalancer_groups_info_t>(std::move(namespaces));
 	} catch (const std::exception &ex) {
