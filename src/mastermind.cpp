@@ -103,16 +103,10 @@ std::map<int, std::vector<int>> mastermind_t::get_symmetric_groups() {
 }
 
 std::vector<int> mastermind_t::get_symmetric_groups(int group) {
-	auto cache = m_data->m_metabalancer_info.copy();
-	std::vector<int> result;
+	std::vector<int> result = get_couple_by_group(group);
 
-	auto git = cache->group_info_map.find(group);
-	if (git == cache->group_info_map.end()) {
+	if (result.empty()) {
 		result = {group};
-	} else {
-		auto r = git->second->couple;
-		// TODO: use uniform types
-		result.assign(r.begin(), r.end());
 	}
 
 	if (m_data->m_logger->verbosity() >= cocaine::logging::debug) {
@@ -132,6 +126,21 @@ std::vector<int> mastermind_t::get_symmetric_groups(int group) {
 
 		auto msg = oss.str();
 		COCAINE_LOG_DEBUG(m_data->m_logger, "%s", msg.c_str());
+	}
+
+	return result;
+}
+
+std::vector<int> mastermind_t::get_couple_by_group(int group) {
+	auto cache = m_data->m_metabalancer_info.copy();
+	std::vector<int> result;
+
+	auto git = cache->group_info_map.find(group);
+
+	if (git != cache->group_info_map.end()) {
+		auto r = git->second->couple;
+		// TODO: use uniform types
+		result.assign(r.begin(), r.end());
 	}
 
 	return result;

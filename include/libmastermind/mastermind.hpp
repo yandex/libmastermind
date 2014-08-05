@@ -22,6 +22,8 @@
 
 #include <cocaine/framework/logging.hpp>
 
+#include <boost/optional.hpp>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -77,6 +79,7 @@ public:
 	group_info_response_t get_metabalancer_group_info(int group);
 	std::map<int, std::vector<int>> get_symmetric_groups();
 	std::vector<int> get_symmetric_groups(int group);
+	std::vector<int> get_couple_by_group(int group);
 	std::vector<std::vector<int> > get_bad_groups();
 	std::vector<int> get_all_groups();
 	std::vector<int> get_cache_groups(const std::string &key);
