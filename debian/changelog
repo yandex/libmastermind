@@ -1,3 +1,9 @@
+libmastermind (8.12) lucid; urgency=low
+
+  * Added get_couple_by_group which returns empty group-list for unknown group
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Tue, 05 Aug 2014 13:44:26 +0400
+
 libmastermind (8.11) lucid; urgency=low
 
   * Added namespaces_statistics cache
