@@ -74,6 +74,7 @@ void mastermind_t::data::reconnect() {
 					m_logger,
 					"libmastermind: reconnect: cannot get mastermind-service in 4 seconds from %s:%d",
 					remote.first.c_str(), static_cast<int>(remote.second));
+				g = decltype(g)();
 				m_service_manager.reset();
 				index = (index + 1) % size;
 				continue;
