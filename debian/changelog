@@ -1,3 +1,9 @@
+libmastermind (8.13) lucid; urgency=low
+
+  * Fixed SIGSERV: COCAINE-185
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Tue, 12 Aug 2014 16:03:20 +0400
+
 libmastermind (8.12) lucid; urgency=low
 
   * Added get_couple_by_group which returns empty group-list for unknown group
