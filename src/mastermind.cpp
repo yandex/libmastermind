@@ -218,6 +218,11 @@ std::vector<namespace_settings_t> mastermind_t::get_namespaces_settings() {
 	}
 }
 
+std::vector<std::string> mastermind_t::get_elliptics_remotes() {
+	auto cache = m_data->m_elliptics_remotes.copy();
+	return *cache;
+}
+
 uint64_t mastermind_t::free_effective_space_in_couple_by_group(size_t group) {
 	auto cache = m_data->m_metabalancer_info.copy();
 

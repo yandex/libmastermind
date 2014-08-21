@@ -91,6 +91,7 @@ public:
 	std::vector<int> get_all_groups();
 	std::vector<int> get_cache_groups(const std::string &key);
 	std::vector<namespace_settings_t> get_namespaces_settings();
+	std::vector<std::string> get_elliptics_remotes();
 
 	uint64_t free_effective_space_in_couple_by_group(size_t group);
 

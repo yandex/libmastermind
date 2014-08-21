@@ -43,6 +43,7 @@ struct mastermind_t::data {
 	bool collect_namespaces_settings();
 	bool collect_metabalancer_info();
 	bool collect_namespaces_statistics();
+	bool collect_elliptics_remotes();
 
 	void collect_info_loop_impl();
 	void collect_info_loop();
@@ -97,6 +98,7 @@ struct mastermind_t::data {
 	cache_t<std::map<std::string, std::vector<int>>> m_cache_groups;
 	cache_t<metabalancer_info_t> m_metabalancer_info;
 	cache_t<namespaces_statistics_t> m_namespaces_statistics;
+	cache_t<std::vector<std::string>> m_elliptics_remotes;
 
 	const int                                          m_group_info_update_period;
 	std::thread                                        m_weight_cache_update_thread;

@@ -217,6 +217,30 @@ bool mastermind_t::data::collect_namespaces_statistics() {
 	return false;
 }
 
+bool mastermind_t::data::collect_elliptics_remotes() {
+	try {
+		std::vector<std::tuple<std::string, int, int>> raw_remotes;
+		enqueue("get_config_remotes", "", raw_remotes);
+
+		std::vector<std::string> remotes;
+		remotes.reserve(raw_remotes.size());
+
+		for (auto it = raw_remotes.begin(), end = raw_remotes.end(); it != end; ++it) {
+			std::ostringstream oss;
+			oss << std::get<0>(*it) << ':' << std::get<1>(*it) << ':' << std::get<2>(*it);
+			remotes.emplace_back(oss.str());
+		}
+
+		auto cache = m_elliptics_remotes.create();
+		*cache = std::move(remotes);
+
+		m_elliptics_remotes.swap(cache);
+	} catch (const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_elliptics_remotes");
+	}
+	return false;
+}
+
 void mastermind_t::data::collect_info_loop_impl() {
 	if (m_logger->verbosity() >= cocaine::logging::info) {
 		auto current_remote = m_current_remote;
@@ -259,6 +283,10 @@ void mastermind_t::data::collect_info_loop_impl() {
 	{
 		spent_time_printer_t helper("collect_namespaces_statistics", m_logger);
 		collect_namespaces_statistics();
+	}
+	{
+		spent_time_printer_t helper("collect_elliptics_remotes", m_logger);
+		collect_elliptics_remotes();
 	}
 
 	serialize();
@@ -332,6 +360,7 @@ void mastermind_t::data::serialize() {
 		, *m_namespaces_settings.cache
 		, *m_metabalancer_info.cache
 		, *m_namespaces_statistics.cache
+		, *m_elliptics_remotes.cache
 	));
 	std::ofstream output(m_cache_path.c_str());
 	std::copy(sbuf.data(), sbuf.data() + sbuf.size(), std::ostreambuf_iterator<char>(output));
@@ -377,6 +406,7 @@ void mastermind_t::data::deserialize(int expired_time) {
 			, std::vector<namespace_settings_t>
 			, mastermind::metabalancer_info_t
 			, namespaces_statistics_t
+			, std::vector<std::string>
 			> cache_type;
 		cache_type ct;
 		obj.convert(&ct);
@@ -389,6 +419,7 @@ void mastermind_t::data::deserialize(int expired_time) {
 			, *m_namespaces_settings.cache
 			, *m_metabalancer_info.cache
 			, *m_namespaces_statistics.cache
+			, *m_elliptics_remotes.cache
 			) = std::move(ct);
 		m_metabalancer_groups_info.cache = std::make_shared<metabalancer_groups_info_t>(std::move(namespaces));
 	} catch (const std::exception &ex) {
