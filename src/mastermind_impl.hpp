@@ -23,7 +23,7 @@ namespace mastermind {
 
 struct mastermind_t::data {
 	data(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger,
-			int group_info_update_period, std::string cache_path);
+			int group_info_update_period, std::string cache_path, int expired_time);
 	~data();
 
 	void stop();
@@ -48,7 +48,7 @@ struct mastermind_t::data {
 	void collect_info_loop();
 
 	void serialize();
-	void deserialize();
+	void deserialize(int expired_time);
 
 	void cache_force_update();
 	void set_update_cache_callback(const std::function<void (void)> &callback);

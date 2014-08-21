@@ -1,12 +1,17 @@
 #include "mastermind_impl.hpp"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 namespace mastermind {
 
 mastermind_t::data::data(
 		const remotes_t &remotes,
 		const std::shared_ptr<cocaine::framework::logger_t> &logger,
 		int group_info_update_period,
-		std::string cache_path
+		std::string cache_path,
+		int expired_time
 		)
 	: m_logger(logger)
 	, m_remotes(remotes)
@@ -15,7 +20,7 @@ mastermind_t::data::data(
 	, m_group_info_update_period(group_info_update_period)
 	, m_done(false)
 {
-	deserialize();
+	deserialize(expired_time);
 
 	m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
 }
@@ -332,7 +337,23 @@ void mastermind_t::data::serialize() {
 	std::copy(sbuf.data(), sbuf.data() + sbuf.size(), std::ostreambuf_iterator<char>(output));
 }
 
-void mastermind_t::data::deserialize() {
+void mastermind_t::data::deserialize(int expired_time) {
+	if (expired_time) {
+		struct stat stats;
+		if (stat(m_cache_path.c_str(), &stats)) {
+			COCAINE_LOG_ERROR(m_logger, "cannot get stats of cache file");
+			return;
+		}
+
+		auto current_time = time(0);
+		auto cache_life_time = current_time - stats.st_mtime;
+
+		if (cache_life_time > expired_time) {
+			COCAINE_LOG_ERROR(m_logger, "cache file is not used, it is too old");
+			return;
+		}
+	}
+
 	std::string file;
 	{
 		std::ifstream input(m_cache_path.c_str());
