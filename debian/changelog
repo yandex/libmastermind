@@ -1,3 +1,14 @@
+libmastermind (8.14) lucid; urgency=low
+
+  * MDS-148: custom path to the cache can be used
+  * MDS-46: cache is read if it is not too old
+  * * One can set expired_time in seconds. If modified time of cache file
+  * * is greater than expired_time, libmastermind will not read it.
+  * MDS-78: collect elliptics_remotes cache
+  * One can set name for mastermind worker
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 21 Aug 2014 10:32:15 +0400
+
 libmastermind (8.13) lucid; urgency=low
 
   * Fixed SIGSERV: COCAINE-185
