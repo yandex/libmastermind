@@ -22,8 +22,8 @@
 namespace mastermind {
 
 struct mastermind_t::data {
-	data(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60);
-	data(const std::string &host, uint16_t port, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60);
+	data(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger,
+			int group_info_update_period, std::string cache_path);
 	~data();
 
 	void stop();
@@ -58,6 +58,7 @@ struct mastermind_t::data {
 	remotes_t                                          m_remotes;
 	remote_t                                           m_current_remote;
 	size_t                                             m_next_remote;
+	std::string                                        m_cache_path;
 
 	int                                                m_metabase_timeout;
 	uint64_t                                           m_metabase_current_stamp;

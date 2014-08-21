@@ -71,8 +71,15 @@ public:
 	typedef std::pair<std::string, uint16_t> remote_t;
 	typedef std::vector<remote_t> remotes_t;
 
-	mastermind_t(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60);
-	mastermind_t(const std::string &host, uint16_t port, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period = 60);
+	mastermind_t(const remotes_t &remotes,
+			const std::shared_ptr<cocaine::framework::logger_t> &logger,
+			int group_info_update_period = 60);
+	mastermind_t(const std::string &host, uint16_t port,
+			const std::shared_ptr<cocaine::framework::logger_t> &logger,
+			int group_info_update_period = 60);
+	mastermind_t(const remotes_t &remotes,
+			const std::shared_ptr<cocaine::framework::logger_t> &logger,
+			int group_info_update_period, std::string cache_path);
 	~mastermind_t();
 
 	std::vector<int> get_metabalancer_groups(uint64_t count = 0, const std::string &name_space = std::string("default"), uint64_t size = 0);

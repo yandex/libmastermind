@@ -2,27 +2,20 @@
 
 namespace mastermind {
 
-mastermind_t::data::data(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period)
+mastermind_t::data::data(
+		const remotes_t &remotes,
+		const std::shared_ptr<cocaine::framework::logger_t> &logger,
+		int group_info_update_period,
+		std::string cache_path
+		)
 	: m_logger(logger)
 	, m_remotes(remotes)
 	, m_next_remote(0)
+	, m_cache_path(std::move(cache_path))
 	, m_group_info_update_period(group_info_update_period)
 	, m_done(false)
 {
 	deserialize();
-
-	m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
-}
-
-mastermind_t::data::data(const std::string &host, uint16_t port, const std::shared_ptr<cocaine::framework::logger_t> &logger, int group_info_update_period)
-	: m_logger(logger)
-	, m_next_remote(0)
-	, m_group_info_update_period(group_info_update_period)
-	, m_done(false)
-{
-	deserialize();
-
-	m_remotes.emplace_back(host, port);
 
 	m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
 }
@@ -335,14 +328,14 @@ void mastermind_t::data::serialize() {
 		, *m_metabalancer_info.cache
 		, *m_namespaces_statistics.cache
 	));
-	std::ofstream output("/var/tmp/libmastermind.cache");
+	std::ofstream output(m_cache_path.c_str());
 	std::copy(sbuf.data(), sbuf.data() + sbuf.size(), std::ostreambuf_iterator<char>(output));
 }
 
 void mastermind_t::data::deserialize() {
 	std::string file;
 	{
-		std::ifstream input("/var/tmp/libmastermind.cache");
+		std::ifstream input(m_cache_path.c_str());
 		if (input.is_open() == false) {
 			return;
 		}
