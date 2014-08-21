@@ -79,7 +79,8 @@ public:
 			int group_info_update_period = 60);
 	mastermind_t(const remotes_t &remotes,
 			const std::shared_ptr<cocaine::framework::logger_t> &logger,
-			int group_info_update_period, std::string cache_path, int expired_time);
+			int group_info_update_period, std::string cache_path, int expired_time,
+			std::string worker_name);
 	~mastermind_t();
 
 	std::vector<int> get_metabalancer_groups(uint64_t count = 0, const std::string &name_space = std::string("default"), uint64_t size = 0);

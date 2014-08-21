@@ -26,7 +26,8 @@ mastermind_t::mastermind_t(
 		const std::shared_ptr<cocaine::framework::logger_t> &logger,
 		int group_info_update_period
 		)
-	: m_data(new data(remotes, logger, group_info_update_period, "/var/tmp/libmastermind.cache", 0))
+	: m_data(new data(remotes, logger, group_info_update_period,
+				"/var/tmp/libmastermind.cache", 0, "mastermind"))
 {
 }
 
@@ -37,7 +38,7 @@ mastermind_t::mastermind_t(
 		int group_info_update_period
 		)
 	: m_data(new data(remotes_t{std::make_pair(host, port)},
-				logger, group_info_update_period, "/var/tmp/libmastermind.cache", 0))
+				logger, group_info_update_period, "/var/tmp/libmastermind.cache", 0, "mastermind"))
 {
 }
 
@@ -46,9 +47,11 @@ mastermind_t::mastermind_t(
 		const std::shared_ptr<cocaine::framework::logger_t> &logger,
 		int group_info_update_period,
 		std::string cache_path,
-		int expired_time
+		int expired_time,
+		std::string worker_name
 		)
-	: m_data(new data(remotes, logger, group_info_update_period, std::move(cache_path), expired_time))
+	: m_data(new data(remotes, logger, group_info_update_period, std::move(cache_path),
+				expired_time, std::move(worker_name)))
 {
 }
 

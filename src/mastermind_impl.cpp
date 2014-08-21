@@ -11,12 +11,14 @@ mastermind_t::data::data(
 		const std::shared_ptr<cocaine::framework::logger_t> &logger,
 		int group_info_update_period,
 		std::string cache_path,
-		int expired_time
+		int expired_time,
+		std::string worker_name
 		)
 	: m_logger(logger)
 	, m_remotes(remotes)
 	, m_next_remote(0)
 	, m_cache_path(std::move(cache_path))
+	, m_worker_name(std::move(worker_name))
 	, m_group_info_update_period(group_info_update_period)
 	, m_done(false)
 {
@@ -65,7 +67,7 @@ void mastermind_t::data::reconnect() {
 			COCAINE_LOG_INFO(m_logger,
 					"libmastermind: reconnect: connected to locator, getting mastermind service");
 
-			auto g = m_service_manager->get_service_async<cocaine::framework::app_service_t>("mastermind");
+			auto g = m_service_manager->get_service_async<cocaine::framework::app_service_t>(m_worker_name);
 			g.wait_for(std::chrono::seconds(4));
 			if (g.ready() == false){
 				COCAINE_LOG_ERROR(
