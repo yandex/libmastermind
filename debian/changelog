@@ -1,3 +1,11 @@
+libmastermind (8.15) lucid; urgency=low
+
+  * Added get_couple_list method
+  * * This method returns list of couples of a namespace with weights and
+  * * free_effective_spaces
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Wed, 03 Sep 2014 10:21:47 +0400
+
 libmastermind (8.14) lucid; urgency=low
 
   * MDS-148: custom path to the cache can be used
