@@ -442,6 +442,7 @@ mastermind::metabalancer_info_t &operator >> (object o, mastermind::metabalancer
 		}
 
 		r.couple_info_map.insert(std::make_pair(couple_info->id, couple_info));
+		r.namespace_info_map[couple_info->ns].emplace_back(couple_info);
 	}
 
 	return r;

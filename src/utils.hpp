@@ -87,8 +87,9 @@ typedef std::shared_ptr<couple_info_t> couple_info_shared_ptr_t;
 typedef std::weak_ptr<group_info_t> group_info_weak_ptr_t;
 typedef std::weak_ptr<couple_info_t> couple_info_weak_ptr_t;
 
-typedef std::map<size_t, group_info_shared_ptr_t> group_info_map_t;
+typedef std::map<int, group_info_shared_ptr_t> group_info_map_t;
 typedef std::map<std::string, couple_info_shared_ptr_t> couple_info_map_t;
+typedef std::map<std::string, std::vector<couple_info_weak_ptr_t>> namespace_info_map_t;
 
 struct group_info_t {
 	enum group_status_tag {
@@ -98,7 +99,7 @@ struct group_info_t {
 	size_t id;
 	std::string ns;
 	group_status_tag group_status;
-	std::vector<size_t> couple;
+	std::vector<int> couple;
 
 	couple_info_weak_ptr_t couple_info;
 };
@@ -116,13 +117,14 @@ struct couple_info_t {
 	uint64_t used_space;
 
 	std::string ns;
-	std::vector<size_t> tuple;
+	std::vector<int> tuple;
 	std::vector<group_info_weak_ptr_t> group_info;
 };
 
 struct metabalancer_info_t {
 	couple_info_map_t couple_info_map;
 	group_info_map_t group_info_map;
+	namespace_info_map_t namespace_info_map;
 };
 
 typedef std::map<std::string, std::map<std::string, uint64_t>> namespaces_statistics_t;

@@ -21,6 +21,8 @@
 
 #include "mastermind_impl.hpp"
 
+#include <algorithm>
+
 namespace mastermind {
 
 mastermind_t::mastermind_t(
@@ -226,6 +228,59 @@ std::vector<namespace_settings_t> mastermind_t::get_namespaces_settings() {
 std::vector<std::string> mastermind_t::get_elliptics_remotes() {
 	auto cache = m_data->m_elliptics_remotes.copy();
 	return *cache;
+}
+
+std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> mastermind_t::get_couple_list(
+		const std::string &ns) {
+	auto cache_weights = m_data->m_metabalancer_groups_info.copy();
+	auto cache_couple_list = m_data->m_metabalancer_info.copy();
+
+	std::map<int, std::tuple<std::vector<int>, uint64_t, uint64_t>> result_map;
+
+	{
+		const auto &weights_data = cache_weights->data();
+		auto it = weights_data.find(ns);
+
+		if (it != weights_data.end()) {
+			const auto &ns_weights = it->second;
+
+			for (auto nw_it = ns_weights.begin(), nw_end = ns_weights.end();
+					nw_it != nw_end; ++nw_it) {
+				for (auto it = nw_it->second.begin(), end = nw_it->second.end(); it != end; ++it) {
+					auto weight = std::get<1>(*it);
+					auto memory = std::get<2>(*it);
+					const auto &couple = std::get<0>(*it);
+					auto group_id = *std::min_element(couple.begin(), couple.end());
+
+					result_map.insert(std::make_pair(group_id
+								, std::make_tuple(couple, weight, memory)));
+				}
+			}
+		}
+	}
+
+	{
+		auto couple_list = cache_couple_list->namespace_info_map[ns];
+
+		for (auto it = couple_list.begin(), end = couple_list.end(); it != end; ++it) {
+			auto couple_info = it->lock();
+
+			const auto &couple = couple_info->tuple;
+			auto group_id = *std::min_element(couple.begin(), couple.end());
+
+			result_map.insert(std::make_pair(group_id
+						, std::make_tuple(couple, 0, couple_info->free_effective_space)));
+		}
+	}
+
+	std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> result;
+	result.reserve(result_map.size());
+
+	for (auto it = result_map.begin(), end = result_map.end(); it != end; ++it) {
+		result.emplace_back(std::move(it->second));
+	}
+
+	return result;
 }
 
 uint64_t mastermind_t::free_effective_space_in_couple_by_group(size_t group) {
