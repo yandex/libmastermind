@@ -133,6 +133,34 @@ bool mastermind_t::data::collect_group_weights() {
 	try {
 		metabalancer_groups_info_t::namespaces_t resp;
 		enqueue("get_group_weights", "", resp);
+
+		for (auto ns_it = resp.begin(), ns_end = resp.end(); ns_it != ns_end; ++ns_it) {
+			for (auto it = ns_it->second.begin(), end = ns_it->second.end(); it != end; ++it) {
+				size_t zero_weight = 0;
+				size_t nonzero_weight = 0;
+
+				for (auto cit = it->second.begin(), cend = it->second.end(); cit != cend; ++cit) {
+					if (std::get<1>(*cit) == 0) {
+						zero_weight += 1;
+					} else {
+						nonzero_weight += 1;
+					}
+				}
+
+				std::ostringstream oss;
+				oss
+					<< "libmastermind: couple-weights-counts:"
+					<< " namespace=" << ns_it->first
+					<< " groups-in-couple=" << it->first
+					<< " nonzero-weight-count=" << nonzero_weight
+					<< " zero-weight-count=" << zero_weight;
+
+				auto msg = oss.str();
+
+				COCAINE_LOG_INFO(m_logger, "%s", msg.c_str());
+			}
+		}
+
 		auto cache = m_metabalancer_groups_info.create(std::move(resp));
 		m_metabalancer_groups_info.swap(cache);
 		return true;
