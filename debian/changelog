@@ -1,3 +1,9 @@
+libmastermind (8.16) lucid; urgency=low
+
+  * Prints couple-weights-counts by namespace
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Fri, 12 Sep 2014 19:43:30 +0400
+
 libmastermind (8.15) lucid; urgency=low
 
   * Added get_couple_list method
