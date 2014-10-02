@@ -13,7 +13,8 @@ Build-Depends: debhelper (>= 5),
  libcocaine-core2 (>= 0.11),
  libcocaine-dev (>= 0.11),
  libmsgpack-dev,
- libboost-system-dev
+ libboost-system-dev,
+ libjsoncpp-dev
 Standards-Version: 3.9.1
 
 Package: libmastermind
