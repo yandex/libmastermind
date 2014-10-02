@@ -44,6 +44,8 @@ struct namespace_settings_t::data {
 	std::string sign_port;
 
 	size_t content_length_threshold;
+
+	bool is_active;
 };
 
 } // mastermind

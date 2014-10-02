@@ -17,16 +17,18 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include <map>
-#include <vector>
-#include <sstream>
+#include "namespace_p.hpp"
+#include "utils.hpp"
+#include "libmastermind/error.hpp"
+
+#include <cocaine/traits/tuple.hpp>
 
 #include <boost/thread.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include "namespace_p.hpp"
-#include "utils.hpp"
-#include "libmastermind/error.hpp"
+#include <map>
+#include <vector>
+#include <sstream>
 
 namespace mastermind {
 
@@ -40,10 +42,83 @@ spent_time_printer_t::spent_time_printer_t(const std::string &handler_name, std:
 
 spent_time_printer_t::~spent_time_printer_t() {
 	auto end_time = std::chrono::system_clock::now();
-	COCAINE_LOG_DEBUG(m_logger, "libmastermind: time spent for \'%s\': %d milliseconds"
+	COCAINE_LOG_INFO(m_logger, "libmastermind: time spent for \'%s\': %d milliseconds"
 		, m_handler_name.c_str()
 		, static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(end_time - m_beg_time).count())
 		);
+}
+
+namespace_weights_t::namespace_weights_t() {
+}
+
+namespace_weights_t::namespace_weights_t(couples_with_info_t couples_) {
+	set_data(std::move(couples_));
+}
+
+namespace_weights_t::couple_with_info_t
+namespace_weights_t::get_couple(uint64_t size) const {
+	auto amit = couples_by_avalible_memory .lower_bound(size);
+	if (amit == couples_by_avalible_memory.end()) {
+		throw not_enough_memory_error();
+	}
+
+	auto &weighted_groups = amit->second;
+	if (weighted_groups.empty()) {
+		throw couple_not_found_error();
+	}
+
+	auto total_weight = weighted_groups.rbegin()->first;
+	double shoot_point = double(random()) / RAND_MAX * total_weight;
+	auto it = weighted_groups.lower_bound(uint64_t(shoot_point));
+
+	if (it == weighted_groups.end()) {
+		throw couple_not_found_error();
+	}
+
+	return it->second;
+}
+
+const namespace_weights_t::couples_with_info_t &
+namespace_weights_t::data() const {
+	return couples_with_info;
+}
+
+bool couples_with_info_comp(const namespace_weights_t::couple_with_info_t &c1
+		, const namespace_weights_t::couple_with_info_t &c2) {
+	return std::get<2>(c1) > std::get<2>(c2);
+}
+
+void
+namespace_weights_t::set_data(couples_with_info_t couples_) {
+	couples_with_info = std::move(couples_);
+
+	couples_by_avalible_memory_t cbam_tmp;
+
+	std::sort(couples_with_info.begin(), couples_with_info.end(),
+		couples_with_info_comp);
+
+	for (size_t index = 0; index != couples_with_info.size(); ++index) {
+		auto avalible_memory = std::get<2>(couples_with_info[index]);
+		uint64_t total_weight = 0;
+
+		for (size_t index2 = 0; index2 <= index; ++index2) {
+			const auto &couple_with_info = couples_with_info[index2];
+
+			auto weight = std::get<1>(couple_with_info);
+
+			if (weight == 0) {
+				continue;
+			}
+
+			total_weight += weight;
+
+			cbam_tmp[avalible_memory].insert(
+				std::make_pair(total_weight, std::cref(couple_with_info))
+			);
+		}
+	}
+
+	couples_by_avalible_memory.swap(cbam_tmp);
 }
 
 metabalancer_groups_info_t::metabalancer_groups_info_t() {
@@ -281,6 +356,8 @@ std::vector<mastermind::namespace_settings_t> &operator >> (object o, std::vecto
 				}
 			} else if (!key.compare("content_length_threshold")) {
 				it->val.convert(&item.content_length_threshold);
+			} else if (!key.compare("is_active")) {
+				it->val.convert(&item.is_active);
 			}
 		}
 
@@ -385,6 +462,8 @@ mastermind::metabalancer_info_t &operator >> (object o, mastermind::metabalancer
 				couple_kv->val.convert(&couple_status);
 				if (couple_status == "OK") {
 					couple_info->couple_status = mastermind::couple_info_t::OK;
+				} else if (couple_status == "BAD") {
+					couple_info->couple_status = mastermind::couple_info_t::BAD;
 				} else {
 					couple_info->couple_status = mastermind::couple_info_t::UNKNOWN;
 				}
@@ -516,6 +595,18 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const mastermind::metabalancer
 			o.pack(it->second->couple);
 		}
 	}
+	return o;
+}
+
+mastermind::namespace_weights_t &operator >> (object o, mastermind::namespace_weights_t &v) {
+	mastermind::namespace_weights_t::couples_with_info_t couples;
+	o.convert(&couples);
+	v.set_data(std::move(couples));
+	return v;
+}
+
+packer<sbuffer> &operator << (packer<sbuffer> &o, const mastermind::namespace_weights_t &r) {
+	o.pack(r.data());
 	return o;
 }
 

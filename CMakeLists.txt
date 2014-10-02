@@ -16,6 +16,7 @@ set(REQUIRED_LIBRARIES
 	cocaine-framework
 	boost_thread
 	boost_system
+	jsoncpp
 	)
 	
 include_directories(BEFORE ${PROJECT_SOURCE_DIR}/include)

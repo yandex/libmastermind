@@ -63,6 +63,7 @@ struct namespace_settings_t {
 	const std::string &auth_key_for_write() const;
 	const std::string &auth_key_for_read() const;
 	size_t content_length_threshold() const;
+	bool is_active() const;
 
 private:
 	std::unique_ptr<data> m_data;
@@ -83,6 +84,13 @@ public:
 			const std::shared_ptr<cocaine::framework::logger_t> &logger,
 			int group_info_update_period, std::string cache_path, int expired_time,
 			std::string worker_name);
+	mastermind_t(const remotes_t &remotes,
+			const std::shared_ptr<cocaine::framework::logger_t> &logger,
+			int group_info_update_period, std::string cache_path,
+			int warning_time, int expire_time,
+			std::string worker_name,
+			int enqueue_timeout,
+			int reconnect_timeout);
 	~mastermind_t();
 
 	std::vector<int> get_metabalancer_groups(uint64_t count = 0, const std::string &name_space = std::string("default"), uint64_t size = 0);
@@ -109,6 +117,7 @@ public:
 
 	void cache_force_update();
 	void set_update_cache_callback(const std::function<void (void)> &callback);
+	void set_update_cache_ext1_callback(const std::function<void (bool)> &callback);
 
 private:
 	struct data;

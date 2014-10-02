@@ -22,6 +22,7 @@
 
 #include "libmastermind/mastermind.hpp"
 #include "utils.hpp"
+#include "cache_p.hpp"
 
 #include <thread>
 #include <condition_variable>
@@ -42,8 +43,9 @@ namespace mastermind {
 
 struct mastermind_t::data {
 	data(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger,
-			int group_info_update_period, std::string cache_path, int expired_time,
-			std::string worker_name);
+			int group_info_update_period, std::string cache_path,
+			int warning_time_, int expire_time_, std::string worker_name,
+			int enqueue_timeout_, int reconnect_timeout_);
 	~data();
 
 	void stop();
@@ -56,23 +58,33 @@ struct mastermind_t::data {
 	template <typename R, typename T>
 	void enqueue(const std::string &event, const T &chunk, R &result);
 
-	bool collect_group_weights();
-	bool collect_bad_groups();
-	bool collect_symmetric_groups();
+	void
+	collect_namespaces_weights();
+
 	bool collect_cache_groups();
 	bool collect_namespaces_settings();
 	bool collect_metabalancer_info();
 	bool collect_namespaces_statistics();
 	bool collect_elliptics_remotes();
 
+	void
+	generate_groups_caches();
+
 	void collect_info_loop_impl();
 	void collect_info_loop();
 
+	void
+	cache_expire();
+
 	void serialize();
-	void deserialize(int expired_time);
+	void deserialize();
 
 	void cache_force_update();
 	void set_update_cache_callback(const std::function<void (void)> &callback);
+	void set_update_cache_ext1_callback(const std::function<void (bool)> &callback);
+
+	void
+	process_callbacks();
 
 	std::shared_ptr<cocaine::framework::logger_t> m_logger;
 
@@ -85,41 +97,17 @@ struct mastermind_t::data {
 	int                                                m_metabase_timeout;
 	uint64_t                                           m_metabase_current_stamp;
 
-	template <typename T>
-	struct cache_t {
-		typedef T cache_type;
-		typedef std::shared_ptr<cache_type> cache_ptr_type;
-		cache_ptr_type cache;
-		std::recursive_mutex mutex;
 
-		cache_t() {
-			cache = std::make_shared<cache_type>();
-		}
+	synchronized_cache_map_t<namespace_weights_t> namespaces_weights;
 
-		template <typename... Args>
-		static cache_ptr_type create(Args&&... args) {
-			return std::make_shared<cache_type>(std::forward<Args>(args)...);
-		}
+	synchronized_cache_t<metabalancer_info_t> metabalancer_info;
+	synchronized_cache_t<std::vector<namespace_settings_t>> namespaces_settings;
+	synchronized_cache_t<std::map<std::string, std::vector<int>>> cache_groups;
+	synchronized_cache_t<namespaces_statistics_t> namespaces_statistics;
+	synchronized_cache_t<std::vector<std::string>> elliptics_remotes;
 
-		void swap(cache_ptr_type &ob) {
-			std::lock_guard<std::recursive_mutex> lock(mutex);
-			cache.swap(ob);
-		}
-
-		cache_ptr_type copy() {
-			std::lock_guard<std::recursive_mutex> lock(mutex);
-			return cache;
-		}
-	};
-
-	cache_t<std::vector<std::vector<int>>> m_bad_groups;
-	cache_t<std::map<int, std::vector<int>>> m_symmetric_groups;
-	cache_t<metabalancer_groups_info_t> m_metabalancer_groups_info;
-	cache_t<std::vector<namespace_settings_t>> m_namespaces_settings;
-	cache_t<std::map<std::string, std::vector<int>>> m_cache_groups;
-	cache_t<metabalancer_info_t> m_metabalancer_info;
-	cache_t<namespaces_statistics_t> m_namespaces_statistics;
-	cache_t<std::vector<std::string>> m_elliptics_remotes;
+	synchronized_cache_t<std::vector<std::vector<int>>> bad_groups;
+	synchronized_cache_t<std::map<int, std::vector<int>>> symmetric_groups;
 
 	const int                                          m_group_info_update_period;
 	std::thread                                        m_weight_cache_update_thread;
@@ -129,6 +117,16 @@ struct mastermind_t::data {
 	bool                                               m_done;
 	std::mutex                                         m_reconnect_mutex;
 
+	std::chrono::seconds warning_time;
+	std::chrono::seconds expire_time;
+
+	std::chrono::milliseconds enqueue_timeout;
+	std::chrono::milliseconds reconnect_timeout;
+
+	bool cache_is_expired;
+	// m_cache_update_callback with cache expiration info
+	std::function<void (bool)> cache_update_ext1_callback;
+
 	std::shared_ptr<cocaine::framework::app_service_t> m_app;
 	std::shared_ptr<cocaine::framework::service_manager_t> m_service_manager;
 };
@@ -137,7 +135,7 @@ template <typename R, typename T>
 bool mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk, R &result) {
 	try {
 		auto g = m_app->enqueue(event, chunk);
-		g.wait_for(std::chrono::seconds(4));
+		g.wait_for(enqueue_timeout);
 
 		if (g.ready() == false) {
 			return false;

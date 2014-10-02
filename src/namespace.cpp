@@ -21,7 +21,9 @@
 
 namespace mastermind {
 
-namespace_settings_t::data::data() {
+namespace_settings_t::data::data()
+	: is_active(false)
+{
 }
 
 namespace_settings_t::data::data(const namespace_settings_t::data &d)
@@ -35,6 +37,7 @@ namespace_settings_t::data::data(const namespace_settings_t::data &d)
 	, sign_token(d.sign_token)
 	, sign_path_prefix(d.sign_path_prefix)
 	, sign_port(d.sign_port)
+	, is_active(d.is_active)
 {
 }
 
@@ -49,6 +52,7 @@ namespace_settings_t::data::data(namespace_settings_t::data &&d)
 	, sign_token(std::move(d.sign_token))
 	, sign_path_prefix(std::move(d.sign_path_prefix))
 	, sign_port(std::move(d.sign_port))
+	, is_active(d.is_active)
 {
 }
 
@@ -119,6 +123,10 @@ const std::string &namespace_settings_t::auth_key_for_read() const {
 
 size_t namespace_settings_t::content_length_threshold() const {
 	return m_data->content_length_threshold;
+}
+
+bool namespace_settings_t::is_active() const {
+	return m_data->is_active;
 }
 
 } //mastermind
