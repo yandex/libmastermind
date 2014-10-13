@@ -1,3 +1,9 @@
+libmastermind (8.18) lucid; urgency=low
+
+  * MDS-280: added settings for features' restrictions
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 13 Oct 2014 17:55:22 +0400
+
 libmastermind (8.17) lucid; urgency=low
 
   * MDS-200: cache was improved
