@@ -65,6 +65,9 @@ struct namespace_settings_t {
 	size_t content_length_threshold() const;
 	bool is_active() const;
 
+	bool can_choose_couple_to_upload() const;
+	int64_t multipart_content_length_threshold() const;
+
 private:
 	std::unique_ptr<data> m_data;
 };

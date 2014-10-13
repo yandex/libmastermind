@@ -23,6 +23,8 @@ namespace mastermind {
 
 namespace_settings_t::data::data()
 	: is_active(false)
+	, can_choose_couple_to_upload(false)
+	, multipart_content_length_threshold(-1)
 {
 }
 
@@ -38,6 +40,8 @@ namespace_settings_t::data::data(const namespace_settings_t::data &d)
 	, sign_path_prefix(d.sign_path_prefix)
 	, sign_port(d.sign_port)
 	, is_active(d.is_active)
+	, can_choose_couple_to_upload(d.can_choose_couple_to_upload)
+	, multipart_content_length_threshold(d.multipart_content_length_threshold)
 {
 }
 
@@ -53,6 +57,8 @@ namespace_settings_t::data::data(namespace_settings_t::data &&d)
 	, sign_path_prefix(std::move(d.sign_path_prefix))
 	, sign_port(std::move(d.sign_port))
 	, is_active(d.is_active)
+	, can_choose_couple_to_upload(d.can_choose_couple_to_upload)
+	, multipart_content_length_threshold(d.multipart_content_length_threshold)
 {
 }
 
@@ -127,6 +133,14 @@ size_t namespace_settings_t::content_length_threshold() const {
 
 bool namespace_settings_t::is_active() const {
 	return m_data->is_active;
+}
+
+bool namespace_settings_t::can_choose_couple_to_upload() const {
+	return m_data->can_choose_couple_to_upload;
+}
+
+int64_t namespace_settings_t::multipart_content_length_threshold() const {
+	return m_data->multipart_content_length_threshold;
 }
 
 } //mastermind

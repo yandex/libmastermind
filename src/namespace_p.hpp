@@ -46,6 +46,9 @@ struct namespace_settings_t::data {
 	size_t content_length_threshold;
 
 	bool is_active;
+
+	bool can_choose_couple_to_upload;
+	int64_t multipart_content_length_threshold;
 };
 
 } // mastermind

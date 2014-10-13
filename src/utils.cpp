@@ -310,6 +310,7 @@ std::vector<mastermind::namespace_settings_t> &operator >> (object o, std::vecto
 		for (msgpack::object_kv *it = nit->val.via.map.ptr, *it_end = it + nit->val.via.map.size; it < it_end; ++it) {
 			std::string key;
 			it->key.convert(&key);
+
 			if (!key.compare("groups-count")) {
 				it->val.convert(&item.groups_count);
 			} else if (!key.compare("success-copies-num")) {
@@ -358,6 +359,34 @@ std::vector<mastermind::namespace_settings_t> &operator >> (object o, std::vecto
 				it->val.convert(&item.content_length_threshold);
 			} else if (!key.compare("is_active")) {
 				it->val.convert(&item.is_active);
+			} else if (!key.compare("features")) {
+				if (it->val.type != type::MAP) {
+					throw type_error();
+				}
+
+				for (msgpack::object_kv *fit = it->val.via.map.ptr, *fit_end = fit + it->val.via.map.size;
+						fit < fit_end; ++fit) {
+					std::string key;
+					fit->key.convert(&key);
+
+					if (!key.compare("select-couple-to-upload")) {
+						fit->val.convert(&item.can_choose_couple_to_upload);
+					} else if (!key.compare("multipart")) {
+						if (fit->val.type != type::MAP) {
+							throw type_error();
+						}
+
+						for (msgpack::object_kv *mit = fit->val.via.map.ptr, *mit_end = mit + fit->val.via.map.size;
+								mit < mit_end; ++mit) {
+							std::string key;
+							mit->key.convert(&key);
+
+							if (!key.compare("content-length-threshold")) {
+								mit->val.convert(&item.multipart_content_length_threshold);
+							}
+						}
+					}
+				}
 			}
 		}
 
@@ -373,7 +402,7 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::
 	for (auto it = v.begin(); it != v.end(); ++it) {
 		o.pack(it->name());
 
-		o.pack_map(7);
+		o.pack_map(9);
 
 		o.pack(std::string("groups-count"));
 		o.pack(it->groups_count());
@@ -418,6 +447,21 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::
 
 		o.pack(std::string("content_length_threshold"));
 		o.pack(it->content_length_threshold());
+
+		o.pack(std::string("is_active"));
+		o.pack(it->is_active());
+
+		o.pack(std::string("features"));
+		o.pack_map(2);
+
+		o.pack(std::string("select-couple-to-upload"));
+		o.pack(it->can_choose_couple_to_upload());
+
+		o.pack(std::string("multipart"));
+		o.pack_map(1);
+
+		o.pack(std::string("content-length-threshold"));
+		o.pack(it->multipart_content_length_threshold());
 	}
 
 	return o;
