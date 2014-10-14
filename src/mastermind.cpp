@@ -198,6 +198,54 @@ std::vector<int> mastermind_t::get_couple_by_group(int group) {
 	return result;
 }
 
+std::vector<int> mastermind_t::get_couple(int couple_id, const std::string &ns) {
+	COCAINE_LOG_INFO(m_data->m_logger, "libmastermind: get_couple: couple_id=%d ns=%s"
+			, couple_id, ns);
+
+	auto cache = m_data->metabalancer_info.copy();
+	std::vector<int> result;
+
+	auto git = cache->group_info_map.find(couple_id);
+
+	if (git == cache->group_info_map.end()) {
+		COCAINE_LOG_ERROR(m_data->m_logger
+				, "libmastermind: get_couple: cannot find couple by the couple_id");
+		return std::vector<int>();
+	}
+
+	if (git->second->group_status != group_info_t::COUPLED) {
+		COCAINE_LOG_ERROR(m_data->m_logger
+				, "libmastermind: get_couple: couple status is not COUPLED: %d"
+				, static_cast<int>(git->second->group_status));
+		return std::vector<int>();
+	}
+
+	if (git->second->ns != ns) {
+		COCAINE_LOG_ERROR(m_data->m_logger
+				, "libmastermind: get_couple: couple belongs to another namespace: %s"
+				, git->second->ns);
+		return std::vector<int>();
+	}
+
+	{
+		std::ostringstream oss;
+		oss << "libmastermind: get_couple: couple was found: [";
+		{
+			const auto &couple = git->second->couple;
+			for (auto beg = couple.begin(), it = beg, end = couple.end(); it != end; ++it) {
+				if (beg != it) oss << ", ";
+				oss << *it;
+			}
+		}
+		oss << "]};";
+
+		auto msg = oss.str();
+		COCAINE_LOG_INFO(m_data->m_logger, "%s", msg.c_str());
+	}
+
+	return git->second->couple;
+}
+
 std::vector<std::vector<int> > mastermind_t::get_bad_groups() {
 	try {
 		auto cache = m_data->bad_groups.copy();

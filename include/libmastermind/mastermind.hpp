@@ -101,6 +101,7 @@ public:
 	std::map<int, std::vector<int>> get_symmetric_groups();
 	std::vector<int> get_symmetric_groups(int group);
 	std::vector<int> get_couple_by_group(int group);
+	std::vector<int> get_couple(int couple_id, const std::string &ns);
 	std::vector<std::vector<int> > get_bad_groups();
 	std::vector<int> get_all_groups();
 	std::vector<int> get_cache_groups(const std::string &key);
