@@ -1,3 +1,11 @@
+libmastermind (8.19) lucid; urgency=low
+
+  * Added method get_couple(couple_id, namespace)
+    The method returns a couple by $couple_id if it belongs to namespace
+    $namespace
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Tue, 14 Oct 2014 12:38:01 +0400
+
 libmastermind (8.18) lucid; urgency=low
 
   * MDS-280: added settings for features' restrictions
