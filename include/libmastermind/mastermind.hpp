@@ -62,11 +62,13 @@ struct namespace_settings_t {
 	const std::string &sign_port() const;
 	const std::string &auth_key_for_write() const;
 	const std::string &auth_key_for_read() const;
-	size_t content_length_threshold() const;
 	bool is_active() const;
 
 	bool can_choose_couple_to_upload() const;
 	int64_t multipart_content_length_threshold() const;
+
+	int redirect_expire_time() const;
+	int64_t redirect_content_length_threshold() const;
 
 private:
 	std::unique_ptr<data> m_data;

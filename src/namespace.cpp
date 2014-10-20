@@ -22,7 +22,9 @@
 namespace mastermind {
 
 namespace_settings_t::data::data()
-	: is_active(false)
+	: redirect_expire_time(0)
+	, redirect_content_length_threshold(-1)
+	, is_active(false)
 	, can_choose_couple_to_upload(false)
 	, multipart_content_length_threshold(-1)
 {
@@ -39,6 +41,8 @@ namespace_settings_t::data::data(const namespace_settings_t::data &d)
 	, sign_token(d.sign_token)
 	, sign_path_prefix(d.sign_path_prefix)
 	, sign_port(d.sign_port)
+	, redirect_expire_time(d.redirect_expire_time)
+	, redirect_content_length_threshold(d.redirect_content_length_threshold)
 	, is_active(d.is_active)
 	, can_choose_couple_to_upload(d.can_choose_couple_to_upload)
 	, multipart_content_length_threshold(d.multipart_content_length_threshold)
@@ -56,6 +60,8 @@ namespace_settings_t::data::data(namespace_settings_t::data &&d)
 	, sign_token(std::move(d.sign_token))
 	, sign_path_prefix(std::move(d.sign_path_prefix))
 	, sign_port(std::move(d.sign_port))
+	, redirect_expire_time(d.redirect_expire_time)
+	, redirect_content_length_threshold(d.redirect_content_length_threshold)
 	, is_active(d.is_active)
 	, can_choose_couple_to_upload(d.can_choose_couple_to_upload)
 	, multipart_content_length_threshold(d.multipart_content_length_threshold)
@@ -127,8 +133,12 @@ const std::string &namespace_settings_t::auth_key_for_read() const {
 	return m_data->auth_key_for_read;
 }
 
-size_t namespace_settings_t::content_length_threshold() const {
-	return m_data->content_length_threshold;
+int namespace_settings_t::redirect_expire_time() const {
+	return m_data->redirect_expire_time;
+}
+
+int64_t namespace_settings_t::redirect_content_length_threshold() const {
+	return m_data->redirect_content_length_threshold;
 }
 
 bool namespace_settings_t::is_active() const {

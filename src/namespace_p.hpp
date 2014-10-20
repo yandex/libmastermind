@@ -43,7 +43,8 @@ struct namespace_settings_t::data {
 	std::string sign_path_prefix;
 	std::string sign_port;
 
-	size_t content_length_threshold;
+	int redirect_expire_time;
+	int64_t redirect_content_length_threshold;
 
 	bool is_active;
 

@@ -355,8 +355,22 @@ std::vector<mastermind::namespace_settings_t> &operator >> (object o, std::vecto
 						item.sign_port = boost::lexical_cast<std::string>(port);
 					}
 				}
-			} else if (!key.compare("content_length_threshold")) {
-				it->val.convert(&item.content_length_threshold);
+			} else if (!key.compare("redirect")) {
+				if (it->val.type != type::MAP) {
+					throw type_error();
+				}
+
+				for (msgpack::object_kv *rit = it->val.via.map.ptr, *rit_end = rit + it->val.via.map.size;
+						rit < rit_end; ++rit) {
+					std::string key;
+					rit->key.convert(&key);
+
+					if (!key.compare("content_length_threshold")) {
+						rit->val.convert(&item.redirect_content_length_threshold);
+					} else if (!key.compare("expire-time")) {
+						rit->val.convert(&item.redirect_expire_time);
+					}
+				}
 			} else if (!key.compare("is_active")) {
 				it->val.convert(&item.is_active);
 			} else if (!key.compare("features")) {
@@ -445,8 +459,14 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::
 			o.pack(boost::lexical_cast<int>(sp));
 		}
 
+		o.pack(std::string("redirect"));
+		o.pack_map(2);
+
 		o.pack(std::string("content_length_threshold"));
-		o.pack(it->content_length_threshold());
+		o.pack(it->redirect_content_length_threshold());
+
+		o.pack(std::string("expire-time"));
+		o.pack(it->redirect_expire_time());
 
 		o.pack(std::string("is_active"));
 		o.pack(it->is_active());
