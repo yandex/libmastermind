@@ -1,3 +1,10 @@
+libmastermind (8.20) lucid; urgency=low
+
+  * MDS-304: support redirect settings
+  * Changed multipart_content_length_threshold default value to 0
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 20 Oct 2014 21:11:28 +0400
+
 libmastermind (8.19) lucid; urgency=low
 
   * Added method get_couple(couple_id, namespace)
