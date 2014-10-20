@@ -26,7 +26,7 @@ namespace_settings_t::data::data()
 	, redirect_content_length_threshold(-1)
 	, is_active(false)
 	, can_choose_couple_to_upload(false)
-	, multipart_content_length_threshold(-1)
+	, multipart_content_length_threshold(0)
 {
 }
 
