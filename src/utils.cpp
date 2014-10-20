@@ -365,7 +365,7 @@ std::vector<mastermind::namespace_settings_t> &operator >> (object o, std::vecto
 					std::string key;
 					rit->key.convert(&key);
 
-					if (!key.compare("content_length_threshold")) {
+					if (!key.compare("content-length-threshold")) {
 						rit->val.convert(&item.redirect_content_length_threshold);
 					} else if (!key.compare("expire-time")) {
 						rit->val.convert(&item.redirect_expire_time);
@@ -462,7 +462,7 @@ packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::
 		o.pack(std::string("redirect"));
 		o.pack_map(2);
 
-		o.pack(std::string("content_length_threshold"));
+		o.pack(std::string("content-length-threshold"));
 		o.pack(it->redirect_content_length_threshold());
 
 		o.pack(std::string("expire-time"));
