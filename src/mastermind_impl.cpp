@@ -177,8 +177,30 @@ mastermind_t::data::collect_namespaces_weights() {
 
 				COCAINE_LOG_INFO(m_logger, "%s", msg.c_str());
 
-				namespaces_weights.set(ns_it->first, it->first
-						, namespaces_weights.create_value(it->second));
+				if (nonzero_weight != 0) {
+					namespaces_weights.set(ns_it->first, it->first
+							, namespaces_weights.create_value(it->second));
+				} else if (zero_weight != 0) {
+					std::ostringstream oss;
+					oss
+						<< "libmastermind: couple-weights-counts:"
+						<< " namespace=" << ns_it->first
+						<< " only zero-weight couples were received from mastermind";
+
+					auto msg = oss.str();
+
+					COCAINE_LOG_ERROR(m_logger, "%s", msg.c_str());
+				} else {
+					std::ostringstream oss;
+					oss
+						<< "libmastermind: couple-weights-counts:"
+						<< " namespace=" << ns_it->first
+						<< " no couples were received from mastermind";
+
+					auto msg = oss.str();
+
+					COCAINE_LOG_ERROR(m_logger, "%s", msg.c_str());
+				}
 			}
 		}
 
