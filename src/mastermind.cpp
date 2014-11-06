@@ -523,43 +523,48 @@ std::string mastermind_t::json_metabalancer_info() {
 std::string mastermind_t::json_namespaces_settings() {
 	auto cache = m_data->namespaces_settings.copy();
 
-	std::ostringstream oss;
-	oss << "{" << std::endl;
+	Json::Value json;
 
 	for (auto bit = cache->begin(), it = bit; it != cache->end(); ++it) {
-		if (it != bit) oss << "," << std::endl;
 
-		oss << "\t\"" << it->name() << "\" : {" << std::endl;
+		Json::Value json_ns(Json::objectValue);
 
-		oss << "\t\t\"groups-count\" : " << it->groups_count() << "," << std::endl;
-		oss << "\t\t\"success-copies-num\" : \"" << it->success_copies_num() << "\"," << std::endl;
+		json_ns["groups-count"] = it->groups_count();
+		json_ns["success-copies-num"] =it->success_copies_num();
 
-		oss << "\t\t\"auth-keys\" : {" << std::endl;
-		oss << "\t\t\t\"write\" : \"" << it->auth_key_for_write() << "\"," << std::endl;
-		oss << "\t\t\t\"read\" : \"" << it->auth_key_for_read() << "\"" << std::endl;
-		oss << "\t\t}," << std::endl;
+		json_ns["auth-keys"]["write"] = it->auth_key_for_write();
+		json_ns["auth-keys"]["read"] = it->auth_key_for_read();
 
-		oss << "\t\t\"static-couple\" : [";
 
-		for (auto bcit = it->static_couple().begin(), cit = bcit; cit != it->static_couple().end(); ++cit) {
-			if (cit != bcit) oss << ", ";
-			oss << *cit;
+		{
+			Json::Value json_sc(Json::arrayValue);
+			for (auto sc_it = it->static_couple().begin()
+					, sc_end = it->static_couple().end(); sc_it != sc_end; ++sc_it) {
+				json_sc.append(*sc_it);
+			}
+
+			json_ns["static-couple"] = json_sc;
 		}
 
-		oss << "]" << std::endl;
+		json_ns["signature"]["token"] = it->sign_token();
+		json_ns["signature"]["path-prefix"] = it->sign_path_prefix();
+		json_ns["signature"]["port"] = it->sign_port();
 
-		oss << "\t\t\"signature\" : {" << std::endl;
-		oss << "\t\t\t\"token\" : \"" << it->sign_token() << "\"," << std::endl;
-		oss << "\t\t\t\"path_prefix\" : \"" << it->sign_path_prefix() << "\"," << std::endl;
-		oss << "\t\t\t\"port\" : \"" << it->sign_port() << "\"," << std::endl;
-		oss << "\t\t}" << std::endl;
+		json_ns["is-active"] = it->is_active();
 
-		oss << "\t}";
+		json_ns["features"]["can-choose-couple-for-upload"] = it->can_choose_couple_to_upload();
+		json_ns["features"]["multipart"]["content-length-threshold"] =
+			static_cast<Json::Value::Int64>(it->multipart_content_length_threshold());
+
+		json_ns["redirect"]["expire-time"] = it->redirect_expire_time();
+		json_ns["redirect"]["content-length-threshold"] =
+			static_cast<Json::Value::Int64>(it->redirect_content_length_threshold());
+
+		json[it->name()] = json_ns;
 	}
 
-	oss << std::endl << "}";
-
-	return oss.str();
+	Json::StyledWriter writer;
+	return writer.write(json);
 }
 
 std::string mastermind_t::json_namespace_statistics(const std::string &ns) {
