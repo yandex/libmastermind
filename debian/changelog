@@ -1,3 +1,9 @@
+libmastermind (8.22) lucid; urgency=low
+
+  * MDS-342: json_namespaces_settings returns whole info
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 06 Nov 2014 16:38:21 +0400
+
 libmastermind (8.21) lucid; urgency=low
 
   * Do not apply empty namespace-weitgh-cache
