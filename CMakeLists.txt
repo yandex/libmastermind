@@ -19,7 +19,10 @@ set(REQUIRED_LIBRARIES
 	jsoncpp
 	)
 	
-include_directories(BEFORE ${PROJECT_SOURCE_DIR}/include)
+include_directories(BEFORE
+	${PROJECT_SOURCE_DIR}/include
+	${PROJECT_SOURCE_DIR}/foreign
+	)
  
 aux_source_directory(src SOURCES)
 set(SOURCES
