@@ -20,11 +20,11 @@
 #include <cocaine/traits.hpp>
 
 //#include <cocaine/dynamic/dynamic.hpp>
-#include <leonidia/dynamic.hpp>
+#include <kora/dynamic.hpp>
 
 namespace cocaine { namespace io {
 
-using leonidia::dynamic_t;
+using kora::dynamic_t;
 
 // Dynamic objects essentially have the same structure as msgpack objects, so these serialization
 // traits are pretty much straightforward.
