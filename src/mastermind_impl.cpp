@@ -146,6 +146,11 @@ void mastermind_t::data::reconnect() {
 	throw std::runtime_error("reconnect error: cannot reconnect to any host");
 }
 
+kora::dynamic_t
+mastermind_t::data::enqueue(const std::string &event) {
+	return enqueue(event, "");
+}
+
 void
 mastermind_t::data::collect_namespaces_weights() {
 	try {

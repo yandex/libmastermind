@@ -61,7 +61,6 @@ struct mastermind_t::data {
 	template <typename R, typename T>
 	bool simple_enqueue(const std::string &event, const T &chunk, R &result);
 
-	template <typename T>
 	kora::dynamic_t
 	enqueue(const std::string &event);
 
@@ -157,7 +156,8 @@ mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk) {
 		}
 
 		auto chunk = g.next();
-		auto unpacked = msgpack::unpack(chunk.data(), chunk.size());
+		msgpack::unpacked unpacked;
+		msgpack::unpack(&unpacked, chunk.data(), chunk.size());
 		auto object = unpacked.get();
 
 		kora::dynamic_t result;
@@ -188,12 +188,6 @@ bool mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: enqueue_impl: %s", ex.what());
 	}
 	return false;
-}
-
-template <typename T>
-kora::dynamic_t
-mastermind_t::data::enqueue(const std::string &event) {
-	return enqueue(event, "");
 }
 
 template <typename T>
