@@ -90,8 +90,8 @@ mastermind_t::~mastermind_t()
 
 std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std::string &name_space, uint64_t size) {
 	try {
-		auto cache = m_data->namespaces_weights.copy(name_space, count);
-		auto couple = cache->get_couple(size);
+		auto cache = m_data->namespaces_states.copy(name_space, 0);
+		auto couple = cache->weights.get(count, size);
 
 		{
 			std::ostringstream oss;
@@ -304,24 +304,20 @@ std::vector<std::string> mastermind_t::get_elliptics_remotes() {
 
 std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> mastermind_t::get_couple_list(
 		const std::string &ns) {
-	auto cache_weights = m_data->namespaces_weights.copy(ns);
+	auto namespace_states = m_data->namespaces_states.copy(ns, 0);
+	const auto &weights = namespace_states->weights.data();
 	auto cache_couple_list = m_data->metabalancer_info.copy();
 
 	std::map<int, std::tuple<std::vector<int>, uint64_t, uint64_t>> result_map;
 
-	for (auto cw_it = cache_weights.begin(), cw_end = cache_weights.end();
-			cw_it != cw_end; ++cw_it) {
-		const auto &weights = cw_it->second.get_value()->data();
+	for (auto it = weights.begin(), end = weights.end(); it != end; ++it) {
+		auto weight = std::get<1>(*it);
+		auto memory = std::get<2>(*it);
+		const auto &couple = std::get<0>(*it);
+		auto group_id = *std::min_element(couple.begin(), couple.end());
 
-		for (auto it = weights.begin(), end = weights.end(); it != end; ++it) {
-			auto weight = std::get<1>(*it);
-			auto memory = std::get<2>(*it);
-			const auto &couple = std::get<0>(*it);
-			auto group_id = *std::min_element(couple.begin(), couple.end());
-
-			result_map.insert(std::make_pair(group_id
-						, std::make_tuple(couple, weight, memory)));
-		}
+		result_map.insert(std::make_pair(group_id
+					, std::make_tuple(couple, weight, memory)));
 	}
 
 	{
@@ -365,43 +361,8 @@ uint64_t mastermind_t::free_effective_space_in_couple_by_group(size_t group) {
 }
 
 std::string mastermind_t::json_group_weights() {
-	auto cache = m_data->namespaces_weights.copy();
-
-	Json::Value json;
-
-	for (auto c_it = cache.begin(), c_end = cache.end(); c_it != c_end; ++c_it) {
-		const auto &name = std::get<0>(c_it->first);
-		const auto &groups_count = std::get<1>(c_it->first);
-
-		const auto &couples = c_it->second.get_value()->data();
-
-		Json::Value json_ns_gc(Json::objectValue);
-
-		for (auto it = couples.begin(), end = couples.end(); it != end; ++it) {
-			const auto &couple = std::get<0>(*it);
-
-			std::ostringstream oss;
-			oss << '[';
-			for (auto begin_it = couple.begin(), it = begin_it, end_it = couple.end();
-					it != end_it; ++it) {
-				if (begin_it != it) oss << ", ";
-				oss << *it;
-			}
-			oss << ']';
-
-			const auto &weight = std::get<1>(*it);
-			const auto &available_memory = std::get<2>(*it);
-
-			auto ns_gc_name = oss.str();
-			json_ns_gc[ns_gc_name]["weight"] = static_cast<Json::Value::UInt64>(weight);
-			json_ns_gc[ns_gc_name]["space"] = static_cast<Json::Value::UInt64>(available_memory);
-		}
-
-		json[name][boost::lexical_cast<std::string>(groups_count)] = json_ns_gc;
-	}
-
-	Json::StyledWriter writer;
-	return writer.write(json);
+	// TODO:
+	throw std::runtime_error("Not Implemented");
 }
 
 std::string mastermind_t::json_symmetric_groups() {

@@ -73,9 +73,6 @@ struct mastermind_t::data {
 	void enqueue(const std::string &event, const T &chunk, R &result);
 
 	void
-	collect_namespaces_weights();
-
-	void
 	collect_namespaces_states();
 
 	bool collect_cache_groups();
@@ -115,7 +112,6 @@ struct mastermind_t::data {
 	uint64_t                                           m_metabase_current_stamp;
 
 
-	synchronized_cache_map_t<namespace_weights_t> namespaces_weights;
 	synchronized_cache_map_t<namespace_state_init_t::data_t> namespaces_states;
 
 	synchronized_cache_t<metabalancer_info_t> metabalancer_info;

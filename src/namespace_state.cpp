@@ -175,6 +175,11 @@ mastermind::namespace_state_t::data_t::weights_t::get(size_t groups_count_
 	return it->second;
 }
 
+const mastermind::namespace_state_t::data_t::weights_t::couples_with_info_t &
+mastermind::namespace_state_t::data_t::weights_t::data() const {
+	return couples_with_info;
+}
+
 bool
 mastermind::namespace_state_t::data_t::weights_t::couples_with_info_cmp(
 		const couple_with_info_t &lhs, const couple_with_info_t &rhs) {

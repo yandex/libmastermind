@@ -41,7 +41,6 @@ mastermind_t::data::data(
 	, m_next_remote(0)
 	, m_cache_path(std::move(cache_path))
 	, m_worker_name(std::move(worker_name))
-	, namespaces_weights(logger, "namespaces_weights")
 	, namespaces_states(logger, "namespaces_states")
 	, metabalancer_info(logger, "metabalancer_info")
 	, namespaces_settings(logger, "namespaces_settings")
@@ -150,69 +149,6 @@ void mastermind_t::data::reconnect() {
 kora::dynamic_t
 mastermind_t::data::enqueue(const std::string &event) {
 	return enqueue(event, "");
-}
-
-void
-mastermind_t::data::collect_namespaces_weights() {
-	try {
-		namespace_weights_t::namespaces_t resp;
-		enqueue("get_group_weights", "", resp);
-
-		for (auto ns_it = resp.begin(), ns_end = resp.end(); ns_it != ns_end; ++ns_it) {
-			for (auto it = ns_it->second.begin(), end = ns_it->second.end(); it != end; ++it) {
-				size_t zero_weight = 0;
-				size_t nonzero_weight = 0;
-
-				for (auto cit = it->second.begin(), cend = it->second.end(); cit != cend; ++cit) {
-					if (std::get<1>(*cit) == 0) {
-						zero_weight += 1;
-					} else {
-						nonzero_weight += 1;
-					}
-				}
-
-				std::ostringstream oss;
-				oss
-					<< "libmastermind: couple-weights-counts:"
-					<< " namespace=" << ns_it->first
-					<< " groups-in-couple=" << it->first
-					<< " nonzero-weight-count=" << nonzero_weight
-					<< " zero-weight-count=" << zero_weight;
-
-				auto msg = oss.str();
-
-				COCAINE_LOG_INFO(m_logger, "%s", msg.c_str());
-
-				if (nonzero_weight != 0) {
-					namespaces_weights.set(ns_it->first, it->first
-							, namespaces_weights.create_value(it->second));
-				} else if (zero_weight != 0) {
-					std::ostringstream oss;
-					oss
-						<< "libmastermind: couple-weights-counts:"
-						<< " namespace=" << ns_it->first
-						<< " only zero-weight couples were received from mastermind";
-
-					auto msg = oss.str();
-
-					COCAINE_LOG_ERROR(m_logger, "%s", msg.c_str());
-				} else {
-					std::ostringstream oss;
-					oss
-						<< "libmastermind: couple-weights-counts:"
-						<< " namespace=" << ns_it->first
-						<< " no couples were received from mastermind";
-
-					auto msg = oss.str();
-
-					COCAINE_LOG_ERROR(m_logger, "%s", msg.c_str());
-				}
-			}
-		}
-
-	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: cannot collect namespaces_weights: %s", ex.what());
-	}
 }
 
 void
@@ -372,10 +308,6 @@ void mastermind_t::data::collect_info_loop_impl() {
 	auto beg_time = std::chrono::system_clock::now();
 
 	{
-		spent_time_printer_t helper("collect_namespaces_weights", m_logger);
-		collect_namespaces_weights();
-	}
-	{
 		spent_time_printer_t helper("collect_namespaces_states", m_logger);
 		collect_namespaces_states();
 	}
@@ -462,12 +394,10 @@ void mastermind_t::data::collect_info_loop() {
 
 void
 mastermind_t::data::cache_expire() {
+	// TODO: check namespaces_states for expiration
 	auto preferable_life_time = std::chrono::seconds(m_group_info_update_period / 2);
 
 	cache_is_expired = false;
-
-	cache_is_expired = cache_is_expired ||
-		namespaces_weights.expire_if(preferable_life_time, warning_time, expire_time);
 
 	cache_is_expired = cache_is_expired ||
 		metabalancer_info.expire_if(preferable_life_time, warning_time, expire_time);
@@ -480,22 +410,6 @@ mastermind_t::data::cache_expire() {
 	elliptics_remotes.expire_if(preferable_life_time, warning_time, expire_time);
 
 	generate_groups_caches();
-
-	{
-		auto namespaces = namespaces_settings.copy();
-
-		for (auto it = namespaces->begin(), end = namespaces->end(); it != end; ++it) {
-			if (it->is_active()) {
-				if (!namespaces_weights.exist(it->name(), it->groups_count())) {
-					cache_is_expired = true;
-
-					COCAINE_LOG_ERROR(m_logger
-							, "cache \"namespaces_weights\":\"%s\"(%d) was not obtained"
-							, it->name().c_str(), it->groups_count());
-				}
-			}
-		}
-	}
 }
 
 void mastermind_t::data::serialize() {
@@ -510,7 +424,6 @@ void mastermind_t::data::serialize() {
 		packer.pack(name); \
 	} while (false)
 
-	PACK_CACHE(namespaces_weights);
 	PACK_CACHE(metabalancer_info);
 	PACK_CACHE(namespaces_settings);
 	PACK_CACHE(cache_groups);
@@ -551,7 +464,6 @@ void mastermind_t::data::deserialize() {
 				continue; \
 			}
 
-			TRY_UNPACK_CACHE(namespaces_weights);
 			TRY_UNPACK_CACHE(metabalancer_info);
 			TRY_UNPACK_CACHE(namespaces_settings);
 			TRY_UNPACK_CACHE(cache_groups);

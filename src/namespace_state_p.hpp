@@ -91,6 +91,9 @@ public:
 		couple_with_info_t
 		get(size_t groups_count_, uint64_t size) const;
 
+		const couples_with_info_t &
+		data() const;
+
 	private:
 		typedef std::reference_wrapper<const couple_with_info_t> const_couple_ref_t;
 		typedef std::map<uint64_t, const_couple_ref_t> weighted_couples_t;
