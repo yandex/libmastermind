@@ -221,6 +221,8 @@ mastermind::namespace_state_t::data_t::create(std::string name
 		// 	throw std::runtime_error("state is not consistent");
 		// }
 
+		// TODO: log ns-state extract
+
 	} catch (const std::exception &ex) {
 		throw std::runtime_error("cannot create ns-state " + data->name + ": " + ex.what());
 	}
