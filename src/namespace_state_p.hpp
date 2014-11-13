@@ -36,9 +36,7 @@ namespace mastermind {
 class namespace_state_t::data_t {
 public:
 	struct settings_t {
-		static
-		settings_t
-		create(const kora::config_t &config, const user_settings_factory_t &factory);
+		settings_t(const kora::config_t &config, const user_settings_factory_t &factory);
 
 		size_t groups_count;
 		std::string success_copies_num;
@@ -75,9 +73,7 @@ public:
 			std::vector<group_info_map_iterator_t> groups_info_map_iterator;
 		};
 
-		static
-		couples_t
-		create(const kora::config_t &config);
+		couples_t(const kora::config_t &config);
 
 		group_info_map_t group_info_map;
 		couple_info_map_t couple_info_map;
@@ -87,9 +83,7 @@ public:
 		typedef std::tuple<groups_t, uint64_t, uint64_t> couple_with_info_t;
 		typedef std::vector<couple_with_info_t> couples_with_info_t;
 
-		static
-		weights_t
-		create(const kora::config_t &config, size_t groups_count);
+		weights_t(const kora::config_t &config, size_t groups_count);
 
 		void
 		set(couples_with_info_t couples_with_info_);
@@ -111,14 +105,10 @@ public:
 	};
 
 	struct statistics_t {
-		static
-		statistics_t
-		create(const kora::config_t &config);
+		statistics_t(const kora::config_t &config);
 	};
 
-	static
-	std::shared_ptr<data_t>
-	create(std::string name, const kora::config_t &config
+	data_t(std::string name, const kora::config_t &config
 			, const user_settings_factory_t &factory);
 
 	std::string name;
@@ -133,6 +123,12 @@ class namespace_state_init_t
 	: public namespace_state_t {
 public:
 	namespace_state_init_t(std::shared_ptr<const data_t> data_);
+
+	struct data_t : namespace_state_t::data_t {
+		data_t(std::string name, const kora::config_t &config
+				, const user_settings_factory_t &factory);
+	};
+
 };
 
 
