@@ -65,8 +65,7 @@ public:
 	typedef typename base_type::logger_ptr_t logger_ptr_t;
 
 	cache_t()
-		: value(base_type::create_value())
-		, last_update_time(std::chrono::system_clock::now())
+		: last_update_time(std::chrono::system_clock::now())
 	{}
 
 	template <typename Stream>
