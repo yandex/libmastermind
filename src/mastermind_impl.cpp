@@ -42,6 +42,7 @@ mastermind_t::data::data(
 	, m_cache_path(std::move(cache_path))
 	, m_worker_name(std::move(worker_name))
 	, namespaces_weights(logger, "namespaces_weights")
+	, namespaces_states(logger, "namespaces_states")
 	, metabalancer_info(logger, "metabalancer_info")
 	, namespaces_settings(logger, "namespaces_settings")
 	, cache_groups(logger, "cache_groups")
@@ -214,6 +215,43 @@ mastermind_t::data::collect_namespaces_weights() {
 	}
 }
 
+void
+mastermind_t::data::collect_namespaces_states() {
+	try {
+		auto dynamic_namespaces_states = enqueue("get_namespaces_states").as_object();
+
+		for (auto it = dynamic_namespaces_states.begin(), end = dynamic_namespaces_states.end();
+				it != end; ++it) {
+			const auto &name = it->first;
+
+			try {
+				// TODO: forward real factory
+				namespace_state_t::user_settings_factory_t fake_factory;
+				auto ns_state = namespaces_states.create_value(name
+							, kora::config_t(name, it->second), fake_factory);
+
+				// TODO: check new ns_state is better than the old one
+				// auto old_ns_state = namespaces_states.copy(name, 0);
+				// if (ns_state is better than old_ns_state) {
+				// 	namespaces_states.set(name, 0, ns_state);
+				// } else {
+				// 	throw std::runtime_error("old namespace_state is better than the new one");
+				// }
+				namespaces_states.set(name, 0, ns_state);
+			} catch (const std::exception &ex) {
+				COCAINE_LOG_ERROR(m_logger
+						, "libmastermind: cannot update namespace_state for %s: %s"
+						, name.c_str(), ex.what());
+			}
+		}
+
+	} catch (const std::exception &ex) {
+		COCAINE_LOG_ERROR(m_logger
+				, "libmastermind: cannot process collect_namespaces_states: %s"
+				, ex.what());
+	}
+}
+
 bool mastermind_t::data::collect_cache_groups() {
 	try {
 		std::vector<std::pair<std::string, std::vector<int>>> raw_cache_groups;
@@ -336,6 +374,10 @@ void mastermind_t::data::collect_info_loop_impl() {
 	{
 		spent_time_printer_t helper("collect_namespaces_weights", m_logger);
 		collect_namespaces_weights();
+	}
+	{
+		spent_time_printer_t helper("collect_namespaces_states", m_logger);
+		collect_namespaces_states();
 	}
 	{
 		spent_time_printer_t helper("collect_cache_groups", m_logger);

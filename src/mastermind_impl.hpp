@@ -23,6 +23,7 @@
 #include "libmastermind/mastermind.hpp"
 #include "utils.hpp"
 #include "cache_p.hpp"
+#include "namespace_state_p.hpp"
 
 #include <thread>
 #include <condition_variable>
@@ -74,6 +75,9 @@ struct mastermind_t::data {
 	void
 	collect_namespaces_weights();
 
+	void
+	collect_namespaces_states();
+
 	bool collect_cache_groups();
 	bool collect_namespaces_settings();
 	bool collect_metabalancer_info();
@@ -112,6 +116,7 @@ struct mastermind_t::data {
 
 
 	synchronized_cache_map_t<namespace_weights_t> namespaces_weights;
+	synchronized_cache_map_t<namespace_state_init_t::data_t> namespaces_states;
 
 	synchronized_cache_t<metabalancer_info_t> metabalancer_info;
 	synchronized_cache_t<std::vector<namespace_settings_t>> namespaces_settings;
