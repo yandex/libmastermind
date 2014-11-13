@@ -83,13 +83,13 @@ public:
 		typedef std::tuple<groups_t, uint64_t, uint64_t> couple_with_info_t;
 		typedef std::vector<couple_with_info_t> couples_with_info_t;
 
-		weights_t(const kora::config_t &config, size_t groups_count);
+		weights_t(const kora::config_t &config, size_t groups_count_);
 
 		void
 		set(couples_with_info_t couples_with_info_);
 
 		couple_with_info_t
-		get(uint64_t size) const;
+		get(size_t groups_count_, uint64_t size) const;
 
 	private:
 		typedef std::reference_wrapper<const couple_with_info_t> const_couple_ref_t;
@@ -100,6 +100,7 @@ public:
 		bool
 		couples_with_info_cmp(const couple_with_info_t &lhs, const couple_with_info_t &rhs);
 
+		size_t groups_count;
 		couples_with_info_t couples_with_info;
 		couples_by_avalible_memory_t couples_by_avalible_memory;
 	};

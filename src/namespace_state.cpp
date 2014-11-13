@@ -85,8 +85,9 @@ mastermind::namespace_state_t::data_t::couples_t::couples_t(const kora::config_t
 }
 
 mastermind::namespace_state_t::data_t::weights_t::weights_t(const kora::config_t &state
-		, size_t groups_count)
+		, size_t groups_count_)
 	try
+	: groups_count(groups_count_)
 {
 	const auto &couples = state.at(boost::lexical_cast<std::string>(groups_count))
 		.underlying_object().as_array();
@@ -147,7 +148,12 @@ mastermind::namespace_state_t::data_t::weights_t::set(couples_with_info_t couple
 }
 
 mastermind::namespace_state_t::data_t::weights_t::couple_with_info_t
-mastermind::namespace_state_t::data_t::weights_t::get(uint64_t size) const {
+mastermind::namespace_state_t::data_t::weights_t::get(size_t groups_count_
+		, uint64_t size) const {
+	if (groups_count_ != groups_count) {
+		throw invalid_groups_count_error();
+	}
+
 	auto amit = couples_by_avalible_memory.lower_bound(size);
 	if (amit == couples_by_avalible_memory.end()) {
 		throw not_enough_memory_error();
