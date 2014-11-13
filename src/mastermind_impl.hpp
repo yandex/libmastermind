@@ -37,6 +37,8 @@
 #include <cocaine/framework/common.hpp>
 #include <cocaine/traits/tuple.hpp>
 
+#include <kora/dynamic.hpp>
+
 #include <boost/lexical_cast.hpp>
 
 namespace mastermind {
@@ -52,8 +54,20 @@ struct mastermind_t::data {
 
 	void reconnect();
 
+	template <typename T>
+	kora::dynamic_t
+	simple_enqueue(const std::string &event, const T &chunk);
+
 	template <typename R, typename T>
 	bool simple_enqueue(const std::string &event, const T &chunk, R &result);
+
+	template <typename T>
+	kora::dynamic_t
+	enqueue(const std::string &event);
+
+	template <typename T>
+	kora::dynamic_t
+	enqueue(const std::string &event, const T &chunk);
 
 	template <typename R, typename T>
 	void enqueue(const std::string &event, const T &chunk, R &result);
@@ -131,6 +145,31 @@ struct mastermind_t::data {
 	std::shared_ptr<cocaine::framework::service_manager_t> m_service_manager;
 };
 
+template <typename T>
+kora::dynamic_t
+mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk) {
+	try {
+		auto g = m_app->enqueue(event, chunk);
+		g.wait_for(enqueue_timeout);
+
+		if (g.ready() == false) {
+			throw std::runtime_error("enqueue timeout");
+		}
+
+		auto chunk = g.next();
+		auto unpacked = msgpack::unpack(chunk.data(), chunk.size());
+		auto object = unpacked.get();
+
+		kora::dynamic_t result;
+
+		cocaine::io::type_traits<kora::dynamic_t>::unpack(object, result);
+
+		return result;
+	} catch (const std::exception &ex) {
+		throw std::runtime_error("cannot process event " + event + ": " + ex.what());
+	}
+}
+
 template <typename R, typename T>
 bool mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk, R &result) {
 	try {
@@ -149,6 +188,53 @@ bool mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: enqueue_impl: %s", ex.what());
 	}
 	return false;
+}
+
+template <typename T>
+kora::dynamic_t
+mastermind_t::data::enqueue(const std::string &event) {
+	return enqueue(event, "");
+}
+
+template <typename T>
+kora::dynamic_t
+mastermind_t::data::enqueue(const std::string &event, const T &chunk) {
+	try {
+		bool tried_to_reconnect = false;
+
+		if (!m_service_manager || !m_app
+				|| m_app->status() != cocaine::framework::service_status::connected) {
+			COCAINE_LOG_INFO(m_logger, "libmastermind: enqueue: preconnect");
+			tried_to_reconnect = true;
+			reconnect();
+		}
+
+		try {
+			return simple_enqueue(event, chunk);
+		} catch (const std::exception &ex) {
+			COCAINE_LOG_ERROR(m_logger
+					, "libmastermind: cannot process enqueue (1st try): %s"
+					, ex.what());
+		}
+
+		if (tried_to_reconnect) {
+			throw std::runtime_error("reconnect is useless");
+		}
+
+		reconnect();
+
+		try {
+			return simple_enqueue(event, chunk);
+		} catch (const std::exception &ex) {
+			COCAINE_LOG_ERROR(m_logger
+					, "libmastermind: cannot process enqueue (2nd try): %s"
+					, ex.what());
+		}
+
+		throw std::runtime_error("bad connection");
+	} catch (const std::exception &ex) {
+		throw std::runtime_error(std::string("cannot process enqueue: ") + ex.what());
+	}
 }
 
 template <typename R, typename T>
