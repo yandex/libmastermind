@@ -60,15 +60,27 @@ public:
 		typedef couple_info_map_t::const_iterator couple_info_map_iterator_t;
 
 		struct group_info_t {
+			enum class status_tag {
+				UNKNOWN, COUPLED
+			};
+
 			group_t id;
+
+			status_tag status;
 
 			couple_info_map_iterator_t couple_info_map_iterator;
 		};
 
 		struct couple_info_t {
+			enum class status_tag {
+				UNKNOWN, BAD
+			};
+
 			std::string id;
 
 			groups_t groups;
+			status_tag status;
+			uint64_t free_effective_space;
 
 			std::vector<group_info_map_iterator_t> groups_info_map_iterator;
 		};

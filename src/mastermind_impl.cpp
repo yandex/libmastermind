@@ -42,13 +42,12 @@ mastermind_t::data::data(
 	, m_cache_path(std::move(cache_path))
 	, m_worker_name(std::move(worker_name))
 	, namespaces_states(logger, "namespaces_states")
-	, metabalancer_info(logger, "metabalancer_info")
 	, namespaces_settings(logger, "namespaces_settings")
 	, cache_groups(logger, "cache_groups")
 	, namespaces_statistics(logger, "namespaces_statistics")
 	, elliptics_remotes(logger, "elliptics_remotes")
 	, bad_groups(logger, "bad_groups")
-	, symmetric_groups(logger, "symmetric_groups")
+	, fake_groups_info(logger, "fake_groups_info")
 	, m_group_info_update_period(group_info_update_period)
 	, m_done(false)
 	, warning_time(std::chrono::seconds(warning_time_))
@@ -219,21 +218,6 @@ bool mastermind_t::data::collect_namespaces_settings() {
 	return false;
 }
 
-bool mastermind_t::data::collect_metabalancer_info() {
-	try {
-		auto cache = metabalancer_info.create_value();
-		typedef std::vector<std::map<std::string, std::string>> arg_type;
-		arg_type arg;
-		arg.push_back(std::map<std::string, std::string>());
-		enqueue("get_couples_list", arg, *cache);
-		metabalancer_info.set(cache);
-		return true;
-	} catch (const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_metabalancer_info: %s", ex.what());
-	}
-	return false;
-}
-
 bool mastermind_t::data::collect_namespaces_statistics() {
 	try {
 		auto cache = namespaces_statistics.create_value();
@@ -267,31 +251,6 @@ bool mastermind_t::data::collect_elliptics_remotes() {
 	return false;
 }
 
-void
-mastermind_t::data::generate_groups_caches() {
-	std::vector<std::vector<int>> raw_bad_groups;
-	std::map<int, std::vector<int>> raw_symmetric_groups;
-
-	auto cache = metabalancer_info.copy();
-	const auto &couple_info_map = cache->couple_info_map;
-
-	for (auto it = couple_info_map.begin(), end = couple_info_map.end(); it != end; ++it) {
-		const auto &couple_info = it->second;
-
-		for (auto t_it = couple_info->tuple.begin(), t_end = couple_info->tuple.end();
-				t_it != t_end; ++t_it) {
-			raw_symmetric_groups.insert(std::make_pair(*t_it, couple_info->tuple));
-		}
-
-		if (couple_info->couple_status == couple_info_t::BAD) {
-			raw_bad_groups.push_back(couple_info->tuple);
-		}
-	}
-
-	symmetric_groups.set(raw_symmetric_groups);
-	bad_groups.set(raw_bad_groups);
-}
-
 void mastermind_t::data::collect_info_loop_impl() {
 	if (m_logger->verbosity() >= cocaine::logging::info) {
 		auto current_remote = m_current_remote;
@@ -316,10 +275,6 @@ void mastermind_t::data::collect_info_loop_impl() {
 		collect_cache_groups();
 	}
 	{
-		spent_time_printer_t helper("collect_metabalancer_info", m_logger);
-		collect_metabalancer_info();
-	}
-	{
 		spent_time_printer_t helper("collect_namespaces_settings", m_logger);
 		collect_namespaces_settings();
 	}
@@ -333,6 +288,7 @@ void mastermind_t::data::collect_info_loop_impl() {
 	}
 
 	cache_expire();
+	generate_fake_caches();
 	serialize();
 
 	auto end_time = std::chrono::system_clock::now();
@@ -400,16 +356,51 @@ mastermind_t::data::cache_expire() {
 	cache_is_expired = false;
 
 	cache_is_expired = cache_is_expired ||
-		metabalancer_info.expire_if(preferable_life_time, warning_time, expire_time);
-
-	cache_is_expired = cache_is_expired ||
 		namespaces_settings.expire_if(preferable_life_time, warning_time, expire_time);
 
 	cache_groups.expire_if(preferable_life_time, warning_time, expire_time);
 	namespaces_statistics.expire_if(preferable_life_time, warning_time, expire_time);
 	elliptics_remotes.expire_if(preferable_life_time, warning_time, expire_time);
+}
 
-	generate_groups_caches();
+void
+mastermind_t::data::generate_fake_caches() {
+	std::vector<groups_t> raw_bad_groups;
+	std::map<group_t, fake_group_info_t> raw_fake_groups_info;
+
+	auto cache = namespaces_states.copy();
+
+	for (auto ns_it = cache.begin(), ns_end = cache.end(); ns_it != ns_end; ++ns_it) {
+		const auto &states = *ns_it->second.get_value();
+		const auto &couples = states.couples.couple_info_map;
+
+
+		for (auto cim_it = couples.begin(), cim_end = couples.end();
+				cim_it != cim_end; ++cim_it) {
+			const auto &couple = cim_it->second;
+			for (auto it = couple.groups_info_map_iterator.begin()
+					, end = couple.groups_info_map_iterator.end();
+					it != end; ++it) {
+				fake_group_info_t fake_group_info;
+
+				fake_group_info.id = (*it)->second.id;
+				fake_group_info.groups = couple.groups;
+				fake_group_info.free_effective_space = couple.free_effective_space;
+				fake_group_info.ns = states.name;
+				fake_group_info.group_status = (*it)->second.status;
+
+				raw_fake_groups_info.insert(std::make_pair(fake_group_info.id, fake_group_info));
+			}
+
+			if (couple.status == namespace_state_init_t::data_t::couples_t
+					::couple_info_t::status_tag::BAD) {
+				raw_bad_groups.emplace_back(couple.groups);
+			}
+		}
+	}
+
+	bad_groups.set(raw_bad_groups);
+	fake_groups_info.set(raw_fake_groups_info);
 }
 
 void mastermind_t::data::serialize() {
@@ -424,7 +415,6 @@ void mastermind_t::data::serialize() {
 		packer.pack(name); \
 	} while (false)
 
-	PACK_CACHE(metabalancer_info);
 	PACK_CACHE(namespaces_settings);
 	PACK_CACHE(cache_groups);
 	PACK_CACHE(namespaces_statistics);
@@ -464,7 +454,6 @@ void mastermind_t::data::deserialize() {
 				continue; \
 			}
 
-			TRY_UNPACK_CACHE(metabalancer_info);
 			TRY_UNPACK_CACHE(namespaces_settings);
 			TRY_UNPACK_CACHE(cache_groups);
 			TRY_UNPACK_CACHE(namespaces_statistics);
@@ -474,6 +463,7 @@ void mastermind_t::data::deserialize() {
 		}
 
 		cache_expire();
+		generate_fake_caches();
 	} catch (const std::exception &ex) {
 		COCAINE_LOG_WARNING(m_logger
 				, "libmastermind: cannot deserialize libmastermind cache: %s"

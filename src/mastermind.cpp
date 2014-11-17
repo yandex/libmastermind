@@ -146,8 +146,15 @@ group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
 
 std::map<int, std::vector<int>> mastermind_t::get_symmetric_groups() {
 	try {
-		auto cache = m_data->symmetric_groups.copy();
-		return *cache;
+		auto cache = m_data->fake_groups_info.copy();
+
+		std::map<int, std::vector<int>> result;
+
+		for (auto it = cache->begin(), end = cache->end(); it != end; ++it) {
+			result.insert(std::make_pair(it->first, it->second.groups));
+		}
+
+		return result;
 	} catch(const std::system_error &ex) {
 		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_symmetric_groups: \"%s\"", ex.code().message().c_str());
 		throw;
@@ -184,15 +191,13 @@ std::vector<int> mastermind_t::get_symmetric_groups(int group) {
 }
 
 std::vector<int> mastermind_t::get_couple_by_group(int group) {
-	auto cache = m_data->metabalancer_info.copy();
+	auto cache = m_data->fake_groups_info.copy();
 	std::vector<int> result;
 
-	auto git = cache->group_info_map.find(group);
+	auto git = cache->find(group);
 
-	if (git != cache->group_info_map.end()) {
-		auto r = git->second->couple;
-		// TODO: use uniform types
-		result.assign(r.begin(), r.end());
+	if (git != cache->end()) {
+		result = git->second.groups;
 	}
 
 	return result;
@@ -202,28 +207,29 @@ std::vector<int> mastermind_t::get_couple(int couple_id, const std::string &ns) 
 	COCAINE_LOG_INFO(m_data->m_logger, "libmastermind: get_couple: couple_id=%d ns=%s"
 			, couple_id, ns);
 
-	auto cache = m_data->metabalancer_info.copy();
+	auto cache = m_data->fake_groups_info.copy();
 	std::vector<int> result;
 
-	auto git = cache->group_info_map.find(couple_id);
+	auto git = cache->find(couple_id);
 
-	if (git == cache->group_info_map.end()) {
+	if (git == cache->end()) {
 		COCAINE_LOG_ERROR(m_data->m_logger
 				, "libmastermind: get_couple: cannot find couple by the couple_id");
 		return std::vector<int>();
 	}
 
-	if (git->second->group_status != group_info_t::COUPLED) {
+	if (git->second.group_status !=
+			namespace_state_init_t::data_t::couples_t::group_info_t::status_tag::COUPLED) {
 		COCAINE_LOG_ERROR(m_data->m_logger
 				, "libmastermind: get_couple: couple status is not COUPLED: %d"
-				, static_cast<int>(git->second->group_status));
+				, static_cast<int>(git->second.group_status));
 		return std::vector<int>();
 	}
 
-	if (git->second->ns != ns) {
+	if (git->second.ns != ns) {
 		COCAINE_LOG_ERROR(m_data->m_logger
 				, "libmastermind: get_couple: couple belongs to another namespace: %s"
-				, git->second->ns);
+				, git->second.ns);
 		return std::vector<int>();
 	}
 
@@ -231,7 +237,7 @@ std::vector<int> mastermind_t::get_couple(int couple_id, const std::string &ns) 
 		std::ostringstream oss;
 		oss << "libmastermind: get_couple: couple was found: [";
 		{
-			const auto &couple = git->second->couple;
+			const auto &couple = git->second.groups;
 			for (auto beg = couple.begin(), it = beg, end = couple.end(); it != end; ++it) {
 				if (beg != it) oss << ", ";
 				oss << *it;
@@ -243,7 +249,7 @@ std::vector<int> mastermind_t::get_couple(int couple_id, const std::string &ns) 
 		COCAINE_LOG_INFO(m_data->m_logger, "%s", msg.c_str());
 	}
 
-	return git->second->couple;
+	return git->second.groups;
 }
 
 std::vector<std::vector<int> > mastermind_t::get_bad_groups() {
@@ -306,7 +312,7 @@ std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> mastermind_t::get_
 		const std::string &ns) {
 	auto namespace_states = m_data->namespaces_states.copy(ns, 0);
 	const auto &weights = namespace_states->weights.data();
-	auto cache_couple_list = m_data->metabalancer_info.copy();
+	auto cache_ns_state = m_data->namespaces_states.copy(ns, 0);
 
 	std::map<int, std::tuple<std::vector<int>, uint64_t, uint64_t>> result_map;
 
@@ -321,17 +327,16 @@ std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> mastermind_t::get_
 	}
 
 	{
-		auto couple_list = cache_couple_list->namespace_info_map[ns];
+		const auto &couples = cache_ns_state->couples.couple_info_map;
 
-		for (auto it = couple_list.begin(), end = couple_list.end(); it != end; ++it) {
-			auto couple_info = it->lock();
+		for (auto it = couples.begin(), end = couples.end(); it != end; ++it) {
+			const auto &couple_info = it->second;
+			const auto &groups = couple_info.groups;
 
-			const auto &couple = couple_info->tuple;
-			auto group_id = *std::min_element(couple.begin(), couple.end());
+			auto couple_id = *std::min_element(groups.begin(), groups.end());
 
-			result_map.insert(std::make_pair(group_id
-						, std::make_tuple(couple, static_cast<uint64_t>(0)
-							, couple_info->free_effective_space)));
+			result_map.insert(std::make_pair(couple_id
+						, std::make_tuple(groups, 0, couple_info.free_effective_space)));
 		}
 	}
 
@@ -346,18 +351,14 @@ std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> mastermind_t::get_
 }
 
 uint64_t mastermind_t::free_effective_space_in_couple_by_group(size_t group) {
-	auto cache = m_data->metabalancer_info.copy();
+	auto cache = m_data->fake_groups_info.copy();
 
-	auto git = cache->group_info_map.find(group);
-	if (git == cache->group_info_map.end()) {
+	auto git = cache->find(group);
+	if (git == cache->end()) {
 		return 0;
 	}
 
-	if (auto p = git->second->couple_info.lock()) {
-		return p->free_effective_space;
-	}
-
-	return 0;
+	return git->second.free_effective_space;
 }
 
 std::string mastermind_t::json_group_weights() {
@@ -366,29 +367,8 @@ std::string mastermind_t::json_group_weights() {
 }
 
 std::string mastermind_t::json_symmetric_groups() {
-	auto cache = m_data->symmetric_groups.copy();
-
-	std::ostringstream oss;
-	oss << "{" << std::endl;
-	auto ite = cache->end();
-	if (cache->begin() != cache->end()) --ite;
-	for (auto it = cache->begin(); it != cache->end(); ++it) {
-		oss << "\t\"" << it->first << "\" : [";
-		for (auto it2b = it->second.begin(), it2 = it2b; it2 != it->second.end(); ++it2) {
-			if (it2 != it2b) {
-				oss << ", ";
-			}
-			oss << *it2;
-		}
-		oss << "]";
-		if (it != ite) {
-			oss << ',';
-		}
-		oss << std::endl;
-	}
-	oss << "}";
-
-	return oss.str();
+	// TODO:
+	throw std::runtime_error("Not Implemented");
 }
 
 std::string mastermind_t::json_bad_groups() {
@@ -445,40 +425,8 @@ std::string mastermind_t::json_cache_groups() {
 }
 
 std::string mastermind_t::json_metabalancer_info() {
-	auto cache = m_data->metabalancer_info.copy();
-
-	std::ostringstream oss;
-	oss << "{" << std::endl;
-	oss << "\t[" << std::endl;
-
-	for (auto cit_beg = cache->couple_info_map.begin(),
-			cit_end = cache->couple_info_map.end(),
-			cit = cit_beg;
-			cit != cit_end; ++cit)
-	{
-		if (cit != cit_beg) {
-			oss << ',' << std::endl;
-		}
-		oss << "\t\t{" << std::endl;
-		oss << "\t\t\t\"id\" : \"" << cit->second->id << "\"," << std::endl;
-		oss << "\t\t\t\"free_effective_space\" : " << cit->second->free_effective_space << ',' << std::endl;
-		oss << "\t\t\t\"free_space\" : " << cit->second->free_space << ',' << std::endl;
-		oss << "\t\t\t\"used_space\" : " << cit->second->used_space << ',' << std::endl;
-		oss << "\t\t\t\"namespace\" : \"" << cit->second->ns << "\"" << std::endl;
-		oss << "\t\t\t\"couple_status\" : ";
-		switch (cit->second->couple_status) {
-		case couple_info_t::OK:
-			oss << "\"OK\"";
-			break;
-		default:
-			oss << "\"UNKNOWN\"";
-		}
-		oss << std::endl << "\t\t}";
-	}
-
-	oss << std::endl << "\t]" << std::endl << "}";
-
-	return oss.str();
+	// TODO:
+	throw std::runtime_error("Not Implemented");
 }
 
 std::string mastermind_t::json_namespaces_settings() {

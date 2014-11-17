@@ -77,18 +77,17 @@ struct mastermind_t::data {
 
 	bool collect_cache_groups();
 	bool collect_namespaces_settings();
-	bool collect_metabalancer_info();
 	bool collect_namespaces_statistics();
 	bool collect_elliptics_remotes();
-
-	void
-	generate_groups_caches();
 
 	void collect_info_loop_impl();
 	void collect_info_loop();
 
 	void
 	cache_expire();
+
+	void
+	generate_fake_caches();
 
 	void serialize();
 	void deserialize();
@@ -114,14 +113,13 @@ struct mastermind_t::data {
 
 	synchronized_cache_map_t<namespace_state_init_t::data_t> namespaces_states;
 
-	synchronized_cache_t<metabalancer_info_t> metabalancer_info;
 	synchronized_cache_t<std::vector<namespace_settings_t>> namespaces_settings;
 	synchronized_cache_t<std::map<std::string, std::vector<int>>> cache_groups;
 	synchronized_cache_t<namespaces_statistics_t> namespaces_statistics;
 	synchronized_cache_t<std::vector<std::string>> elliptics_remotes;
 
-	synchronized_cache_t<std::vector<std::vector<int>>> bad_groups;
-	synchronized_cache_t<std::map<int, std::vector<int>>> symmetric_groups;
+	synchronized_cache_t<std::vector<groups_t>> bad_groups;
+	synchronized_cache_t<std::map<group_t, fake_group_info_t>> fake_groups_info;
 
 	const int                                          m_group_info_update_period;
 	std::thread                                        m_weight_cache_update_thread;

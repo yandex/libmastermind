@@ -57,6 +57,18 @@ mastermind::namespace_state_t::data_t::couples_t::couples_t(const kora::config_t
 			}
 		}
 
+		{
+			auto status = couple_info_state.at<std::string>("couple_status");
+
+			if (status == "BAD") {
+				couple_info.status = couple_info_t::status_tag::BAD;
+			} else {
+				couple_info.status = couple_info_t::status_tag::UNKNOWN;
+			}
+		}
+
+		couple_info.free_effective_space = state.at<uint64_t>("free_effective_space");
+
 		const auto &groups_info_state = state.at("groups");
 
 		for (size_t index = 0, size = groups_info_state.size(); index != size; ++index) {
@@ -75,8 +87,18 @@ mastermind::namespace_state_t::data_t::couples_t::couples_t(const kora::config_t
 			auto &group_info = std::get<0>(gi_insert_result)->second;
 
 			group_info.id = group_id;
-			group_info.couple_info_map_iterator = std::get<0>(ci_insert_result);
 
+			{
+				auto status = group_info_state.at<std::string>("status");
+
+				if (status == "COUPLED") {
+					group_info.status = group_info_t::status_tag::COUPLED;
+				} else {
+					group_info.status = group_info_t::status_tag::UNKNOWN;
+				}
+			}
+
+			group_info.couple_info_map_iterator = std::get<0>(ci_insert_result);
 			couple_info.groups_info_map_iterator.emplace_back(std::get<0>(gi_insert_result));
 		}
 	}

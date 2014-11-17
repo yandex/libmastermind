@@ -21,6 +21,7 @@
 #define SRC__UTILS_HPP
 
 #include "libmastermind/mastermind.hpp"
+#include "namespace_state_p.hpp"
 
 #include <cocaine/framework/logging.hpp>
 
@@ -43,59 +44,18 @@ private:
 	std::chrono::system_clock::time_point m_beg_time;
 };
 
+struct fake_group_info_t {
+	group_t id;
+	groups_t groups;
+	uint64_t free_effective_space;
+	std::string ns;
+	namespace_state_init_t::data_t::couples_t::group_info_t::status_tag group_status;
+};
+
 enum GROUP_INFO_STATUS {
   GROUP_INFO_STATUS_OK,
   GROUP_INFO_STATUS_BAD,
   GROUP_INFO_STATUS_COUPLED
-};
-
-struct group_info_t;
-struct couple_info_t;
-
-typedef std::shared_ptr<group_info_t> group_info_shared_ptr_t;
-typedef std::shared_ptr<couple_info_t> couple_info_shared_ptr_t;
-
-typedef std::weak_ptr<group_info_t> group_info_weak_ptr_t;
-typedef std::weak_ptr<couple_info_t> couple_info_weak_ptr_t;
-
-typedef std::map<int, group_info_shared_ptr_t> group_info_map_t;
-typedef std::map<std::string, couple_info_shared_ptr_t> couple_info_map_t;
-typedef std::map<std::string, std::vector<couple_info_weak_ptr_t>> namespace_info_map_t;
-
-struct group_info_t {
-	enum group_status_tag {
-		UNKNOWN, BAD, COUPLED
-	};
-
-	size_t id;
-	std::string ns;
-	group_status_tag group_status;
-	std::vector<int> couple;
-
-	couple_info_weak_ptr_t couple_info;
-};
-
-struct couple_info_t {
-	enum couple_status_tag {
-		UNKNOWN, OK, BAD
-	};
-
-	std::string id;
-	couple_status_tag couple_status;
-
-	uint64_t free_effective_space;
-	uint64_t free_space;
-	uint64_t used_space;
-
-	std::string ns;
-	std::vector<int> tuple;
-	std::vector<group_info_weak_ptr_t> group_info;
-};
-
-struct metabalancer_info_t {
-	couple_info_map_t couple_info_map;
-	group_info_map_t group_info_map;
-	namespace_info_map_t namespace_info_map;
 };
 
 typedef std::map<std::string, std::map<std::string, uint64_t>> namespaces_statistics_t;
@@ -108,8 +68,6 @@ mastermind::group_info_response_t &operator >> (object o, mastermind::group_info
 std::vector<mastermind::namespace_settings_t> &operator >> (object o, std::vector<mastermind::namespace_settings_t> &v);
 
 packer<sbuffer> &operator << (packer<sbuffer> &o, const std::vector<mastermind::namespace_settings_t> &v);
-mastermind::metabalancer_info_t &operator >> (object o, mastermind::metabalancer_info_t &r);
-packer<sbuffer> &operator << (packer<sbuffer> &o, const mastermind::metabalancer_info_t &r);
 
 } // namespace msgpack
 
