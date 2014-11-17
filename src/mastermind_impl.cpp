@@ -205,18 +205,6 @@ bool mastermind_t::data::collect_cache_groups() {
 	return false;
 }
 
-bool mastermind_t::data::collect_namespaces_settings() {
-	try {
-		auto cache = namespaces_settings.create_value();
-		enqueue("get_namespaces_settings", "", *cache);
-		namespaces_settings.set(cache);
-		return true;
-	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_namespaces_settings: %s", ex.what());
-	}
-	return false;
-}
-
 bool mastermind_t::data::collect_elliptics_remotes() {
 	try {
 		std::vector<std::tuple<std::string, int, int>> raw_remotes;
@@ -260,10 +248,6 @@ void mastermind_t::data::collect_info_loop_impl() {
 	{
 		spent_time_printer_t helper("collect_cache_groups", m_logger);
 		collect_cache_groups();
-	}
-	{
-		spent_time_printer_t helper("collect_namespaces_settings", m_logger);
-		collect_namespaces_settings();
 	}
 	{
 		spent_time_printer_t helper("collect_elliptics_remotes", m_logger);
@@ -338,8 +322,7 @@ mastermind_t::data::cache_expire() {
 
 	cache_is_expired = false;
 
-	cache_is_expired = cache_is_expired ||
-		namespaces_settings.expire_if(preferable_life_time, warning_time, expire_time);
+	// TODO: namespaces_states influences cache_is_expired
 
 	cache_groups.expire_if(preferable_life_time, warning_time, expire_time);
 	elliptics_remotes.expire_if(preferable_life_time, warning_time, expire_time);
@@ -383,6 +366,8 @@ mastermind_t::data::generate_fake_caches() {
 
 	bad_groups.set(raw_bad_groups);
 	fake_groups_info.set(raw_fake_groups_info);
+
+	// TODO: generate namespaces_settings
 }
 
 void mastermind_t::data::serialize() {
@@ -397,7 +382,6 @@ void mastermind_t::data::serialize() {
 		packer.pack(name); \
 	} while (false)
 
-	PACK_CACHE(namespaces_settings);
 	PACK_CACHE(cache_groups);
 	PACK_CACHE(elliptics_remotes);
 
@@ -435,7 +419,6 @@ void mastermind_t::data::deserialize() {
 				continue; \
 			}
 
-			TRY_UNPACK_CACHE(namespaces_settings);
 			TRY_UNPACK_CACHE(cache_groups);
 			TRY_UNPACK_CACHE(elliptics_remotes);
 

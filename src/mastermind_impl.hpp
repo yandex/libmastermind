@@ -76,7 +76,6 @@ struct mastermind_t::data {
 	collect_namespaces_states();
 
 	bool collect_cache_groups();
-	bool collect_namespaces_settings();
 	bool collect_elliptics_remotes();
 
 	void collect_info_loop_impl();
