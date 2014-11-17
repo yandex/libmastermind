@@ -20,6 +20,8 @@
 #ifndef LIBMASTERMIND__SRC__CACHE_P__HPP
 #define LIBMASTERMIND__SRC__CACHE_P__HPP
 
+#include "cocaine/traits/dynamic.hpp"
+
 #include <cocaine/framework/logging.hpp>
 
 #include <msgpack.hpp>
@@ -68,12 +70,17 @@ public:
 		: last_update_time(std::chrono::system_clock::now())
 	{}
 
-	template <typename Stream>
-	void
-	serialize(msgpack::packer<Stream> &packer) const;
+	cache_t(value_ptr_type value_, kora::dynamic_t raw_value_)
+		: value(std::move(value_))
+		, last_update_time(std::chrono::system_clock::now())
+		, raw_value(std::move(raw_value_))
+	{}
+
+	kora::dynamic_t
+	serialize() const;
 
 	void
-	deserialize(msgpack::object &object);
+	deserialize(kora::dynamic_t raw_object);
 
 	void
 	swap(value_ptr_type &value_) {
@@ -89,6 +96,7 @@ public:
 protected:
 	value_ptr_type value;
 	time_point_type last_update_time;
+	kora::dynamic_t raw_value;
 };
 
 template <typename T>
@@ -295,12 +303,11 @@ public:
 		return has_expired;
 	}
 
-	template <typename Stream>
-	void
-	serialize(msgpack::packer<Stream> &packer) const;
+	kora::dynamic_t
+	serialize() const;
 
 	void
-	deserialize(msgpack::object &object);
+	deserialize(kora::dynamic_t raw_object);
 
 private:
 	logger_ptr_t logger;
@@ -312,25 +319,26 @@ private:
 };
 
 template <typename T>
-template <typename Stream>
-void
-cache_t<T>::serialize(msgpack::packer<Stream> &packer) const {
+kora::dynamic_t
+cache_t<T>::serialize() const {
 	static const std::string LAST_UPDATE_TIME = "last-update-time";
 	static const std::string VALUE = "value";
 
-	packer.pack_map(2);
+	kora::dynamic_t result = kora::dynamic_t::empty_object;
+	auto &result_object = result.as_object();
 
-	packer.pack(LAST_UPDATE_TIME);
-	packer.pack(std::chrono::duration_cast<std::chrono::seconds>(
-				last_update_time.time_since_epoch()).count());
+	result_object[LAST_UPDATE_TIME] = std::chrono::duration_cast<std::chrono::seconds>(
+			last_update_time.time_since_epoch()).count();
 
-	packer.pack(VALUE);
-	packer.pack(*value);
+	result_object[VALUE] = raw_value;
+
+	return result;
 }
 
 template <typename T>
 void
-cache_t<T>::deserialize(msgpack::object &object) {
+cache_t<T>::deserialize(kora::dynamic_t raw_object) {
+	/*
 	static const std::string LAST_UPDATE_TIME = "last-update-time";
 	static const std::string VALUE = "value";
 
@@ -351,23 +359,26 @@ cache_t<T>::deserialize(msgpack::object &object) {
 			it->val.convert(&*value);
 		}
 	}
+	*/
 }
 
 template <typename T>
-template <typename Stream>
-void
-synchronized_cache_map_t<T>::serialize(msgpack::packer<Stream> &packer) const {
-	packer.pack_map(values.size());
+kora::dynamic_t
+synchronized_cache_map_t<T>::serialize() const {
+	kora::dynamic_t result = kora::dynamic_t::empty_object;
+	auto &result_object = result.as_object();
 
 	for (auto it = values.begin(), end = values.end(); it != end; ++it) {
-		packer.pack(it->first);
-		packer.pack(it->second);
+		result_object[it->first] = it->second.serialize();
 	}
+
+	return result;
 }
 
 template <typename T>
 void
-synchronized_cache_map_t<T>::deserialize(msgpack::object &object) {
+synchronized_cache_map_t<T>::deserialize(kora::dynamic_t raw_object) {
+	/*
 	if (object.type != msgpack::type::MAP) {
 		throw msgpack::type_error();
 	}
@@ -381,6 +392,7 @@ synchronized_cache_map_t<T>::deserialize(msgpack::object &object) {
 
 		values.insert(std::make_pair(std::move(key), std::move(cache)));
 	}
+	*/
 }
 
 } // namespace mastermind

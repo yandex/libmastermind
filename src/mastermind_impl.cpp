@@ -371,21 +371,24 @@ mastermind_t::data::generate_fake_caches() {
 }
 
 void mastermind_t::data::serialize() {
-	msgpack::sbuffer sbuffer;
-	msgpack::packer<msgpack::sbuffer> packer(sbuffer);
+	kora::dynamic_t raw_cache = kora::dynamic_t::empty_object;
+	auto &raw_cache_object = raw_cache.as_object();
 
-	packer.pack_map(6);
-
-#define PACK_CACHE(name) \
+#define PACK_CACHE(cache) \
 	do { \
-		packer.pack(std::string(#name)); \
-		packer.pack(name); \
+		raw_cache_object[#cache] = cache.serialize(); \
 	} while (false)
 
+	PACK_CACHE(namespaces_states);
 	PACK_CACHE(cache_groups);
 	PACK_CACHE(elliptics_remotes);
 
 #undef PACK_CACHE
+
+	msgpack::sbuffer sbuffer;
+	msgpack::packer<msgpack::sbuffer> packer(sbuffer);
+
+	cocaine::io::type_traits<kora::dynamic_t>::pack(packer, raw_cache);
 
 	std::ofstream output(m_cache_path.c_str());
 	std::copy(sbuffer.data(), sbuffer.data() + sbuffer.size()
@@ -408,22 +411,27 @@ void mastermind_t::data::deserialize() {
 		msgpack::unpack(&msg, file.data(), file.size());
 		msgpack::object object = msg.get();
 
-		for (msgpack::object_kv *it = object.via.map.ptr, *it_end = it + object.via.map.size;
-				it != it_end; ++it) {
-			std::string key;
-			it->key.convert(&key);
+		kora::dynamic_t raw_cache;
 
-#define TRY_UNPACK_CACHE(name) \
-			if (key == #name) { \
-				it->val.convert(&name); \
-				continue; \
-			}
+		cocaine::io::type_traits<kora::dynamic_t>::unpack(object, raw_cache);
 
-			TRY_UNPACK_CACHE(cache_groups);
-			TRY_UNPACK_CACHE(elliptics_remotes);
+		auto &raw_cache_object = raw_cache.as_object();
+
+#define TRY_UNPACK_CACHE(cache) \
+		do { \
+			try { \
+				cache.deserialize(raw_cache_object[#cache].as_object()); \
+			} catch (const std::exception &ex) { \
+				COCAINE_LOG_ERROR(m_logger, "cannot deserialize cache %s: %s" \
+						, #cache, ex.what()); \
+			} \
+		} while (false)
+
+		TRY_UNPACK_CACHE(namespaces_states);
+		TRY_UNPACK_CACHE(cache_groups);
+		TRY_UNPACK_CACHE(elliptics_remotes);
 
 #undef TRY_UNPACK_CACHE
-		}
 
 		cache_expire();
 		generate_fake_caches();
