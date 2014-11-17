@@ -44,7 +44,6 @@ mastermind_t::data::data(
 	, namespaces_states(logger, "namespaces_states")
 	, namespaces_settings(logger, "namespaces_settings")
 	, cache_groups(logger, "cache_groups")
-	, namespaces_statistics(logger, "namespaces_statistics")
 	, elliptics_remotes(logger, "elliptics_remotes")
 	, bad_groups(logger, "bad_groups")
 	, fake_groups_info(logger, "fake_groups_info")
@@ -218,18 +217,6 @@ bool mastermind_t::data::collect_namespaces_settings() {
 	return false;
 }
 
-bool mastermind_t::data::collect_namespaces_statistics() {
-	try {
-		auto cache = namespaces_statistics.create_value();
-		enqueue("get_namespaces_statistics", "", *cache);
-		namespaces_statistics.set(cache);
-		return true;
-	} catch (const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_namespaces_statistics: %s", ex.what());
-	}
-	return false;
-}
-
 bool mastermind_t::data::collect_elliptics_remotes() {
 	try {
 		std::vector<std::tuple<std::string, int, int>> raw_remotes;
@@ -277,10 +264,6 @@ void mastermind_t::data::collect_info_loop_impl() {
 	{
 		spent_time_printer_t helper("collect_namespaces_settings", m_logger);
 		collect_namespaces_settings();
-	}
-	{
-		spent_time_printer_t helper("collect_namespaces_statistics", m_logger);
-		collect_namespaces_statistics();
 	}
 	{
 		spent_time_printer_t helper("collect_elliptics_remotes", m_logger);
@@ -359,7 +342,6 @@ mastermind_t::data::cache_expire() {
 		namespaces_settings.expire_if(preferable_life_time, warning_time, expire_time);
 
 	cache_groups.expire_if(preferable_life_time, warning_time, expire_time);
-	namespaces_statistics.expire_if(preferable_life_time, warning_time, expire_time);
 	elliptics_remotes.expire_if(preferable_life_time, warning_time, expire_time);
 }
 
@@ -417,7 +399,6 @@ void mastermind_t::data::serialize() {
 
 	PACK_CACHE(namespaces_settings);
 	PACK_CACHE(cache_groups);
-	PACK_CACHE(namespaces_statistics);
 	PACK_CACHE(elliptics_remotes);
 
 #undef PACK_CACHE
@@ -456,7 +437,6 @@ void mastermind_t::data::deserialize() {
 
 			TRY_UNPACK_CACHE(namespaces_settings);
 			TRY_UNPACK_CACHE(cache_groups);
-			TRY_UNPACK_CACHE(namespaces_statistics);
 			TRY_UNPACK_CACHE(elliptics_remotes);
 
 #undef TRY_UNPACK_CACHE

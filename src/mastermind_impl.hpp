@@ -77,7 +77,6 @@ struct mastermind_t::data {
 
 	bool collect_cache_groups();
 	bool collect_namespaces_settings();
-	bool collect_namespaces_statistics();
 	bool collect_elliptics_remotes();
 
 	void collect_info_loop_impl();
@@ -115,7 +114,6 @@ struct mastermind_t::data {
 
 	synchronized_cache_t<std::vector<namespace_settings_t>> namespaces_settings;
 	synchronized_cache_t<std::map<std::string, std::vector<int>>> cache_groups;
-	synchronized_cache_t<namespaces_statistics_t> namespaces_statistics;
 	synchronized_cache_t<std::vector<std::string>> elliptics_remotes;
 
 	synchronized_cache_t<std::vector<groups_t>> bad_groups;

@@ -58,8 +58,6 @@ enum GROUP_INFO_STATUS {
   GROUP_INFO_STATUS_COUPLED
 };
 
-typedef std::map<std::string, std::map<std::string, uint64_t>> namespaces_statistics_t;
-
 } // namespace mastermind
 
 namespace msgpack {
