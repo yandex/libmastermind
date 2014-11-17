@@ -194,7 +194,7 @@ public:
 	typedef typename base_type::duration_type duration_type;
 	typedef typename base_type::logger_ptr_t logger_ptr_t;
 	typedef cache_t<value_type> cache_type;
-	typedef std::map<std::tuple<std::string, int>, cache_t<T>> cache_map_t;
+	typedef std::map<std::string, cache_t<T>> cache_map_t;
 
 	synchronized_cache_map_t(logger_ptr_t logger_, std::string map_name)
 		: logger(std::move(logger_))
@@ -202,9 +202,7 @@ public:
 	{}
 
 	void
-	set(const std::string &cache_name, int size, value_ptr_type value) {
-		auto key = std::make_tuple(cache_name, size);
-
+	set(const std::string &key, value_ptr_type value) {
 		std::lock_guard<std::mutex> lock_guard(mutex);
 		(void) lock_guard;
 
@@ -220,39 +218,23 @@ public:
 	}
 
 	bool
-	exist(const std::string &cache_name, int size) const {
-		auto it = values.find(std::make_tuple(cache_name, size));
+	exist(const std::string &key) const {
+		auto it = values.find(key);
 		return it != values.end();
 	}
 
 	value_ptr_type
-	copy(const std::string &cache_name, int size) const {
+	copy(const std::string &key) const {
 		std::lock_guard<std::mutex> lock_guard(mutex);
 		(void) lock_guard;
 
-		auto it = values.find(std::make_tuple(cache_name, size));
+		auto it = values.find(key);
 
 		if (it != values.end()) {
 			return it->second.value;
 		}
 
 		throw unknown_namespace_error();
-	}
-
-	cache_map_t
-	copy(const std::string &cache_name) const {
-		std::lock_guard<std::mutex> lock_guard(mutex);
-		(void) lock_guard;
-
-		cache_map_t result;
-
-		for (auto it = values.begin(), end = values.end(); it != end; ++it) {
-			if (std::get<0>(it->first) == cache_name) {
-				result.insert(*it);
-			}
-		}
-
-		return result;
 	}
 
 	cache_map_t
@@ -279,8 +261,6 @@ public:
 
 			while (it != end) {
 				const auto &key= it->first;
-				const auto &cache_name = std::get<0>(key);
-				const auto &size = std::get<1>(key);
 				const auto &cache = it->second;
 				auto last_update_time = cache.last_update_time;
 
@@ -291,20 +271,20 @@ public:
 
 				if (expire_time <= life_time) {
 					COCAINE_LOG_ERROR(logger
-							, "cache \"%s\":\"%s\"(%d) has been expired; life-time=%ds"
-							, name.c_str(), cache_name.c_str(), size
+							, "cache \"%s\":\"%s\" has been expired; life-time=%ds"
+							, name.c_str(), key.c_str()
 							, static_cast<int>(life_time.count()));
 					values.erase(it);
 					has_expired = true;
 				} else if (warning_time <= life_time) {
 					COCAINE_LOG_ERROR(logger
-							, "cache \"%s\":\"%s\"(%d) will be expired soon; life-time=%ds"
-							, name.c_str(), cache_name.c_str(), size
+							, "cache \"%s\":\"%s\" will be expired soon; life-time=%ds"
+							, name.c_str(), key.c_str()
 							, static_cast<int>(life_time.count()));
 				} else if (preferable_life_time <= life_time) {
 					COCAINE_LOG_ERROR(logger
-							, "cache \"%s\":\"%s\"(%d) is too old; life-time=%ds"
-							, name.c_str(), cache_name.c_str(), size
+							, "cache \"%s\":\"%s\" is too old; life-time=%ds"
+							, name.c_str(), key.c_str()
 							, static_cast<int>(life_time.count()));
 				}
 

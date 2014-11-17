@@ -90,7 +90,7 @@ mastermind_t::~mastermind_t()
 
 std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std::string &name_space, uint64_t size) {
 	try {
-		auto cache = m_data->namespaces_states.copy(name_space, 0);
+		auto cache = m_data->namespaces_states.copy(name_space);
 		auto couple = cache->weights.get(count, size);
 
 		{
@@ -310,9 +310,9 @@ std::vector<std::string> mastermind_t::get_elliptics_remotes() {
 
 std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> mastermind_t::get_couple_list(
 		const std::string &ns) {
-	auto namespace_states = m_data->namespaces_states.copy(ns, 0);
+	auto namespace_states = m_data->namespaces_states.copy(ns);
 	const auto &weights = namespace_states->weights.data();
-	auto cache_ns_state = m_data->namespaces_states.copy(ns, 0);
+	auto cache_ns_state = m_data->namespaces_states.copy(ns);
 
 	std::map<int, std::tuple<std::vector<int>, uint64_t, uint64_t>> result_map;
 

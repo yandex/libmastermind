@@ -166,13 +166,13 @@ mastermind_t::data::collect_namespaces_states() {
 							, kora::config_t(name, it->second), fake_factory);
 
 				// TODO: check new ns_state is better than the old one
-				// auto old_ns_state = namespaces_states.copy(name, 0);
+				// auto old_ns_state = namespaces_states.copy(name);
 				// if (ns_state is better than old_ns_state) {
 				// 	namespaces_states.set(name, 0, ns_state);
 				// } else {
 				// 	throw std::runtime_error("old namespace_state is better than the new one");
 				// }
-				namespaces_states.set(name, 0, ns_state);
+				namespaces_states.set(name, ns_state);
 			} catch (const std::exception &ex) {
 				COCAINE_LOG_ERROR(m_logger
 						, "libmastermind: cannot update namespace_state for %s: %s"
