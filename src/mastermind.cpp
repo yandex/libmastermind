@@ -312,7 +312,6 @@ std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> mastermind_t::get_
 		const std::string &ns) {
 	auto namespace_states = m_data->namespaces_states.copy(ns);
 	const auto &weights = namespace_states->weights.data();
-	auto cache_ns_state = m_data->namespaces_states.copy(ns);
 
 	std::map<int, std::tuple<std::vector<int>, uint64_t, uint64_t>> result_map;
 
@@ -327,7 +326,7 @@ std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> mastermind_t::get_
 	}
 
 	{
-		const auto &couples = cache_ns_state->couples.couple_info_map;
+		const auto &couples = namespace_states->couples.couple_info_map;
 
 		for (auto it = couples.begin(), end = couples.end(); it != end; ++it) {
 			const auto &couple_info = it->second;
