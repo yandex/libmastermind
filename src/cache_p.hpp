@@ -387,50 +387,5 @@ synchronized_cache_map_t<T>::deserialize(const factory_t &factory, kora::dynamic
 
 } // namespace mastermind
 
-namespace msgpack {
-
-template <typename T>
-mastermind::cache_t<T> &
-operator >> (msgpack::object object, mastermind::cache_t<T> &cache) {
-	cache.deserialize(object);
-	return cache;
-}
-
-template <typename T, typename Stream>
-msgpack::packer<Stream>
-operator << (msgpack::packer<Stream> &packer, const mastermind::cache_t<T> &cache) {
-	cache.serialize(packer);
-	return packer;
-}
-
-template <typename T>
-mastermind::synchronized_cache_t<T> &
-operator >> (msgpack::object object, mastermind::synchronized_cache_t<T> &cache) {
-	cache.deserialize(object);
-	return cache;
-}
-
-template <typename T, typename Stream>
-msgpack::packer<Stream>
-operator << (msgpack::packer<Stream> &packer, const mastermind::synchronized_cache_t<T> &cache) {
-	cache.serialize(packer);
-	return packer;
-}
-
-template <typename T>
-mastermind::synchronized_cache_map_t<T> &
-operator >> (msgpack::object object, mastermind::synchronized_cache_map_t<T> &cache) {
-	cache.deserialize(object);
-	return cache;
-}
-
-template <typename T, typename Stream>
-msgpack::packer<Stream>
-operator << (msgpack::packer<Stream> &packer, const mastermind::synchronized_cache_map_t<T> &cache) {
-	cache.serialize(packer);
-	return packer;
-}
-
-} // namespace msgpack
 #endif /* LIBMASTERMIND__SRC__CACHE_P__HPP */
 
