@@ -306,8 +306,6 @@ mastermind_t::data::cache_expire() {
 	cache_is_expired = cache_is_expired ||
 		namespaces_states.expire_if(preferable_life_time, warning_time, expire_time);
 
-	// TODO: namespaces_states influences cache_is_expired
-
 	cache_groups.expire_if(preferable_life_time, warning_time, expire_time);
 	elliptics_remotes.expire_if(preferable_life_time, warning_time, expire_time);
 }
