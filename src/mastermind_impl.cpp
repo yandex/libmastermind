@@ -18,6 +18,7 @@
 */
 
 #include "mastermind_impl.hpp"
+#include "namespace_p.hpp"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -314,11 +315,13 @@ void
 mastermind_t::data::generate_fake_caches() {
 	auto raw_bad_groups = std::make_shared<std::vector<groups_t>>();
 	auto raw_fake_groups_info = std::make_shared<std::map<group_t, fake_group_info_t>>();
+	auto raw_namespaces_settings = std::make_shared<std::vector<namespace_settings_t>>();
 
 	auto cache = namespaces_states.copy();
 
 	for (auto ns_it = cache.begin(), ns_end = cache.end(); ns_it != ns_end; ++ns_it) {
 		const auto &states = *ns_it->second.get_value();
+		const auto &raw_states = ns_it->second.get_raw_value();
 		const auto &couples = states.couples.couple_info_map;
 
 
@@ -345,12 +348,14 @@ mastermind_t::data::generate_fake_caches() {
 				raw_bad_groups->emplace_back(couple.groups);
 			}
 		}
+
+		raw_namespaces_settings->emplace_back(create_namespace_settings(states.name
+					, raw_states.as_object()["settings"]));
 	}
 
 	bad_groups.set(raw_bad_groups, kora::dynamic_t::null);
 	fake_groups_info.set(raw_fake_groups_info, kora::dynamic_t::null);
-
-	// TODO: generate namespaces_settings
+	namespaces_settings.set(raw_namespaces_settings, kora::dynamic_t::null);
 }
 
 void mastermind_t::data::serialize() {
@@ -437,6 +442,67 @@ mastermind_t::data::create_elliptics_remotes(const std::string &name
 	}
 
 	return result;
+}
+
+namespace_settings_t
+mastermind_t::data::create_namespace_settings(const std::string &name
+		, const kora::dynamic_t &raw_value) {
+	namespace_settings_t::data item;
+
+	kora::config_t config(name, raw_value);
+
+	item.name = name;
+
+	item.groups_count = config.at<int>("groups-count");
+	item.success_copies_num = config.at<std::string>("success-copies-num");
+
+	item.auth_key = config.at<std::string>("auth-key", "");
+
+	if (config.has("auth-keys")) {
+		const auto &auth_keys_config = config.at("auth-keys");
+		item.auth_key_for_write = auth_keys_config.at<std::string>("write", "");
+		item.auth_key_for_read = auth_keys_config.at<std::string>("read", "");
+	}
+
+	if (config.has("static-couple")) {
+		const auto &static_couple_config = config.at("static-couple");
+
+		for (size_t index = 0, size = static_couple_config.size(); index != size; ++index) {
+			item.static_couple.emplace_back(static_couple_config.at<int>(index));
+		}
+	}
+
+	if (config.has("signature")) {
+		const auto &signature_config = config.at("signature");
+		item.sign_token = signature_config.at<std::string>("token", "");
+		item.sign_path_prefix = signature_config.at<std::string>("path_prefix", "");
+		item.sign_port = signature_config.at<std::string>("port", "");
+	}
+
+	if (config.has("redirect")) {
+		const auto &redirect_config = config.at("redirect");
+		item.redirect_expire_time = redirect_config.at<int>("expire-time", 0);
+		item.redirect_content_length_threshold
+			= redirect_config.at<int>("content-length-threshold", -1);
+	}
+
+	item.is_active = config.at<bool>("is_active", false);
+
+	if (config.has("features")) {
+		const auto &features_config = config.at("features");
+
+		item.can_choose_couple_to_upload
+			= features_config.at<bool>("select-couple-to-upload", false);
+
+		if (features_config.has("multipart")) {
+			const auto &multipart_features_config = features_config.at("multipart");
+
+			item.multipart_content_length_threshold
+				= multipart_features_config.at<int64_t>("content-length-threshold", 0);
+		}
+	}
+
+	return { std::move(item) };
 }
 
 void mastermind_t::data::deserialize() {

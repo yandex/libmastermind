@@ -98,6 +98,9 @@ struct mastermind_t::data {
 	std::shared_ptr<std::vector<std::string>>
 	create_elliptics_remotes(const std::string &name, const kora::dynamic_t &raw_value);
 
+	namespace_settings_t
+	create_namespace_settings(const std::string &name, const kora::dynamic_t &raw_value);
+
 	void deserialize();
 
 	void cache_force_update();

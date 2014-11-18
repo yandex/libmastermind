@@ -96,6 +96,11 @@ public:
 		return value;
 	}
 
+	const kora::dynamic_t &
+	get_raw_value() const {
+		return raw_value;
+	}
+
 protected:
 	time_point_type last_update_time;
 	std::string name;
