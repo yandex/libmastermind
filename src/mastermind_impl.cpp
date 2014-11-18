@@ -299,10 +299,12 @@ void mastermind_t::data::collect_info_loop() {
 
 void
 mastermind_t::data::cache_expire() {
-	// TODO: check namespaces_states for expiration
 	auto preferable_life_time = std::chrono::seconds(m_group_info_update_period / 2);
 
 	cache_is_expired = false;
+
+	cache_is_expired = cache_is_expired ||
+		namespaces_states.expire_if(preferable_life_time, warning_time, expire_time);
 
 	// TODO: namespaces_states influences cache_is_expired
 
