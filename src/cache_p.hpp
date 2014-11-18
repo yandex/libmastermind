@@ -85,8 +85,9 @@ public:
 	deserialize(const factory_t &factory, kora::dynamic_t raw_value_);
 
 	void
-	swap(value_ptr_type &value_) {
+	swap(value_ptr_type &value_, kora::dynamic_t &raw_value_) {
 		value.swap(value_);
+		std::swap(raw_value, raw_value_);
 		last_update_time = std::chrono::system_clock::now();
 	}
 
@@ -126,12 +127,12 @@ public:
 	}
 
 	void
-	set(value_ptr_type value_) {
+	set(value_ptr_type value_, kora::dynamic_t raw_value_) {
 		std::lock_guard<std::mutex> lock_guard(mutex);
 		(void) lock_guard;
 
 		// Using swap instead of assignment allows to call value's destructor after mutex unlock
-		base_type::swap(value_);
+		base_type::swap(value_, raw_value_);
 		is_expired = false;
 	}
 
@@ -141,7 +142,8 @@ public:
 		(void) lock_guard;
 
 		auto tmp_value = base_type::create_value();
-		base_type::swap(tmp_value);
+		auto null = kora::dynamic_t::null;
+		base_type::swap(tmp_value, null);
 		is_expired = true;
 	}
 

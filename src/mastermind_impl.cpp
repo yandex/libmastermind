@@ -186,16 +186,10 @@ mastermind_t::data::collect_namespaces_states() {
 
 bool mastermind_t::data::collect_cache_groups() {
 	try {
-		std::vector<std::pair<std::string, std::vector<int>>> raw_cache_groups;
-		enqueue("get_cached_keys", "", raw_cache_groups);
+		auto raw_cache_groups = enqueue("get_cached_keys");
+		auto cache = create_cache_groups("", raw_cache_groups);
 
-		auto cache = cache_groups.create_value();
-
-		for (auto it = raw_cache_groups.begin(); it != raw_cache_groups.end(); ++it) {
-			cache->insert(*it);
-		}
-
-		cache_groups.set(cache);
+		cache_groups.set(std::move(cache), std::move(raw_cache_groups));
 		return true;
 	} catch(const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_cache_groups: %s", ex.what());
@@ -205,19 +199,9 @@ bool mastermind_t::data::collect_cache_groups() {
 
 bool mastermind_t::data::collect_elliptics_remotes() {
 	try {
-		std::vector<std::tuple<std::string, int, int>> raw_remotes;
-		enqueue("get_config_remotes", "", raw_remotes);
-
-		std::vector<std::string> remotes;
-		remotes.reserve(raw_remotes.size());
-
-		for (auto it = raw_remotes.begin(), end = raw_remotes.end(); it != end; ++it) {
-			std::ostringstream oss;
-			oss << std::get<0>(*it) << ':' << std::get<1>(*it) << ':' << std::get<2>(*it);
-			remotes.emplace_back(oss.str());
-		}
-
-		elliptics_remotes.set(std::move(remotes));
+		auto raw_elliptics_remotes = enqueue("get_config_remotes");
+		auto cache = create_elliptics_remotes("", raw_elliptics_remotes);
+		elliptics_remotes.set(std::move(cache), std::move(raw_elliptics_remotes));
 	} catch (const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_elliptics_remotes");
 	}
@@ -328,8 +312,8 @@ mastermind_t::data::cache_expire() {
 
 void
 mastermind_t::data::generate_fake_caches() {
-	std::vector<groups_t> raw_bad_groups;
-	std::map<group_t, fake_group_info_t> raw_fake_groups_info;
+	auto raw_bad_groups = std::make_shared<std::vector<groups_t>>();
+	auto raw_fake_groups_info = std::make_shared<std::map<group_t, fake_group_info_t>>();
 
 	auto cache = namespaces_states.copy();
 
@@ -352,18 +336,19 @@ mastermind_t::data::generate_fake_caches() {
 				fake_group_info.ns = states.name;
 				fake_group_info.group_status = (*it)->second.status;
 
-				raw_fake_groups_info.insert(std::make_pair(fake_group_info.id, fake_group_info));
+				raw_fake_groups_info->insert(
+						std::make_pair(fake_group_info.id, fake_group_info));
 			}
 
 			if (couple.status == namespace_state_init_t::data_t::couples_t
 					::couple_info_t::status_tag::BAD) {
-				raw_bad_groups.emplace_back(couple.groups);
+				raw_bad_groups->emplace_back(couple.groups);
 			}
 		}
 	}
 
-	bad_groups.set(raw_bad_groups);
-	fake_groups_info.set(raw_fake_groups_info);
+	bad_groups.set(raw_bad_groups, kora::dynamic_t::null);
+	fake_groups_info.set(raw_fake_groups_info, kora::dynamic_t::null);
 
 	// TODO: generate namespaces_settings
 }
