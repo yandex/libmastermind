@@ -40,6 +40,8 @@ public:
 	typedef std::chrono::system_clock::time_point time_point_type;
 	typedef std::chrono::system_clock::duration duration_type;
 	typedef std::shared_ptr<cocaine::framework::logger_t> logger_ptr_t;
+	typedef std::function<value_ptr_type
+		(const std::string &, const kora::dynamic_t &)> factory_t;
 
 	template <typename... Args>
 	static
@@ -65,14 +67,14 @@ public:
 	typedef typename base_type::time_point_type time_point_type;
 	typedef typename base_type::duration_type duration_type;
 	typedef typename base_type::logger_ptr_t logger_ptr_t;
+	typedef typename base_type::factory_t factory_t;
 
-	cache_t()
+	cache_t(std::string name_
+			, value_ptr_type value_ = value_ptr_type()
+			, kora::dynamic_t raw_value_ = kora::dynamic_t::null)
 		: last_update_time(std::chrono::system_clock::now())
-	{}
-
-	cache_t(value_ptr_type value_, kora::dynamic_t raw_value_)
-		: value(std::move(value_))
-		, last_update_time(std::chrono::system_clock::now())
+		, name(std::move(name_))
+		, value(std::move(value_))
 		, raw_value(std::move(raw_value_))
 	{}
 
@@ -80,7 +82,7 @@ public:
 	serialize() const;
 
 	void
-	deserialize(kora::dynamic_t raw_object);
+	deserialize(const factory_t &factory, kora::dynamic_t raw_value_);
 
 	void
 	swap(value_ptr_type &value_) {
@@ -94,8 +96,9 @@ public:
 	}
 
 protected:
-	value_ptr_type value;
 	time_point_type last_update_time;
+	std::string name;
+	value_ptr_type value;
 	kora::dynamic_t raw_value;
 };
 
@@ -112,8 +115,8 @@ public:
 	typedef typename base_type::logger_ptr_t logger_ptr_t;
 
 	synchronized_cache_t(logger_ptr_t logger_, std::string cache_name_)
-		: logger(std::move(logger_))
-		, name(std::move(cache_name_))
+		: base_type(cache_name_)
+		, logger(std::move(logger_))
 		, is_expired(false)
 	{}
 
@@ -167,16 +170,16 @@ public:
 		if (expire_time <= life_time) {
 			COCAINE_LOG_ERROR(logger
 					, "cache \"%s\" has been expired; life-time=%ds"
-					, name.c_str(), static_cast<int>(life_time.count()));
+					, base_type::name.c_str(), static_cast<int>(life_time.count()));
 			expire();
 		} else if (warning_time <= life_time) {
 			COCAINE_LOG_ERROR(logger
 					, "cache \"%s\" will be expired soon; life-time=%ds"
-					, name.c_str(), static_cast<int>(life_time.count()));
+					, base_type::name.c_str(), static_cast<int>(life_time.count()));
 		} else if (preferable_life_time <= life_time) {
 			COCAINE_LOG_ERROR(logger
 					, "cache \"%s\" is too old; life-time=%ds"
-					, name.c_str(), static_cast<int>(life_time.count()));
+					, base_type::name.c_str(), static_cast<int>(life_time.count()));
 		}
 
 		return is_expired;
@@ -184,7 +187,6 @@ public:
 
 protected:
 	logger_ptr_t logger;
-	std::string name;
 	bool is_expired;
 
 	mutable std::mutex mutex;
@@ -201,6 +203,7 @@ public:
 	typedef typename base_type::time_point_type time_point_type;
 	typedef typename base_type::duration_type duration_type;
 	typedef typename base_type::logger_ptr_t logger_ptr_t;
+	typedef typename base_type::factory_t factory_t;
 	typedef cache_t<value_type> cache_type;
 	typedef std::map<std::string, cache_t<T>> cache_map_t;
 
@@ -210,17 +213,15 @@ public:
 	{}
 
 	void
-	set(const std::string &key, value_ptr_type value) {
+	set(const std::string &key, cache_type cache) {
 		std::lock_guard<std::mutex> lock_guard(mutex);
 		(void) lock_guard;
 
 		auto it = values.find(key);
 
 		if (it != values.end()) {
-			it->second.swap(value);
+			std::swap(it->second, cache);
 		} else {
-			cache_type cache;
-			cache.swap(value);
 			values.insert(std::make_pair(key, cache));
 		}
 	}
@@ -307,7 +308,7 @@ public:
 	serialize() const;
 
 	void
-	deserialize(kora::dynamic_t raw_object);
+	deserialize(const factory_t &factory, kora::dynamic_t raw_value);
 
 private:
 	logger_ptr_t logger;
@@ -337,29 +338,20 @@ cache_t<T>::serialize() const {
 
 template <typename T>
 void
-cache_t<T>::deserialize(kora::dynamic_t raw_object) {
-	/*
+cache_t<T>::deserialize(const factory_t &factory, kora::dynamic_t raw_value_) {
 	static const std::string LAST_UPDATE_TIME = "last-update-time";
 	static const std::string VALUE = "value";
 
-	if (object.type != msgpack::type::MAP) {
-		throw msgpack::type_error();
+	raw_value = std::move(raw_value_);
+
+	const auto &raw_value_object = raw_value.as_object();
+
+	{
+		auto seconds = raw_value_object[LAST_UPDATE_TIME].to<std::chrono::system_clock::rep>();
+		last_update_time = time_point_type(std::chrono::seconds(seconds));
 	}
 
-	for (msgpack::object_kv *it = object.via.map.ptr, *it_end = it + object.via.map.size;
-			it != it_end; ++it) {
-		std::string key;
-		it->key.convert(&key);
-
-		if (key == LAST_UPDATE_TIME) {
-			std::chrono::system_clock::rep seconds;
-			it->val.convert(&seconds);
-			last_update_time = time_point_type(std::chrono::seconds(seconds));
-		} else if (key == VALUE) {
-			it->val.convert(&*value);
-		}
-	}
-	*/
+	value = factory(name, raw_value_object[VALUE]);
 }
 
 template <typename T>
@@ -377,22 +369,18 @@ synchronized_cache_map_t<T>::serialize() const {
 
 template <typename T>
 void
-synchronized_cache_map_t<T>::deserialize(kora::dynamic_t raw_object) {
-	/*
-	if (object.type != msgpack::type::MAP) {
-		throw msgpack::type_error();
-	}
+synchronized_cache_map_t<T>::deserialize(const factory_t &factory, kora::dynamic_t raw_value) {
+	const auto &raw_value_object = raw_value.as_object();
 
-	for (msgpack::object_kv *it = object.via.map.ptr, *it_end = it + object.via.map.size;
-			it != it_end; ++it) {
-		typename cache_map_t::key_type key;
-		cache_type cache;
-		it->key.convert(&key);
-		it->val.convert(&cache);
+	for (auto it = raw_value_object.begin(), end = raw_value_object.end(); it != end; ++it) {
+		const auto &name = it->first;
+		cache_t<T> cache(name, factory(name, it->second), it->second);
 
-		values.insert(std::make_pair(std::move(key), std::move(cache)));
+		auto insert_result = values.insert(std::make_pair(name, cache));
+		if (std::get<1>(insert_result) == false) {
+			std::get<0>(insert_result)->second = std::move(cache);
+		}
 	}
-	*/
 }
 
 } // namespace mastermind

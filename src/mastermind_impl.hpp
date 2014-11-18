@@ -88,6 +88,16 @@ struct mastermind_t::data {
 	generate_fake_caches();
 
 	void serialize();
+
+	std::shared_ptr<namespace_state_init_t::data_t>
+	create_namespaces_states(const std::string &name, const kora::dynamic_t &raw_value);
+
+	std::shared_ptr<std::map<std::string, std::vector<int>>>
+	create_cache_groups(const std::string &name, const kora::dynamic_t &raw_value);
+
+	std::shared_ptr<std::vector<std::string>>
+	create_elliptics_remotes(const std::string &name, const kora::dynamic_t &raw_value);
+
 	void deserialize();
 
 	void cache_force_update();

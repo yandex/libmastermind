@@ -159,10 +159,7 @@ mastermind_t::data::collect_namespaces_states() {
 			const auto &name = it->first;
 
 			try {
-				// TODO: forward real factory
-				namespace_state_t::user_settings_factory_t fake_factory;
-				auto ns_state = namespaces_states.create_value(name
-							, kora::config_t(name, it->second), fake_factory);
+				auto ns_state = create_namespaces_states(name, it->second);
 
 				// TODO: check new ns_state is better than the old one
 				// auto old_ns_state = namespaces_states.copy(name);
@@ -171,7 +168,8 @@ mastermind_t::data::collect_namespaces_states() {
 				// } else {
 				// 	throw std::runtime_error("old namespace_state is better than the new one");
 				// }
-				namespaces_states.set(name, ns_state);
+				namespaces_states.set(name
+						, cache_t<namespace_state_init_t::data_t>(name, ns_state, it->second));
 			} catch (const std::exception &ex) {
 				COCAINE_LOG_ERROR(m_logger
 						, "libmastermind: cannot update namespace_state for %s: %s"
@@ -395,6 +393,67 @@ void mastermind_t::data::serialize() {
 			, std::ostreambuf_iterator<char>(output));
 }
 
+std::shared_ptr<namespace_state_init_t::data_t>
+mastermind_t::data::create_namespaces_states(const std::string &name
+		, const kora::dynamic_t &raw_value) {
+	// TODO: forward real factory
+	namespace_state_t::user_settings_factory_t fake_factory;
+	auto ns_state = namespaces_states.create_value(name
+				, kora::config_t(name, raw_value), fake_factory);
+	return ns_state;
+}
+
+std::shared_ptr<std::map<std::string, std::vector<int>>>
+mastermind_t::data::create_cache_groups(const std::string &name
+		, const kora::dynamic_t &raw_value) {
+	(void) name;
+
+	auto result = std::make_shared<std::map<std::string, std::vector<int>>>();
+
+	const auto &raw_value_array = raw_value.as_array();
+
+	for (auto p_it = raw_value_array.begin(), p_end = raw_value_array.end();
+			p_it != p_end; ++p_it) {
+		const auto &pair = p_it->as_array();
+		const auto &name = pair[0].to<std::string>();
+		const auto &raw_groups = pair[1].as_array();
+		groups_t groups;
+
+		for (auto it = raw_groups.begin(), end = raw_groups.end(); it != end; ++it) {
+			groups.emplace_back(it->to<group_t>());
+		}
+
+		result->insert(std::make_pair(name, groups));
+	}
+
+	return result;
+}
+
+std::shared_ptr<std::vector<std::string>>
+mastermind_t::data::create_elliptics_remotes(const std::string &name
+		, const kora::dynamic_t &raw_value) {
+	(void) name;
+
+	auto result = std::make_shared<std::vector<std::string>>();
+
+	const auto &raw_value_array = raw_value.as_array();
+
+	for (auto p_it = raw_value_array.begin(), p_end = raw_value_array.end();
+			p_it != p_end; ++p_it) {
+		const auto &tuple = p_it->as_array();
+		const auto &name = tuple[0].to<std::string>();
+		const auto &port = tuple[1].to<int>();
+		const auto &family = tuple[2].to<int>();
+
+		std::ostringstream oss;
+		oss << name << ':' << port << ':' << family;
+
+		result->emplace_back(oss.str());
+	}
+
+	return result;
+}
+
 void mastermind_t::data::deserialize() {
 	std::string file;
 	{
@@ -420,7 +479,9 @@ void mastermind_t::data::deserialize() {
 #define TRY_UNPACK_CACHE(cache) \
 		do { \
 			try { \
-				cache.deserialize(raw_cache_object[#cache].as_object()); \
+				cache.deserialize(std::bind(&data::create_##cache, this \
+							, std::placeholders::_1, std::placeholders::_2) \
+						, raw_cache_object[#cache].as_object()); \
 			} catch (const std::exception &ex) { \
 				COCAINE_LOG_ERROR(m_logger, "cannot deserialize cache %s: %s" \
 						, #cache, ex.what()); \
