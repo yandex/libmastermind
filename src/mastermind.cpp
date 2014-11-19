@@ -361,13 +361,33 @@ uint64_t mastermind_t::free_effective_space_in_couple_by_group(size_t group) {
 }
 
 std::string mastermind_t::json_group_weights() {
-	// TODO:
-	throw std::runtime_error("Not Implemented");
+	auto cache = m_data->namespaces_states.copy();
+
+	kora::dynamic_t raw_group_weights = kora::dynamic_t::empty_object;
+	auto &raw_group_weights_object = raw_group_weights.as_object();
+
+	for (auto it = cache.begin(), end = cache.end(); it != end; ++it) {
+		const auto &ns_state = it->second.get_value();
+		const auto &ns_raw_state = it->second.get_raw_value();
+
+		raw_group_weights_object[ns_state->name] = ns_raw_state.as_object()["weights"];
+	}
+
+	return kora::to_pretty_json(raw_group_weights);
 }
 
 std::string mastermind_t::json_symmetric_groups() {
-	// TODO:
-	throw std::runtime_error("Not Implemented");
+	auto cache = m_data->fake_groups_info.copy();
+
+	kora::dynamic_t raw_symmetric_groups = kora::dynamic_t::empty_object;
+	auto &raw_symmetric_groups_object = raw_symmetric_groups.as_object();
+
+	for (auto it = cache->begin(), end = cache->end(); it != end; ++it) {
+		raw_symmetric_groups_object[boost::lexical_cast<std::string>(it->first)]
+			= it->second.groups;
+	}
+
+	return kora::to_pretty_json(raw_symmetric_groups);
 }
 
 std::string mastermind_t::json_bad_groups() {
@@ -424,60 +444,46 @@ std::string mastermind_t::json_cache_groups() {
 }
 
 std::string mastermind_t::json_metabalancer_info() {
-	// TODO:
-	throw std::runtime_error("Not Implemented");
+	auto cache = m_data->namespaces_states.copy();
+
+	kora::dynamic_t raw_metabalancer_info = kora::dynamic_t::empty_object;
+	auto &raw_metabalancer_info_object = raw_metabalancer_info.as_object();
+
+	for (auto it = cache.begin(), end = cache.end(); it != end; ++it) {
+		const auto &ns_state = it->second.get_value();
+		const auto &ns_raw_state = it->second.get_raw_value();
+
+		raw_metabalancer_info_object[ns_state->name] = ns_raw_state.as_object()["couples"];
+	}
+
+	return kora::to_pretty_json(raw_metabalancer_info);
 }
 
 std::string mastermind_t::json_namespaces_settings() {
-	auto cache = m_data->namespaces_settings.copy();
+	auto cache = m_data->namespaces_states.copy();
 
-	Json::Value json;
+	kora::dynamic_t raw_namespaces_settings = kora::dynamic_t::empty_object;
+	auto &raw_namespaces_settings_object = raw_namespaces_settings.as_object();
 
-	for (auto bit = cache->begin(), it = bit; it != cache->end(); ++it) {
+	for (auto it = cache.begin(), end = cache.end(); it != end; ++it) {
+		const auto &ns_state = it->second.get_value();
+		const auto &ns_raw_state = it->second.get_raw_value();
 
-		Json::Value json_ns(Json::objectValue);
-
-		json_ns["groups-count"] = it->groups_count();
-		json_ns["success-copies-num"] =it->success_copies_num();
-
-		json_ns["auth-keys"]["write"] = it->auth_key_for_write();
-		json_ns["auth-keys"]["read"] = it->auth_key_for_read();
-
-
-		{
-			Json::Value json_sc(Json::arrayValue);
-			for (auto sc_it = it->static_couple().begin()
-					, sc_end = it->static_couple().end(); sc_it != sc_end; ++sc_it) {
-				json_sc.append(*sc_it);
-			}
-
-			json_ns["static-couple"] = json_sc;
-		}
-
-		json_ns["signature"]["token"] = it->sign_token();
-		json_ns["signature"]["path-prefix"] = it->sign_path_prefix();
-		json_ns["signature"]["port"] = it->sign_port();
-
-		json_ns["is-active"] = it->is_active();
-
-		json_ns["features"]["can-choose-couple-for-upload"] = it->can_choose_couple_to_upload();
-		json_ns["features"]["multipart"]["content-length-threshold"] =
-			static_cast<Json::Value::Int64>(it->multipart_content_length_threshold());
-
-		json_ns["redirect"]["expire-time"] = it->redirect_expire_time();
-		json_ns["redirect"]["content-length-threshold"] =
-			static_cast<Json::Value::Int64>(it->redirect_content_length_threshold());
-
-		json[it->name()] = json_ns;
+		raw_namespaces_settings_object[ns_state->name] = ns_raw_state.as_object()["settings"];
 	}
 
-	Json::StyledWriter writer;
-	return writer.write(json);
+	return kora::to_pretty_json(raw_namespaces_settings);
 }
 
 std::string mastermind_t::json_namespace_statistics(const std::string &ns) {
-	// TODO: use namespaces_states::statistics
-	throw std::runtime_error("Not Implemented");
+	auto cache = m_data->namespaces_states.copy();
+	auto it = cache.find(ns);
+
+	if (it == cache.end()) {
+		return {};
+	}
+
+	return kora::to_pretty_json(it->second.get_raw_value().as_object()["statistics"]);
 }
 
 void mastermind_t::cache_force_update() {
