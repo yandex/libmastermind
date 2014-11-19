@@ -193,7 +193,9 @@ bool mastermind_t::data::collect_cache_groups() {
 		cache_groups.set(std::move(cache), std::move(raw_cache_groups));
 		return true;
 	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_cache_groups: %s", ex.what());
+		COCAINE_LOG_ERROR(m_logger
+				, "libmastermind: cannot process collect_cache_groups: %s"
+				, ex.what());
 	}
 	return false;
 }
@@ -204,7 +206,9 @@ bool mastermind_t::data::collect_elliptics_remotes() {
 		auto cache = create_elliptics_remotes("", raw_elliptics_remotes);
 		elliptics_remotes.set(std::move(cache), std::move(raw_elliptics_remotes));
 	} catch (const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: collect_elliptics_remotes");
+		COCAINE_LOG_ERROR(m_logger
+				, "libmastermind: cannot process collect_elliptics_remotes: %s"
+				, ex.what());
 	}
 	return false;
 }
@@ -417,6 +421,10 @@ mastermind_t::data::create_cache_groups(const std::string &name
 		result->insert(std::make_pair(name, groups));
 	}
 
+	if (result->empty()) {
+		throw std::runtime_error("cache-groups list is empty");
+	}
+
 	return result;
 }
 
@@ -440,6 +448,10 @@ mastermind_t::data::create_elliptics_remotes(const std::string &name
 		oss << name << ':' << port << ':' << family;
 
 		result->emplace_back(oss.str());
+	}
+
+	if (result->empty()) {
+		throw std::runtime_error("elliptics-remotes list is empty");
 	}
 
 	return result;
