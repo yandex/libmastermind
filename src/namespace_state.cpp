@@ -225,14 +225,17 @@ mastermind::namespace_state_t::data_t::data_t(std::string name_, const kora::con
 	, weights(config.at("weights"), settings.groups_count)
 	, statistics(config.at("statistics"))
 {
-	// TODO: check consistency
-	// if (<not consistency>) {
-	// 	throw std::runtime_error("state is not consistent");
-	// }
+	if (check_consistency() == false) {
+		throw std::runtime_error("state is not consistent");
+	}
 
 	// TODO: log ns-state extract
 } catch (const std::exception &ex) {
 	throw std::runtime_error("cannot create ns-state " + name + ": " + ex.what());
+}
+bool
+mastermind::namespace_state_t::data_t::check_consistency() {
+	throw std::runtime_error("Not Implemented");
 }
 
 mastermind::namespace_state_t::namespace_state_t() {
