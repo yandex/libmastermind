@@ -17,6 +17,7 @@ set(REQUIRED_LIBRARIES
 	boost_thread
 	boost_system
 	jsoncpp
+	kora-util
 	)
 	
 include_directories(BEFORE
