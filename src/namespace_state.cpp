@@ -235,7 +235,23 @@ mastermind::namespace_state_t::data_t::data_t(std::string name_, const kora::con
 }
 bool
 mastermind::namespace_state_t::data_t::check_consistency() {
-	throw std::runtime_error("Not Implemented");
+	{
+		size_t nonzero_weights = 0;
+
+		const auto &weights = weights.data();
+
+		for (auto it = weights.begin(), end = weights.end(); it != end; ++it) {
+			auto weight = std::get<1>(*it);
+
+			if (weight != 0) {
+				nonzero_weights += 1;
+			}
+		}
+
+		if (nonzero_weight == 0) {
+			throw std::runtime_error("no weighted coulples were obtained from mastermind");
+		}
+	}
 }
 
 mastermind::namespace_state_t::namespace_state_t() {
