@@ -381,13 +381,20 @@ synchronized_cache_map_t<T>::deserialize(const factory_t &factory, kora::dynamic
 	const auto &raw_value_object = raw_value.as_object();
 
 	for (auto it = raw_value_object.begin(), end = raw_value_object.end(); it != end; ++it) {
-		const auto &name = it->first;
-		cache_t<T> cache(name);
-		cache.deserialize(factory, it->second);
+		const auto &cache_name = it->first;
 
-		auto insert_result = values.insert(std::make_pair(name, cache));
-		if (std::get<1>(insert_result) == false) {
-			std::get<0>(insert_result)->second = std::move(cache);
+		try {
+			cache_t<T> cache(cache_name);
+			cache.deserialize(factory, it->second);
+
+			auto insert_result = values.insert(std::make_pair(cache_name, cache));
+			if (std::get<1>(insert_result) == false) {
+				std::get<0>(insert_result)->second = std::move(cache);
+			}
+		} catch (const std::exception &ex) {
+			COCAINE_LOG_ERROR(logger
+					, "libmastermind: cannot deserialize %s:%s: %s"
+					, name.c_str(), cache_name.c_str(), ex.what());
 		}
 	}
 }
