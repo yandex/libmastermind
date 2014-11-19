@@ -358,7 +358,8 @@ cache_t<T>::deserialize(const factory_t &factory, kora::dynamic_t raw_value_) {
 		last_update_time = time_point_type(std::chrono::seconds(seconds));
 	}
 
-	value = factory(name, raw_value_object[VALUE]);
+	raw_value = raw_value_object[VALUE];
+	value = factory(name, raw_value);
 }
 
 template <typename T>
@@ -381,7 +382,8 @@ synchronized_cache_map_t<T>::deserialize(const factory_t &factory, kora::dynamic
 
 	for (auto it = raw_value_object.begin(), end = raw_value_object.end(); it != end; ++it) {
 		const auto &name = it->first;
-		cache_t<T> cache(name, factory(name, it->second), it->second);
+		cache_t<T> cache(name);
+		cache.deserialize(factory, it->second);
 
 		auto insert_result = values.insert(std::make_pair(name, cache));
 		if (std::get<1>(insert_result) == false) {
