@@ -225,22 +225,21 @@ mastermind::namespace_state_t::data_t::data_t(std::string name_, const kora::con
 	, weights(config.at("weights"), settings.groups_count)
 	, statistics(config.at("statistics"))
 {
-	if (check_consistency() == false) {
-		throw std::runtime_error("state is not consistent");
-	}
+	check_consistency();
 
 	// TODO: log ns-state extract
 } catch (const std::exception &ex) {
 	throw std::runtime_error("cannot create ns-state " + name + ": " + ex.what());
 }
-bool
+
+void
 mastermind::namespace_state_t::data_t::check_consistency() {
 	{
 		size_t nonzero_weights = 0;
 
-		const auto &weights = weights.data();
+		const auto &weights_data = weights.data();
 
-		for (auto it = weights.begin(), end = weights.end(); it != end; ++it) {
+		for (auto it = weights_data.begin(), end = weights_data.end(); it != end; ++it) {
 			auto weight = std::get<1>(*it);
 
 			if (weight != 0) {
@@ -248,7 +247,7 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 			}
 		}
 
-		if (nonzero_weight == 0) {
+		if (nonzero_weights == 0) {
 			throw std::runtime_error("no weighted coulples were obtained from mastermind");
 		}
 	}

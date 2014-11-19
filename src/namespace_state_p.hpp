@@ -127,7 +127,7 @@ public:
 	data_t(std::string name, const kora::config_t &config
 			, const user_settings_factory_t &factory);
 
-	bool check_consistency();
+	void check_consistency();
 
 	std::string name;
 
