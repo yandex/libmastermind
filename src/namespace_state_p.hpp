@@ -135,6 +135,8 @@ public:
 	couples_t couples;
 	weights_t weights;
 	statistics_t statistics;
+
+	std::string extract;
 };
 
 class namespace_state_init_t

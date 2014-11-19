@@ -390,6 +390,7 @@ mastermind_t::data::create_namespaces_states(const std::string &name
 	namespace_state_t::user_settings_factory_t fake_factory;
 	auto ns_state = namespaces_states.create_value(name
 				, kora::config_t(name, raw_value), fake_factory);
+	COCAINE_LOG_INFO(m_logger, "libmastermind: namespace_state: %s", ns_state->extract.c_str());
 	return ns_state;
 }
 

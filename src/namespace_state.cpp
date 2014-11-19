@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <sstream>
 
 mastermind::namespace_state_t::user_settings_t::~user_settings_t() {
 }
@@ -234,6 +235,11 @@ mastermind::namespace_state_t::data_t::data_t(std::string name_, const kora::con
 
 void
 mastermind::namespace_state_t::data_t::check_consistency() {
+	std::ostringstream oss;
+
+	oss << "namespace=" << name;
+	oss << " groups-count=" << settings.groups_count;
+
 	{
 		size_t nonzero_weights = 0;
 
@@ -250,7 +256,11 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 		if (nonzero_weights == 0) {
 			throw std::runtime_error("no weighted coulples were obtained from mastermind");
 		}
+
+		oss << " couples-for-write=" << nonzero_weights;
 	}
+
+	extract = oss.str();
 }
 
 mastermind::namespace_state_t::namespace_state_t() {
