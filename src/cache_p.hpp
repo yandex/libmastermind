@@ -121,7 +121,7 @@ public:
 	typedef typename base_type::logger_ptr_t logger_ptr_t;
 
 	synchronized_cache_t(logger_ptr_t logger_, std::string cache_name_)
-		: base_type(cache_name_)
+		: base_type(cache_name_, base_type::create_value(), kora::dynamic_t::null)
 		, logger(std::move(logger_))
 		, is_expired(false)
 	{}
