@@ -32,6 +32,10 @@
 
 namespace mastermind {
 
+typedef std::chrono::system_clock clock_type;
+typedef clock_type::duration duration_type;
+typedef clock_type::time_point time_point_type;
+
 class spent_time_printer_t {
 public:
 	spent_time_printer_t(const std::string &handler_name, std::shared_ptr<cocaine::framework::logger_t> &logger);

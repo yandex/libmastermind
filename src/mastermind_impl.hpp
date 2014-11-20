@@ -84,18 +84,24 @@ struct mastermind_t::data {
 	void
 	cache_expire();
 
+	template <typename T>
+	bool
+	check_cache_for_expire(const std::string &title, const cache_t<T> &cache
+			, const duration_type &preferable_life_time, const duration_type &warning_time
+			, const duration_type &expire_time);
+
 	void
 	generate_fake_caches();
 
 	void serialize();
 
-	std::shared_ptr<namespace_state_init_t::data_t>
+	namespace_state_init_t::data_t
 	create_namespaces_states(const std::string &name, const kora::dynamic_t &raw_value);
 
-	std::shared_ptr<std::map<std::string, std::vector<int>>>
+	std::map<std::string, groups_t>
 	create_cache_groups(const std::string &name, const kora::dynamic_t &raw_value);
 
-	std::shared_ptr<std::vector<std::string>>
+	std::vector<std::string>
 	create_elliptics_remotes(const std::string &name, const kora::dynamic_t &raw_value);
 
 	namespace_settings_t
@@ -122,12 +128,15 @@ struct mastermind_t::data {
 	uint64_t                                           m_metabase_current_stamp;
 
 
-	synchronized_cache_map_t<namespace_state_init_t::data_t> namespaces_states;
+	typedef synchronized_cache_map_t<namespace_state_init_t::data_t> namespaces_states_t;
+	typedef synchronized_cache_t<std::map<std::string, groups_t>> cache_groups_t;
+	typedef synchronized_cache_t<std::vector<std::string>> elliptics_remotes_t;
+
+	namespaces_states_t namespaces_states;
+	cache_groups_t cache_groups;
+	elliptics_remotes_t elliptics_remotes;
 
 	synchronized_cache_t<std::vector<namespace_settings_t>> namespaces_settings;
-	synchronized_cache_t<std::map<std::string, std::vector<int>>> cache_groups;
-	synchronized_cache_t<std::vector<std::string>> elliptics_remotes;
-
 	synchronized_cache_t<std::vector<groups_t>> bad_groups;
 	synchronized_cache_t<std::map<group_t, fake_group_info_t>> fake_groups_info;
 
@@ -272,6 +281,38 @@ void mastermind_t::data::enqueue(const std::string &event, const T &chunk, R &re
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: enqueue: %s", ex.what());
 		throw;
 	}
+}
+
+template <typename T>
+bool
+mastermind_t::data::check_cache_for_expire(const std::string &title, const cache_t<T> &cache
+		, const duration_type &preferable_life_time, const duration_type &warning_time
+		, const duration_type &expire_time) {
+	bool is_expired = cache.is_expired();
+
+	if (is_expired) {
+		return true;
+	}
+
+	auto life_time = std::chrono::duration_cast<std::chrono::seconds>(
+			clock_type::now() - cache.get_last_update_time());
+
+	if (expire_time <= life_time) {
+		COCAINE_LOG_ERROR(m_logger
+				, "cache \"%s\" has been expired; life-time=%ds"
+				, title.c_str(), static_cast<int>(life_time.count()));
+		is_expired = true;
+	} else if (warning_time <= life_time) {
+		COCAINE_LOG_ERROR(m_logger
+				, "cache \"%s\" will be expired soon; life-time=%ds"
+				, title.c_str(), static_cast<int>(life_time.count()));
+	} else if (preferable_life_time <= life_time) {
+		COCAINE_LOG_ERROR(m_logger
+				, "cache \"%s\" is too old; life-time=%ds"
+				, title.c_str(), static_cast<int>(life_time.count()));
+	}
+
+	return is_expired;
 }
 
 } // namespace mastermind

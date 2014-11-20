@@ -30,7 +30,8 @@ enum libmastermind_error_t {
 	couple_not_found,
 	not_enough_memory,
 	unknown_namespace,
-	invalid_groups_count
+	invalid_groups_count,
+	cache_is_expired
 };
 
 } // namespace libmastermind_error
@@ -74,6 +75,13 @@ class invalid_groups_count_error
 {
 public:
 	invalid_groups_count_error();
+};
+
+class cache_is_expired_error
+	: public std::system_error
+{
+public:
+	cache_is_expired_error();
 };
 
 } // namespace mastermind

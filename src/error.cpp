@@ -35,6 +35,8 @@ std::string libmastermind_category_impl::message(int ev) const {
 		return "Unknown namespace";
 	case libmastermind_error::invalid_groups_count:
 		return "Cannot find couple with such count of groups";
+	case libmastermind_error::cache_is_expired:
+		return "Expired cache cannot be used";
 	default:
 		return "Unknown libmastermind error";
 	}
@@ -67,6 +69,10 @@ unknown_namespace_error::unknown_namespace_error()
 
 invalid_groups_count_error::invalid_groups_count_error()
 	: std::system_error(make_error_code(libmastermind_error::invalid_groups_count))
+{}
+
+cache_is_expired_error::cache_is_expired_error()
+	: std::system_error(make_error_code(libmastermind_error::cache_is_expired))
 {}
 
 } // namespace mastermind
