@@ -29,6 +29,8 @@
 #include <tuple>
 #include <functional>
 #include <chrono>
+#include <vector>
+#include <ostream>
 
 namespace mastermind {
 
@@ -63,6 +65,25 @@ enum GROUP_INFO_STATUS {
 };
 
 } // namespace mastermind
+
+template <typename T>
+std::ostream &operator <<(std::ostream &ostream, const std::vector<T> &vector) {
+	ostream << '[';
+	{
+		auto beg = vector.begin();
+		auto end = vector.end();
+		for (auto it = beg; it != end; ++it) {
+			if (it != beg) {
+				ostream << ", ";
+			}
+
+			ostream << *it;
+		}
+	}
+	ostream << ']';
+
+	return ostream;
+}
 
 namespace msgpack {
 

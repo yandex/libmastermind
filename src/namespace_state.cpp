@@ -1,4 +1,5 @@
 #include "namespace_state_p.hpp"
+#include "utils.hpp"
 
 #include <boost/lexical_cast.hpp>
 
@@ -241,6 +242,12 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 	oss << " groups-count=" << settings.groups_count;
 
 	{
+		if (couples.couple_info_map.empty()) {
+			throw std::runtime_error("couples list is empty");
+		}
+	}
+
+	{
 		size_t nonzero_weights = 0;
 
 		const auto &weights_data = weights.data();
@@ -250,6 +257,36 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 
 			if (weight != 0) {
 				nonzero_weights += 1;
+			}
+
+			{
+				auto couple_it = couples.couple_info_map.cend();
+				const auto &groups = std::get<0>(*it);
+
+				for (auto git = groups.begin(), gend = groups.end(); git != gend; ++git) {
+					auto group_info_it = couples.group_info_map.find(*git);
+
+					if (group_info_it == couples.group_info_map.end()) {
+						throw std::runtime_error("there is no group-info for group "
+								+ boost::lexical_cast<std::string>(*git));
+					}
+
+					if (couple_it != couples.couple_info_map.end()) {
+						if (couple_it != group_info_it->second.couple_info_map_iterator) {
+							std::ostringstream oss;
+							oss << "inconsisten couple: " << groups;
+							throw std::runtime_error(oss.str());
+						}
+					} else {
+						couple_it = group_info_it->second.couple_info_map_iterator;
+					}
+				}
+
+				if (couple_it->second.groups.size() != groups.size()) {
+					std::ostringstream oss;
+					oss << "inconsisten couple: " << groups;
+					throw std::runtime_error(oss.str());
+				}
 			}
 		}
 
