@@ -1,3 +1,16 @@
+libmastermind (8.23.1) lucid; urgency=low
+
+  * MDS-353: use get_namespaces_states
+    The whole info for namespace is getting from mastermind by get_namespaces_states.
+    Following mastermind handlers are no longer used:
+    get_group_weights, get_namespaces_settings, get_couples_list, get_namespaces_statistics
+    Added dependency on libkora-util
+    'elliptics-remotes' cache and 'cache-groups' cache will not applied if they are empty,
+    Libmastermind uses raw mastermind responses for caches' serialization,
+    Expired cache is no longer removed, it just is not used.
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 24 Nov 2014 17:50:39 +0400
+
 libmastermind (8.22) lucid; urgency=low
 
   * MDS-342: json_namespaces_settings returns whole info
