@@ -290,10 +290,6 @@ mastermind_t::data::check_cache_for_expire(const std::string &title, const cache
 		, const duration_type &expire_time) {
 	bool is_expired = cache.is_expired();
 
-	if (is_expired) {
-		return true;
-	}
-
 	auto life_time = std::chrono::duration_cast<std::chrono::seconds>(
 			clock_type::now() - cache.get_last_update_time());
 

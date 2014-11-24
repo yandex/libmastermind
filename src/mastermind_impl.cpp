@@ -335,11 +335,14 @@ mastermind_t::data::cache_expire() {
 
 			cache_is_expired = cache_is_expired || cache.is_expired();
 
-			if (!cache.is_expired() && check_cache_for_expire("namespaces_states:" + name
+			if (check_cache_for_expire("namespaces_states:" + name
 						, cache, preferable_life_time, warning_time, expire_time)) {
-				cache.set_expire(true);
-				namespaces_states.set(name, std::move(cache));
 				cache_is_expired = true;
+
+				if (!cache.is_expired()) {
+					cache.set_expire(true);
+					namespaces_states.set(name, std::move(cache));
+				}
 			}
 		}
 	}
