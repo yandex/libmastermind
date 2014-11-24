@@ -30,6 +30,14 @@ mastermind::namespace_state_t::data_t::settings_t::settings_t(const kora::config
 	throw std::runtime_error(std::string("cannot create settings-state: ") + ex.what());
 }
 
+mastermind::namespace_state_t::data_t::settings_t::settings_t(settings_t &&other)
+	: groups_count(other.groups_count)
+	, success_copies_num(std::move(other.success_copies_num))
+	, auth_keys(std::move(other.auth_keys))
+	, user_settings_ptr(std::move(other.user_settings_ptr))
+{
+}
+
 mastermind::namespace_state_t::data_t::couples_t::couples_t(const kora::config_t &state)
 	try
 {
@@ -234,6 +242,16 @@ mastermind::namespace_state_t::data_t::data_t(std::string name_, const kora::con
 	throw std::runtime_error("cannot create ns-state " + name + ": " + ex.what());
 }
 
+mastermind::namespace_state_t::data_t::data_t(data_t &&other)
+	: name(std::move(other.name))
+	, settings(std::move(other.settings))
+	, couples(std::move(other.couples))
+	, weights(std::move(other.weights))
+	, statistics(std::move(other.statistics))
+	, extract(std::move(other.extract))
+{
+}
+
 void
 mastermind::namespace_state_t::data_t::check_consistency() {
 	std::ostringstream oss;
@@ -311,6 +329,11 @@ mastermind::namespace_state_init_t::namespace_state_init_t(
 mastermind::namespace_state_init_t::data_t::data_t(std::string name
 		, const kora::config_t &config, const user_settings_factory_t &factory)
 	: namespace_state_t::data_t(std::move(name), config, factory)
+{
+}
+
+mastermind::namespace_state_init_t::data_t::data_t(data_t &&other)
+	: namespace_state_t::data_t(std::move(other))
 {
 }
 

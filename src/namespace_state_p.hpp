@@ -38,10 +38,12 @@ public:
 	struct settings_t {
 		settings_t(const kora::config_t &config, const user_settings_factory_t &factory);
 
+		settings_t(settings_t &&other);
+
 		size_t groups_count;
 		std::string success_copies_num;
 
-		struct {
+		struct auth_keys_t {
 			std::string read;
 			std::string write;
 		} auth_keys;
@@ -127,6 +129,8 @@ public:
 	data_t(std::string name, const kora::config_t &config
 			, const user_settings_factory_t &factory);
 
+	data_t(data_t &&other);
+
 	void check_consistency();
 
 	std::string name;
@@ -147,6 +151,8 @@ public:
 	struct data_t : namespace_state_t::data_t {
 		data_t(std::string name, const kora::config_t &config
 				, const user_settings_factory_t &factory);
+
+		data_t(data_t &&other);
 	};
 
 };

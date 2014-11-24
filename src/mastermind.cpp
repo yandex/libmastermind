@@ -350,7 +350,8 @@ std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> mastermind_t::get_
 			auto couple_id = *std::min_element(groups.begin(), groups.end());
 
 			result_map.insert(std::make_pair(couple_id
-						, std::make_tuple(groups, 0, couple_info.free_effective_space)));
+						, std::make_tuple(groups, static_cast<uint64_t>(0)
+							, couple_info.free_effective_space)));
 		}
 	}
 
