@@ -304,7 +304,7 @@ void mastermind_t::data::collect_info_loop() {
 
 void
 mastermind_t::data::cache_expire() {
-	auto preferable_life_time = std::chrono::seconds(m_group_info_update_period / 2);
+	auto preferable_life_time = std::chrono::seconds(m_group_info_update_period);
 
 	cache_is_expired = false;
 
