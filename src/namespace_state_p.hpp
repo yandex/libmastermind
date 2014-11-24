@@ -99,9 +99,6 @@ public:
 
 		weights_t(const kora::config_t &config, size_t groups_count_);
 
-		void
-		set(couples_with_info_t couples_with_info_);
-
 		couple_with_info_t
 		get(size_t groups_count_, uint64_t size) const;
 
@@ -110,16 +107,24 @@ public:
 
 	private:
 		typedef std::reference_wrapper<const couple_with_info_t> const_couple_ref_t;
-		typedef std::map<uint64_t, const_couple_ref_t> weighted_couples_t;
+		typedef std::map<uint64_t, size_t> weighted_couples_t;
 		typedef std::map<uint64_t, weighted_couples_t> couples_by_avalible_memory_t;
+
+		static
+		couples_with_info_t
+		create_couples_with_info(const kora::config_t &config, size_t groups_count);
+
+		static
+		couples_by_avalible_memory_t
+		create_couples_with_info(const couples_with_info_t &couples_with_info);
 
 		static
 		bool
 		couples_with_info_cmp(const couple_with_info_t &lhs, const couple_with_info_t &rhs);
 
-		size_t groups_count;
-		couples_with_info_t couples_with_info;
-		couples_by_avalible_memory_t couples_by_avalible_memory;
+		const size_t groups_count;
+		const couples_with_info_t couples_with_info;
+		const couples_by_avalible_memory_t couples_by_avalible_memory;
 	};
 
 	struct statistics_t {

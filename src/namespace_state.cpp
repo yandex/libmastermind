@@ -116,12 +116,22 @@ mastermind::namespace_state_t::data_t::couples_t::couples_t(const kora::config_t
 	throw std::runtime_error(std::string("cannot create couples-state: ") + ex.what());
 }
 
-mastermind::namespace_state_t::data_t::weights_t::weights_t(const kora::config_t &state
+mastermind::namespace_state_t::data_t::weights_t::weights_t(const kora::config_t &config
 		, size_t groups_count_)
 	try
 	: groups_count(groups_count_)
+	, couples_with_info(create_couples_with_info(config, groups_count))
+	, couples_by_avalible_memory(create_couples_with_info(couples_with_info))
+
 {
-	const auto &couples = state.at(boost::lexical_cast<std::string>(groups_count))
+} catch (const std::exception &ex) {
+	throw std::runtime_error(std::string("cannot create weights-state: ") + ex.what());
+}
+
+mastermind::namespace_state_t::data_t::weights_t::couples_with_info_t
+mastermind::namespace_state_t::data_t::weights_t::create_couples_with_info(
+		const kora::config_t &config, size_t groups_count) {
+	const auto &couples = config.at(boost::lexical_cast<std::string>(groups_count))
 		.underlying_object().as_array();
 
 	couples_with_info_t couples_with_info;
@@ -140,22 +150,27 @@ mastermind::namespace_state_t::data_t::weights_t::weights_t(const kora::config_t
 			}
 		}
 
+		if (groups.size() != groups_count) {
+			std::ostringstream oss;
+			oss
+				<< "groups.size is not equeal for groups_count(" << groups_count
+				<< "), groups=" << groups;
+			throw std::runtime_error(oss.str());
+		}
+
 		couples_with_info.emplace_back(std::make_tuple(groups
 					, couple[1].to<uint64_t>(), couple[2].to<uint64_t>()));
 	}
 
-	set(std::move(couples_with_info));
-} catch (const std::exception &ex) {
-	throw std::runtime_error(std::string("cannot create weights-state: ") + ex.what());
+	std::sort(couples_with_info.begin(), couples_with_info.end(), couples_with_info_cmp);
+
+	return couples_with_info;
 }
 
-
-void
-mastermind::namespace_state_t::data_t::weights_t::set(couples_with_info_t couples_with_info_)
-{
-	couples_with_info = std::move(couples_with_info_);
-
-	std::sort(couples_with_info.begin(), couples_with_info.end(), couples_with_info_cmp);
+mastermind::namespace_state_t::data_t::weights_t::couples_by_avalible_memory_t
+mastermind::namespace_state_t::data_t::weights_t::create_couples_with_info(
+		const couples_with_info_t &couples_with_info) {
+	couples_by_avalible_memory_t couples_by_avalible_memory;
 
 	for (size_t index = 0; index != couples_with_info.size(); ++index) {
 		auto avalible_memory = std::get<2>(couples_with_info[index]);
@@ -173,10 +188,12 @@ mastermind::namespace_state_t::data_t::weights_t::set(couples_with_info_t couple
 			total_weight += weight;
 
 			couples_by_avalible_memory[avalible_memory].insert(
-				std::make_pair(total_weight, std::cref(couple_with_info))
+				std::make_pair(total_weight, index2)
 			);
 		}
 	}
+
+	return couples_by_avalible_memory;
 }
 
 mastermind::namespace_state_t::data_t::weights_t::couple_with_info_t
@@ -204,7 +221,7 @@ mastermind::namespace_state_t::data_t::weights_t::get(size_t groups_count_
 		throw couple_not_found_error();
 	}
 
-	return it->second;
+	return couples_with_info[it->second];
 }
 
 const mastermind::namespace_state_t::data_t::weights_t::couples_with_info_t &
