@@ -237,7 +237,6 @@ mastermind::namespace_state_t::data_t::data_t(std::string name_, const kora::con
 {
 	check_consistency();
 
-	// TODO: log ns-state extract
 } catch (const std::exception &ex) {
 	throw std::runtime_error("cannot create ns-state " + name + ": " + ex.what());
 }
