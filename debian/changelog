@@ -1,3 +1,10 @@
+libmastermind (8.23.2) lucid; urgency=low
+
+  * The dependence on libkora-util-dev (= 1.1.0-rc1) is added to
+    libmastermind-dev depends list
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 24 Nov 2014 22:18:19 +0400
+
 libmastermind (8.23.1) lucid; urgency=low
 
   * MDS-353: use get_namespaces_states
