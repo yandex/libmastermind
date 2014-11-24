@@ -24,6 +24,9 @@
 
 #include <cocaine/framework/logging.hpp>
 
+#include <kora/dynamic.hpp>
+#include <kora/config.hpp>
+
 #include <boost/optional.hpp>
 
 #include <map>
@@ -32,6 +35,9 @@
 #include <memory>
 
 namespace mastermind {
+
+typedef int group_t;
+typedef std::vector<int> groups_t;
 
 struct group_info_response_t {
 	std::vector<std::string> nodes;
@@ -72,6 +78,31 @@ struct namespace_settings_t {
 
 private:
 	std::unique_ptr<data> m_data;
+};
+
+class namespace_state_t {
+public:
+	class user_settings_t {
+	public:
+		virtual ~user_settings_t();
+	};
+
+	typedef std::unique_ptr<user_settings_t> user_settings_ptr_t;
+
+	typedef
+	std::function<user_settings_ptr_t (const kora::config_t &state)>
+	user_settings_factory_t;
+
+	// <interface>
+
+protected:
+	class data_t;
+
+	namespace_state_t();
+
+	std::shared_ptr<const data_t> data;
+
+private:
 };
 
 class mastermind_t {

@@ -23,6 +23,7 @@
 #include "libmastermind/mastermind.hpp"
 #include "utils.hpp"
 #include "cache_p.hpp"
+#include "namespace_state_p.hpp"
 
 #include <thread>
 #include <condition_variable>
@@ -36,6 +37,8 @@
 #include <cocaine/framework/services/app.hpp>
 #include <cocaine/framework/common.hpp>
 #include <cocaine/traits/tuple.hpp>
+
+#include <kora/dynamic.hpp>
 
 #include <boost/lexical_cast.hpp>
 
@@ -52,23 +55,28 @@ struct mastermind_t::data {
 
 	void reconnect();
 
+	template <typename T>
+	kora::dynamic_t
+	simple_enqueue(const std::string &event, const T &chunk);
+
 	template <typename R, typename T>
 	bool simple_enqueue(const std::string &event, const T &chunk, R &result);
+
+	kora::dynamic_t
+	enqueue(const std::string &event);
+
+	template <typename T>
+	kora::dynamic_t
+	enqueue(const std::string &event, const T &chunk);
 
 	template <typename R, typename T>
 	void enqueue(const std::string &event, const T &chunk, R &result);
 
 	void
-	collect_namespaces_weights();
+	collect_namespaces_states();
 
 	bool collect_cache_groups();
-	bool collect_namespaces_settings();
-	bool collect_metabalancer_info();
-	bool collect_namespaces_statistics();
 	bool collect_elliptics_remotes();
-
-	void
-	generate_groups_caches();
 
 	void collect_info_loop_impl();
 	void collect_info_loop();
@@ -76,7 +84,29 @@ struct mastermind_t::data {
 	void
 	cache_expire();
 
+	template <typename T>
+	bool
+	check_cache_for_expire(const std::string &title, const cache_t<T> &cache
+			, const duration_type &preferable_life_time, const duration_type &warning_time
+			, const duration_type &expire_time);
+
+	void
+	generate_fake_caches();
+
 	void serialize();
+
+	namespace_state_init_t::data_t
+	create_namespaces_states(const std::string &name, const kora::dynamic_t &raw_value);
+
+	std::map<std::string, groups_t>
+	create_cache_groups(const std::string &name, const kora::dynamic_t &raw_value);
+
+	std::vector<std::string>
+	create_elliptics_remotes(const std::string &name, const kora::dynamic_t &raw_value);
+
+	namespace_settings_t
+	create_namespace_settings(const std::string &name, const kora::dynamic_t &raw_value);
+
 	void deserialize();
 
 	void cache_force_update();
@@ -98,16 +128,17 @@ struct mastermind_t::data {
 	uint64_t                                           m_metabase_current_stamp;
 
 
-	synchronized_cache_map_t<namespace_weights_t> namespaces_weights;
+	typedef synchronized_cache_map_t<namespace_state_init_t::data_t> namespaces_states_t;
+	typedef synchronized_cache_t<std::map<std::string, groups_t>> cache_groups_t;
+	typedef synchronized_cache_t<std::vector<std::string>> elliptics_remotes_t;
 
-	synchronized_cache_t<metabalancer_info_t> metabalancer_info;
+	namespaces_states_t namespaces_states;
+	cache_groups_t cache_groups;
+	elliptics_remotes_t elliptics_remotes;
+
 	synchronized_cache_t<std::vector<namespace_settings_t>> namespaces_settings;
-	synchronized_cache_t<std::map<std::string, std::vector<int>>> cache_groups;
-	synchronized_cache_t<namespaces_statistics_t> namespaces_statistics;
-	synchronized_cache_t<std::vector<std::string>> elliptics_remotes;
-
-	synchronized_cache_t<std::vector<std::vector<int>>> bad_groups;
-	synchronized_cache_t<std::map<int, std::vector<int>>> symmetric_groups;
+	synchronized_cache_t<std::vector<groups_t>> bad_groups;
+	synchronized_cache_t<std::map<group_t, fake_group_info_t>> fake_groups_info;
 
 	const int                                          m_group_info_update_period;
 	std::thread                                        m_weight_cache_update_thread;
@@ -131,6 +162,32 @@ struct mastermind_t::data {
 	std::shared_ptr<cocaine::framework::service_manager_t> m_service_manager;
 };
 
+template <typename T>
+kora::dynamic_t
+mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk) {
+	try {
+		auto g = m_app->enqueue(event, chunk);
+		g.wait_for(enqueue_timeout);
+
+		if (g.ready() == false) {
+			throw std::runtime_error("enqueue timeout");
+		}
+
+		auto chunk = g.next();
+		msgpack::unpacked unpacked;
+		msgpack::unpack(&unpacked, chunk.data(), chunk.size());
+		auto object = unpacked.get();
+
+		kora::dynamic_t result;
+
+		cocaine::io::type_traits<kora::dynamic_t>::unpack(object, result);
+
+		return result;
+	} catch (const std::exception &ex) {
+		throw std::runtime_error("cannot process event " + event + ": " + ex.what());
+	}
+}
+
 template <typename R, typename T>
 bool mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk, R &result) {
 	try {
@@ -149,6 +206,47 @@ bool mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: enqueue_impl: %s", ex.what());
 	}
 	return false;
+}
+
+template <typename T>
+kora::dynamic_t
+mastermind_t::data::enqueue(const std::string &event, const T &chunk) {
+	try {
+		bool tried_to_reconnect = false;
+
+		if (!m_service_manager || !m_app
+				|| m_app->status() != cocaine::framework::service_status::connected) {
+			COCAINE_LOG_INFO(m_logger, "libmastermind: enqueue: preconnect");
+			tried_to_reconnect = true;
+			reconnect();
+		}
+
+		try {
+			return simple_enqueue(event, chunk);
+		} catch (const std::exception &ex) {
+			COCAINE_LOG_ERROR(m_logger
+					, "libmastermind: cannot process enqueue (1st try): %s"
+					, ex.what());
+		}
+
+		if (tried_to_reconnect) {
+			throw std::runtime_error("reconnect is useless");
+		}
+
+		reconnect();
+
+		try {
+			return simple_enqueue(event, chunk);
+		} catch (const std::exception &ex) {
+			COCAINE_LOG_ERROR(m_logger
+					, "libmastermind: cannot process enqueue (2nd try): %s"
+					, ex.what());
+		}
+
+		throw std::runtime_error("bad connection");
+	} catch (const std::exception &ex) {
+		throw std::runtime_error(std::string("cannot process enqueue: ") + ex.what());
+	}
 }
 
 template <typename R, typename T>
@@ -183,6 +281,34 @@ void mastermind_t::data::enqueue(const std::string &event, const T &chunk, R &re
 		COCAINE_LOG_ERROR(m_logger, "libmastermind: enqueue: %s", ex.what());
 		throw;
 	}
+}
+
+template <typename T>
+bool
+mastermind_t::data::check_cache_for_expire(const std::string &title, const cache_t<T> &cache
+		, const duration_type &preferable_life_time, const duration_type &warning_time
+		, const duration_type &expire_time) {
+	bool is_expired = cache.is_expired();
+
+	auto life_time = std::chrono::duration_cast<std::chrono::seconds>(
+			clock_type::now() - cache.get_last_update_time());
+
+	if (expire_time <= life_time) {
+		COCAINE_LOG_ERROR(m_logger
+				, "cache \"%s\" has been expired; life-time=%ds"
+				, title.c_str(), static_cast<int>(life_time.count()));
+		is_expired = true;
+	} else if (warning_time <= life_time) {
+		COCAINE_LOG_ERROR(m_logger
+				, "cache \"%s\" will be expired soon; life-time=%ds"
+				, title.c_str(), static_cast<int>(life_time.count()));
+	} else if (preferable_life_time <= life_time) {
+		COCAINE_LOG_ERROR(m_logger
+				, "cache \"%s\" is too old; life-time=%ds"
+				, title.c_str(), static_cast<int>(life_time.count()));
+	}
+
+	return is_expired;
 }
 
 } // namespace mastermind

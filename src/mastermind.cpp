@@ -90,8 +90,8 @@ mastermind_t::~mastermind_t()
 
 std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std::string &name_space, uint64_t size) {
 	try {
-		auto cache = m_data->namespaces_weights.copy(name_space, count);
-		auto couple = cache->get_couple(size);
+		auto cache = m_data->namespaces_states.copy(name_space);
+		auto couple = cache.get_value().weights.get(count, size);
 
 		{
 			std::ostringstream oss;
@@ -146,8 +146,16 @@ group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
 
 std::map<int, std::vector<int>> mastermind_t::get_symmetric_groups() {
 	try {
-		auto cache = m_data->symmetric_groups.copy();
-		return *cache;
+		auto cache = m_data->fake_groups_info.copy();
+
+		std::map<int, std::vector<int>> result;
+
+		for (auto it = cache.get_value().begin(), end = cache.get_value().end();
+				it != end; ++it) {
+			result.insert(std::make_pair(it->first, it->second.groups));
+		}
+
+		return result;
 	} catch(const std::system_error &ex) {
 		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_symmetric_groups: \"%s\"", ex.code().message().c_str());
 		throw;
@@ -184,15 +192,13 @@ std::vector<int> mastermind_t::get_symmetric_groups(int group) {
 }
 
 std::vector<int> mastermind_t::get_couple_by_group(int group) {
-	auto cache = m_data->metabalancer_info.copy();
+	auto cache = m_data->fake_groups_info.copy();
 	std::vector<int> result;
 
-	auto git = cache->group_info_map.find(group);
+	auto git = cache.get_value().find(group);
 
-	if (git != cache->group_info_map.end()) {
-		auto r = git->second->couple;
-		// TODO: use uniform types
-		result.assign(r.begin(), r.end());
+	if (git != cache.get_value().end()) {
+		result = git->second.groups;
 	}
 
 	return result;
@@ -202,28 +208,29 @@ std::vector<int> mastermind_t::get_couple(int couple_id, const std::string &ns) 
 	COCAINE_LOG_INFO(m_data->m_logger, "libmastermind: get_couple: couple_id=%d ns=%s"
 			, couple_id, ns);
 
-	auto cache = m_data->metabalancer_info.copy();
+	auto cache = m_data->fake_groups_info.copy();
 	std::vector<int> result;
 
-	auto git = cache->group_info_map.find(couple_id);
+	auto git = cache.get_value().find(couple_id);
 
-	if (git == cache->group_info_map.end()) {
+	if (git == cache.get_value().end()) {
 		COCAINE_LOG_ERROR(m_data->m_logger
 				, "libmastermind: get_couple: cannot find couple by the couple_id");
 		return std::vector<int>();
 	}
 
-	if (git->second->group_status != group_info_t::COUPLED) {
+	if (git->second.group_status !=
+			namespace_state_init_t::data_t::couples_t::group_info_t::status_tag::COUPLED) {
 		COCAINE_LOG_ERROR(m_data->m_logger
 				, "libmastermind: get_couple: couple status is not COUPLED: %d"
-				, static_cast<int>(git->second->group_status));
+				, static_cast<int>(git->second.group_status));
 		return std::vector<int>();
 	}
 
-	if (git->second->ns != ns) {
+	if (git->second.ns != ns) {
 		COCAINE_LOG_ERROR(m_data->m_logger
 				, "libmastermind: get_couple: couple belongs to another namespace: %s"
-				, git->second->ns);
+				, git->second.ns);
 		return std::vector<int>();
 	}
 
@@ -231,7 +238,7 @@ std::vector<int> mastermind_t::get_couple(int couple_id, const std::string &ns) 
 		std::ostringstream oss;
 		oss << "libmastermind: get_couple: couple was found: [";
 		{
-			const auto &couple = git->second->couple;
+			const auto &couple = git->second.groups;
 			for (auto beg = couple.begin(), it = beg, end = couple.end(); it != end; ++it) {
 				if (beg != it) oss << ", ";
 				oss << *it;
@@ -243,13 +250,13 @@ std::vector<int> mastermind_t::get_couple(int couple_id, const std::string &ns) 
 		COCAINE_LOG_INFO(m_data->m_logger, "%s", msg.c_str());
 	}
 
-	return git->second->couple;
+	return git->second.groups;
 }
 
 std::vector<std::vector<int> > mastermind_t::get_bad_groups() {
 	try {
 		auto cache = m_data->bad_groups.copy();
-		return *cache;
+		return cache.get_value();
 	} catch(const std::system_error &ex) {
 		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_bad_groups: \"%s\"", ex.code().message().c_str());
 		throw;
@@ -271,8 +278,12 @@ std::vector<int> mastermind_t::get_cache_groups(const std::string &key) {
 	try {
 		auto cache = m_data->cache_groups.copy();
 
-		auto it = cache->find(key);
-		if (it != cache->end())
+		if (cache.is_expired()) {
+			return std::vector<int>();
+		}
+
+		auto it = cache.get_value().find(key);
+		if (it != cache.get_value().end())
 			return it->second;
 		return std::vector<int>();
 	} catch(const std::system_error &ex) {
@@ -287,7 +298,7 @@ std::vector<int> mastermind_t::get_cache_groups(const std::string &key) {
 std::vector<namespace_settings_t> mastermind_t::get_namespaces_settings() {
 	try {
 		auto cache = m_data->namespaces_settings.copy();
-		return *cache;
+		return cache.get_value();
 	} catch(const std::system_error &ex) {
 		COCAINE_LOG_ERROR(
 			m_data->m_logger,
@@ -299,43 +310,48 @@ std::vector<namespace_settings_t> mastermind_t::get_namespaces_settings() {
 
 std::vector<std::string> mastermind_t::get_elliptics_remotes() {
 	auto cache = m_data->elliptics_remotes.copy();
-	return *cache;
+
+	if (cache.is_expired()) {
+		return std::vector<std::string>();
+	}
+
+	return cache.get_value();
 }
 
 std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> mastermind_t::get_couple_list(
 		const std::string &ns) {
-	auto cache_weights = m_data->namespaces_weights.copy(ns);
-	auto cache_couple_list = m_data->metabalancer_info.copy();
+	auto namespace_states = m_data->namespaces_states.copy(ns);
+
+	if (namespace_states.is_expired()) {
+		return std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>>();
+	}
+
+	const auto &weights = namespace_states.get_value().weights.data();
 
 	std::map<int, std::tuple<std::vector<int>, uint64_t, uint64_t>> result_map;
 
-	for (auto cw_it = cache_weights.begin(), cw_end = cache_weights.end();
-			cw_it != cw_end; ++cw_it) {
-		const auto &weights = cw_it->second.get_value()->data();
+	for (auto it = weights.begin(), end = weights.end(); it != end; ++it) {
+		auto weight = std::get<1>(*it);
+		auto memory = std::get<2>(*it);
+		const auto &couple = std::get<0>(*it);
+		auto group_id = *std::min_element(couple.begin(), couple.end());
 
-		for (auto it = weights.begin(), end = weights.end(); it != end; ++it) {
-			auto weight = std::get<1>(*it);
-			auto memory = std::get<2>(*it);
-			const auto &couple = std::get<0>(*it);
-			auto group_id = *std::min_element(couple.begin(), couple.end());
-
-			result_map.insert(std::make_pair(group_id
-						, std::make_tuple(couple, weight, memory)));
-		}
+		result_map.insert(std::make_pair(group_id
+					, std::make_tuple(couple, weight, memory)));
 	}
 
 	{
-		auto couple_list = cache_couple_list->namespace_info_map[ns];
+		const auto &couples = namespace_states.get_value().couples.couple_info_map;
 
-		for (auto it = couple_list.begin(), end = couple_list.end(); it != end; ++it) {
-			auto couple_info = it->lock();
+		for (auto it = couples.begin(), end = couples.end(); it != end; ++it) {
+			const auto &couple_info = it->second;
+			const auto &groups = couple_info.groups;
 
-			const auto &couple = couple_info->tuple;
-			auto group_id = *std::min_element(couple.begin(), couple.end());
+			auto couple_id = *std::min_element(groups.begin(), groups.end());
 
-			result_map.insert(std::make_pair(group_id
-						, std::make_tuple(couple, static_cast<uint64_t>(0)
-							, couple_info->free_effective_space)));
+			result_map.insert(std::make_pair(couple_id
+						, std::make_tuple(groups, static_cast<uint64_t>(0)
+							, couple_info.free_effective_space)));
 		}
 	}
 
@@ -350,84 +366,52 @@ std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> mastermind_t::get_
 }
 
 uint64_t mastermind_t::free_effective_space_in_couple_by_group(size_t group) {
-	auto cache = m_data->metabalancer_info.copy();
+	auto cache = m_data->fake_groups_info.copy();
 
-	auto git = cache->group_info_map.find(group);
-	if (git == cache->group_info_map.end()) {
+	if (cache.is_expired()) {
 		return 0;
 	}
 
-	if (auto p = git->second->couple_info.lock()) {
-		return p->free_effective_space;
+	auto git = cache.get_value().find(group);
+	if (git == cache.get_value().end()) {
+		return 0;
 	}
 
-	return 0;
+	return git->second.free_effective_space;
 }
 
 std::string mastermind_t::json_group_weights() {
-	auto cache = m_data->namespaces_weights.copy();
+	auto cache = m_data->namespaces_states.copy();
 
-	Json::Value json;
+	kora::dynamic_t raw_group_weights = kora::dynamic_t::empty_object;
+	auto &raw_group_weights_object = raw_group_weights.as_object();
 
-	for (auto c_it = cache.begin(), c_end = cache.end(); c_it != c_end; ++c_it) {
-		const auto &name = std::get<0>(c_it->first);
-		const auto &groups_count = std::get<1>(c_it->first);
-
-		const auto &couples = c_it->second.get_value()->data();
-
-		Json::Value json_ns_gc(Json::objectValue);
-
-		for (auto it = couples.begin(), end = couples.end(); it != end; ++it) {
-			const auto &couple = std::get<0>(*it);
-
-			std::ostringstream oss;
-			oss << '[';
-			for (auto begin_it = couple.begin(), it = begin_it, end_it = couple.end();
-					it != end_it; ++it) {
-				if (begin_it != it) oss << ", ";
-				oss << *it;
-			}
-			oss << ']';
-
-			const auto &weight = std::get<1>(*it);
-			const auto &available_memory = std::get<2>(*it);
-
-			auto ns_gc_name = oss.str();
-			json_ns_gc[ns_gc_name]["weight"] = static_cast<Json::Value::UInt64>(weight);
-			json_ns_gc[ns_gc_name]["space"] = static_cast<Json::Value::UInt64>(available_memory);
+	for (auto it = cache.begin(), end = cache.end(); it != end; ++it) {
+		if (it->second.is_expired()) {
+			continue;
 		}
 
-		json[name][boost::lexical_cast<std::string>(groups_count)] = json_ns_gc;
+		const auto &ns_state = it->second.get_value();
+		const auto &ns_raw_state = it->second.get_raw_value();
+
+		raw_group_weights_object[ns_state.name] = ns_raw_state.as_object()["weights"];
 	}
 
-	Json::StyledWriter writer;
-	return writer.write(json);
+	return kora::to_pretty_json(raw_group_weights);
 }
 
 std::string mastermind_t::json_symmetric_groups() {
-	auto cache = m_data->symmetric_groups.copy();
+	auto cache = m_data->fake_groups_info.copy();
 
-	std::ostringstream oss;
-	oss << "{" << std::endl;
-	auto ite = cache->end();
-	if (cache->begin() != cache->end()) --ite;
-	for (auto it = cache->begin(); it != cache->end(); ++it) {
-		oss << "\t\"" << it->first << "\" : [";
-		for (auto it2b = it->second.begin(), it2 = it2b; it2 != it->second.end(); ++it2) {
-			if (it2 != it2b) {
-				oss << ", ";
-			}
-			oss << *it2;
-		}
-		oss << "]";
-		if (it != ite) {
-			oss << ',';
-		}
-		oss << std::endl;
+	kora::dynamic_t raw_symmetric_groups = kora::dynamic_t::empty_object;
+	auto &raw_symmetric_groups_object = raw_symmetric_groups.as_object();
+
+	for (auto it = cache.get_value().begin(), end = cache.get_value().end(); it != end; ++it) {
+		raw_symmetric_groups_object[boost::lexical_cast<std::string>(it->first)]
+			= it->second.groups;
 	}
-	oss << "}";
 
-	return oss.str();
+	return kora::to_pretty_json(raw_symmetric_groups);
 }
 
 std::string mastermind_t::json_bad_groups() {
@@ -435,9 +419,9 @@ std::string mastermind_t::json_bad_groups() {
 
 	std::ostringstream oss;
 	oss << "{" << std::endl;
-	auto ite = cache->end();
-	if (cache->begin() != cache->end()) --ite;
-	for (auto it = cache->begin(); it != cache->end(); ++it) {
+	auto ite = cache.get_value().end();
+	if (cache.get_value().begin() != cache.get_value().end()) --ite;
+	for (auto it = cache.get_value().begin(); it != cache.get_value().end(); ++it) {
 		oss << "\t[";
 		for (auto it2 = it->begin(); it2 != it->end(); ++it2) {
 			if (it2 != it->begin()) {
@@ -461,9 +445,15 @@ std::string mastermind_t::json_cache_groups() {
 
 	std::ostringstream oss;
 	oss << "{" << std::endl;
-	auto ite = cache->end();
-	if (cache->begin() != cache->end()) --ite;
-	for (auto it = cache->begin(); it != cache->end(); ++it) {
+
+	if (cache.is_expired()) {
+		oss << "}";
+		return oss.str();
+	}
+
+	auto ite = cache.get_value().end();
+	if (cache.get_value().begin() != cache.get_value().end()) --ite;
+	for (auto it = cache.get_value().begin(); it != cache.get_value().end(); ++it) {
 		oss << "\t\"" << it->first << "\" : [";
 		for (auto it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
 			if (it2 != it->second.begin()) {
@@ -484,112 +474,54 @@ std::string mastermind_t::json_cache_groups() {
 }
 
 std::string mastermind_t::json_metabalancer_info() {
-	auto cache = m_data->metabalancer_info.copy();
+	auto cache = m_data->namespaces_states.copy();
 
-	std::ostringstream oss;
-	oss << "{" << std::endl;
-	oss << "\t[" << std::endl;
+	kora::dynamic_t raw_metabalancer_info = kora::dynamic_t::empty_object;
+	auto &raw_metabalancer_info_object = raw_metabalancer_info.as_object();
 
-	for (auto cit_beg = cache->couple_info_map.begin(),
-			cit_end = cache->couple_info_map.end(),
-			cit = cit_beg;
-			cit != cit_end; ++cit)
-	{
-		if (cit != cit_beg) {
-			oss << ',' << std::endl;
+	for (auto it = cache.begin(), end = cache.end(); it != end; ++it) {
+		if (it->second.is_expired()) {
+			continue;
 		}
-		oss << "\t\t{" << std::endl;
-		oss << "\t\t\t\"id\" : \"" << cit->second->id << "\"," << std::endl;
-		oss << "\t\t\t\"free_effective_space\" : " << cit->second->free_effective_space << ',' << std::endl;
-		oss << "\t\t\t\"free_space\" : " << cit->second->free_space << ',' << std::endl;
-		oss << "\t\t\t\"used_space\" : " << cit->second->used_space << ',' << std::endl;
-		oss << "\t\t\t\"namespace\" : \"" << cit->second->ns << "\"" << std::endl;
-		oss << "\t\t\t\"couple_status\" : ";
-		switch (cit->second->couple_status) {
-		case couple_info_t::OK:
-			oss << "\"OK\"";
-			break;
-		default:
-			oss << "\"UNKNOWN\"";
-		}
-		oss << std::endl << "\t\t}";
+
+		const auto &ns_state = it->second.get_value();
+		const auto &ns_raw_state = it->second.get_raw_value();
+
+		raw_metabalancer_info_object[ns_state.name] = ns_raw_state.as_object()["couples"];
 	}
 
-	oss << std::endl << "\t]" << std::endl << "}";
-
-	return oss.str();
+	return kora::to_pretty_json(raw_metabalancer_info);
 }
 
 std::string mastermind_t::json_namespaces_settings() {
-	auto cache = m_data->namespaces_settings.copy();
+	auto cache = m_data->namespaces_states.copy();
 
-	Json::Value json;
+	kora::dynamic_t raw_namespaces_settings = kora::dynamic_t::empty_object;
+	auto &raw_namespaces_settings_object = raw_namespaces_settings.as_object();
 
-	for (auto bit = cache->begin(), it = bit; it != cache->end(); ++it) {
-
-		Json::Value json_ns(Json::objectValue);
-
-		json_ns["groups-count"] = it->groups_count();
-		json_ns["success-copies-num"] =it->success_copies_num();
-
-		json_ns["auth-keys"]["write"] = it->auth_key_for_write();
-		json_ns["auth-keys"]["read"] = it->auth_key_for_read();
-
-
-		{
-			Json::Value json_sc(Json::arrayValue);
-			for (auto sc_it = it->static_couple().begin()
-					, sc_end = it->static_couple().end(); sc_it != sc_end; ++sc_it) {
-				json_sc.append(*sc_it);
-			}
-
-			json_ns["static-couple"] = json_sc;
+	for (auto it = cache.begin(), end = cache.end(); it != end; ++it) {
+		if (it->second.is_expired()) {
+			continue;
 		}
 
-		json_ns["signature"]["token"] = it->sign_token();
-		json_ns["signature"]["path-prefix"] = it->sign_path_prefix();
-		json_ns["signature"]["port"] = it->sign_port();
+		const auto &ns_state = it->second.get_value();
+		const auto &ns_raw_state = it->second.get_raw_value();
 
-		json_ns["is-active"] = it->is_active();
-
-		json_ns["features"]["can-choose-couple-for-upload"] = it->can_choose_couple_to_upload();
-		json_ns["features"]["multipart"]["content-length-threshold"] =
-			static_cast<Json::Value::Int64>(it->multipart_content_length_threshold());
-
-		json_ns["redirect"]["expire-time"] = it->redirect_expire_time();
-		json_ns["redirect"]["content-length-threshold"] =
-			static_cast<Json::Value::Int64>(it->redirect_content_length_threshold());
-
-		json[it->name()] = json_ns;
+		raw_namespaces_settings_object[ns_state.name] = ns_raw_state.as_object()["settings"];
 	}
 
-	Json::StyledWriter writer;
-	return writer.write(json);
+	return kora::to_pretty_json(raw_namespaces_settings);
 }
 
 std::string mastermind_t::json_namespace_statistics(const std::string &ns) {
-	auto cache = m_data->namespaces_statistics.copy();
+	auto cache = m_data->namespaces_states.copy();
+	auto it = cache.find(ns);
 
-	auto nit = cache->find(ns);
-
-	if (nit == cache->end()) {
-		return std::string();
+	if (it == cache.end()) {
+		return {};
 	}
 
-	std::ostringstream oss;
-	oss << "{" << std::endl;
-
-	for (auto begin = nit->second.begin(), it = begin, end = nit->second.end(); it != end; ++it) {
-		if (it != begin) {
-			oss << "," << std::endl;
-		}
-
-		oss << "\t\"" << it->first << "\": " << it->second;
-	}
-
-	oss << std::endl << "}";
-
-	return oss.str();
+	return kora::to_pretty_json(it->second.get_raw_value().as_object()["statistics"]);
 }
 
 void mastermind_t::cache_force_update() {
