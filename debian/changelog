@@ -1,3 +1,9 @@
+libmastermind (8.23.3) lucid; urgency=low
+
+  * Couples count were added into ns-state info-log
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Fri, 28 Nov 2014 10:44:17 +0400
+
 libmastermind (8.23.2) lucid; urgency=low
 
   * The dependence on libkora-util-dev (= 1.1.0-rc1) is added to
