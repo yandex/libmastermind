@@ -331,6 +331,8 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 		oss << " couples-for-write=" << nonzero_weights;
 	}
 
+	oss << " couples=" << couples.couple_info_map.size();
+
 	extract = oss.str();
 }
 
