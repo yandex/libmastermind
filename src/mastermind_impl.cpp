@@ -232,10 +232,12 @@ void mastermind_t::data::collect_info_loop_impl() {
 		spent_time_printer_t helper("collect_namespaces_states", m_logger);
 		collect_namespaces_states();
 	}
+#if 0
 	{
 		spent_time_printer_t helper("collect_cache_groups", m_logger);
 		collect_cache_groups();
 	}
+#endif
 	{
 		spent_time_printer_t helper("collect_elliptics_remotes", m_logger);
 		collect_elliptics_remotes();
@@ -308,6 +310,7 @@ mastermind_t::data::cache_expire() {
 
 	cache_is_expired = false;
 
+#if 0
 	{
 		auto cache = cache_groups.copy();
 		if (!cache.is_expired() && check_cache_for_expire("cache_groups", cache
@@ -316,6 +319,7 @@ mastermind_t::data::cache_expire() {
 			cache_groups.set(cache);
 		}
 	}
+#endif
 
 	{
 		auto cache = elliptics_remotes.copy();
@@ -407,7 +411,9 @@ void mastermind_t::data::serialize() {
 		raw_cache_object[#cache] = cache.copy().serialize(); \
 	} while (false)
 
+#if 0
 	PACK_CACHE(cache_groups);
+#endif
 	PACK_CACHE(elliptics_remotes);
 
 #undef PACK_CACHE
@@ -600,7 +606,9 @@ void mastermind_t::data::deserialize() {
 			} \
 		} while (false)
 
+#if 0
 		TRY_UNPACK_CACHE(cache_groups);
+#endif
 		TRY_UNPACK_CACHE(elliptics_remotes);
 
 #undef TRY_UNPACK_CACHE
