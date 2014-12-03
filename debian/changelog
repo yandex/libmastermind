@@ -1,3 +1,9 @@
+libmastermind (8.23.4) lucid; urgency=low
+
+  * cache_groups cache is disabled
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Wed, 03 Dec 2014 14:28:06 +0400
+
 libmastermind (8.23.3) lucid; urgency=low
 
   * Couples count were added into ns-state info-log
