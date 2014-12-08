@@ -116,6 +116,12 @@ mastermind::namespace_state_t::data_t::couples_t::couples_t(const kora::config_t
 	throw std::runtime_error(std::string("cannot create couples-state: ") + ex.what());
 }
 
+mastermind::namespace_state_t::data_t::couples_t::couples_t(couples_t &&other)
+	: group_info_map(std::move(other.group_info_map))
+	, couple_info_map(std::move(other.couple_info_map))
+{
+}
+
 mastermind::namespace_state_t::data_t::weights_t::weights_t(const kora::config_t &config
 		, size_t groups_count_)
 	try
@@ -126,6 +132,13 @@ mastermind::namespace_state_t::data_t::weights_t::weights_t(const kora::config_t
 {
 } catch (const std::exception &ex) {
 	throw std::runtime_error(std::string("cannot create weights-state: ") + ex.what());
+}
+
+mastermind::namespace_state_t::data_t::weights_t::weights_t(weights_t &&other)
+	: groups_count(other.groups_count)
+	, couples_with_info(std::move(other.couples_with_info))
+	, couples_by_avalible_memory(std::move(other.couples_by_avalible_memory))
+{
 }
 
 mastermind::namespace_state_t::data_t::weights_t::couples_with_info_t
