@@ -89,6 +89,8 @@ public:
 
 		couples_t(const kora::config_t &config);
 
+		couples_t(couples_t &&other);
+
 		group_info_map_t group_info_map;
 		couple_info_map_t couple_info_map;
 	};
@@ -98,6 +100,8 @@ public:
 		typedef std::vector<couple_with_info_t> couples_with_info_t;
 
 		weights_t(const kora::config_t &config, size_t groups_count_);
+
+		weights_t(weights_t &&other);
 
 		couple_with_info_t
 		get(size_t groups_count_, uint64_t size) const;
