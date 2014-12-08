@@ -1,3 +1,11 @@
+libmastermind (8.23.5) lucid; urgency=low
+
+  * MDS-488: couples move constructor was implemented
+  * gcc 4.4 does not implement move constructor by default, so we need to do
+  * it explicitly
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 08 Dec 2014 14:41:35 +0400
+
 libmastermind (8.23.4) lucid; urgency=low
 
   * cache_groups cache is disabled
