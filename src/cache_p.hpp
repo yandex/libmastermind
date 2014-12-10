@@ -134,6 +134,15 @@ public:
 		return std::get<0>(*shared_value);
 	}
 
+	std::shared_ptr<const value_type>
+	get_shared_value() const {
+		if (is_expired()) {
+			throw cache_is_expired_error();
+		}
+
+		return std::shared_ptr<const value_type>(shared_value, &get_value());
+	}
+
 	const kora::dynamic_t &
 	get_raw_value() const {
 		return std::get<1>(*shared_value);

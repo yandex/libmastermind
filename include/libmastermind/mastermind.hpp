@@ -90,15 +90,60 @@ public:
 	typedef std::unique_ptr<user_settings_t> user_settings_ptr_t;
 
 	typedef
-	std::function<user_settings_ptr_t (const kora::config_t &state)>
+	std::function<user_settings_ptr_t (const std::string &name, const kora::config_t &config)>
 	user_settings_factory_t;
 
-	// <interface>
+	class settings_t {
+	public:
+		size_t groups_count() const;
+		const std::string &success_copies_num() const;
+
+		const user_settings_t &user_settings() const;
+
+	private:
+		friend class namespace_state_t;
+
+		settings_t(const namespace_state_t &namespace_state_);
+
+		const namespace_state_t &namespace_state;
+	};
+
+	class couples_t {
+	public:
+		groups_t get_couple_groups(group_t group) const;
+		groups_t get_groups(group_t group) const;
+	private:
+		friend class namespace_state_t;
+
+		couples_t(const namespace_state_t &namespace_state_);
+
+		const namespace_state_t &namespace_state;
+	};
+
+	class weights_t {
+	public:
+		groups_t groups(size_t groups_count, uint64_t size = 0) const;
+
+	private:
+		friend class namespace_state_t;
+
+		weights_t(const namespace_state_t &namespace_state_);
+
+		const namespace_state_t &namespace_state;
+	};
+
+	settings_t settings() const;
+
+	couples_t couples() const;
+
+	weights_t weights() const;
+
+	const std::string &name() const;
+
+	operator bool() const;
 
 protected:
 	class data_t;
-
-	namespace_state_t();
 
 	std::shared_ptr<const data_t> data;
 
@@ -127,6 +172,16 @@ public:
 			std::string worker_name,
 			int enqueue_timeout,
 			int reconnect_timeout);
+	mastermind_t(const remotes_t &remotes,
+			const std::shared_ptr<cocaine::framework::logger_t> &logger,
+			int group_info_update_period, std::string cache_path,
+			int warning_time, int expire_time,
+			std::string worker_name,
+			int enqueue_timeout,
+			int reconnect_timeout,
+			namespace_state_t::user_settings_factory_t user_settings_factory
+			);
+
 	~mastermind_t();
 
 	std::vector<int> get_metabalancer_groups(uint64_t count = 0, const std::string &name_space = std::string("default"), uint64_t size = 0);
@@ -143,6 +198,9 @@ public:
 	std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> get_couple_list(const std::string &ns);
 
 	uint64_t free_effective_space_in_couple_by_group(size_t group);
+
+	namespace_state_t
+	get_namespace_state(const std::string &name) const;
 
 	std::string json_group_weights();
 	std::string json_symmetric_groups();
