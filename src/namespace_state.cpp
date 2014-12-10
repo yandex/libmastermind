@@ -77,7 +77,7 @@ mastermind::namespace_state_t::data_t::couples_t::couples_t(const kora::config_t
 			}
 		}
 
-		couple_info.free_effective_space = couple_info_state.at<uint64_t>("free_effective_space");
+		couple_info.free_effective_space = couple_info_state.at<uint64_t>("free_effective_space", 0);
 
 		const auto &groups_info_state = couple_info_state.at("groups");
 
