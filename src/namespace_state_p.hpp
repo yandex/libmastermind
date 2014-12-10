@@ -105,7 +105,7 @@ public:
 		weights_t(weights_t &&other);
 
 		couple_with_info_t
-		get(size_t groups_count_, uint64_t size) const;
+		get(uint64_t size) const;
 
 		const couples_with_info_t &
 		data() const;

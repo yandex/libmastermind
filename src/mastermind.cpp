@@ -108,7 +108,12 @@ mastermind_t::~mastermind_t()
 std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std::string &name_space, uint64_t size) {
 	try {
 		auto cache = m_data->namespaces_states.copy(name_space);
-		auto couple = cache.get_value().weights.get(count, size);
+
+		if (count != cache.get_value().settings.groups_count) {
+			throw invalid_groups_count_error();
+		}
+
+		auto couple = cache.get_value().weights.get(size);
 
 		{
 			std::ostringstream oss;

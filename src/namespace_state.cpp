@@ -210,12 +210,7 @@ mastermind::namespace_state_t::data_t::weights_t::create_couples_with_info(
 }
 
 mastermind::namespace_state_t::data_t::weights_t::couple_with_info_t
-mastermind::namespace_state_t::data_t::weights_t::get(size_t groups_count_
-		, uint64_t size) const {
-	if (groups_count_ != groups_count) {
-		throw invalid_groups_count_error();
-	}
-
+mastermind::namespace_state_t::data_t::weights_t::get(uint64_t size) const {
 	auto amit = couples_by_avalible_memory.lower_bound(size);
 	if (amit == couples_by_avalible_memory.end()) {
 		throw not_enough_memory_error();

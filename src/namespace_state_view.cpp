@@ -70,8 +70,8 @@ mastermind::namespace_state_t::couples_t::couples_t(const namespace_state_t &nam
 }
 
 mastermind::groups_t
-mastermind::namespace_state_t::weights_t::groups(size_t groups_count, uint64_t size) const {
-	return std::get<0>(namespace_state.data->weights.get(groups_count, size));
+mastermind::namespace_state_t::weights_t::groups(uint64_t size) const {
+	return std::get<0>(namespace_state.data->weights.get(size));
 }
 
 mastermind::namespace_state_t::weights_t::weights_t(const namespace_state_t &namespace_state_)

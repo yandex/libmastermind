@@ -122,7 +122,7 @@ public:
 
 	class weights_t {
 	public:
-		groups_t groups(size_t groups_count, uint64_t size = 0) const;
+		groups_t groups(uint64_t size = 0) const;
 
 	private:
 		friend class namespace_state_t;
