@@ -35,7 +35,8 @@ mastermind_t::data::data(
 		int expire_time_,
 		std::string worker_name,
 		int enqueue_timeout_,
-		int reconnect_timeout_
+		int reconnect_timeout_,
+		namespace_state_t::user_settings_factory_t user_settings_factory_
 		)
 	: m_logger(logger)
 	, m_remotes(remotes)
@@ -55,6 +56,7 @@ mastermind_t::data::data(
 	, expire_time(std::chrono::seconds(expire_time_))
 	, enqueue_timeout(enqueue_timeout_)
 	, reconnect_timeout(reconnect_timeout_)
+	, user_settings_factory(std::move(user_settings_factory_))
 	, cache_is_expired(false)
 {
 	deserialize();
@@ -63,6 +65,25 @@ mastermind_t::data::data(
 }
 
 mastermind_t::data::~data() {
+}
+
+std::shared_ptr<const namespace_state_init_t::data_t>
+mastermind_t::data::get_namespace_state(const std::string &name) const {
+	try {
+		auto ns_state_cache = namespaces_states.copy(name);
+		auto result = ns_state_cache.get_shared_value();
+
+		if (user_settings_factory && !result->settings.user_settings_ptr) {
+			throw std::runtime_error("user settings were not initialized");
+		}
+
+		return result;
+	} catch (const std::exception &ex) {
+		COCAINE_LOG_INFO(m_logger, "cannot obtain namespace_state for %s: %s"
+				, name.c_str(), ex.what());
+	}
+
+	return std::shared_ptr<const namespace_state_init_t::data_t>();
 }
 
 void mastermind_t::data::stop() {
@@ -443,10 +464,8 @@ void mastermind_t::data::serialize() {
 namespace_state_init_t::data_t
 mastermind_t::data::create_namespaces_states(const std::string &name
 		, const kora::dynamic_t &raw_value) {
-	// TODO: forward real factory
-	namespace_state_t::user_settings_factory_t fake_factory;
 	namespace_state_init_t::data_t ns_state{name
-		, kora::config_t(name, raw_value), fake_factory};
+		, kora::config_t(name, raw_value), user_settings_factory};
 	COCAINE_LOG_INFO(m_logger, "libmastermind: namespace_state: %s", ns_state.extract.c_str());
 	return ns_state;
 }
