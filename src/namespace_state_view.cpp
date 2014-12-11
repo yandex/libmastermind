@@ -64,6 +64,17 @@ mastermind::namespace_state_t::couples_t::get_groups(group_t group) const {
 	return groups;
 }
 
+uint64_t
+mastermind::namespace_state_t::couples_t::free_effective_space(group_t group) const {
+	auto it = namespace_state.data->couples.group_info_map.find(group);
+
+	if (it == namespace_state.data->couples.group_info_map.end()) {
+		return 0;
+	}
+
+	return it->second.couple_info_map_iterator->second.free_effective_space;
+}
+
 mastermind::namespace_state_t::couples_t::couples_t(const namespace_state_t &namespace_state_)
 	: namespace_state(namespace_state_)
 {

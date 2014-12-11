@@ -112,6 +112,8 @@ public:
 	public:
 		groups_t get_couple_groups(group_t group) const;
 		groups_t get_groups(group_t group) const;
+
+		uint64_t free_effective_space(group_t group) const;
 	private:
 		friend class namespace_state_t;
 
