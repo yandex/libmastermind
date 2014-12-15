@@ -48,8 +48,12 @@ struct mastermind_t::data {
 	data(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger,
 			int group_info_update_period, std::string cache_path,
 			int warning_time_, int expire_time_, std::string worker_name,
-			int enqueue_timeout_, int reconnect_timeout_);
+			int enqueue_timeout_, int reconnect_timeout_,
+			namespace_state_t::user_settings_factory_t user_settings_factory_);
 	~data();
+
+	std::shared_ptr<const namespace_state_init_t::data_t>
+	get_namespace_state(const std::string &name) const;
 
 	void stop();
 
@@ -153,6 +157,8 @@ struct mastermind_t::data {
 
 	std::chrono::milliseconds enqueue_timeout;
 	std::chrono::milliseconds reconnect_timeout;
+
+	namespace_state_t::user_settings_factory_t user_settings_factory;
 
 	bool cache_is_expired;
 	// m_cache_update_callback with cache expiration info

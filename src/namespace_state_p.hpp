@@ -36,7 +36,8 @@ namespace mastermind {
 class namespace_state_t::data_t {
 public:
 	struct settings_t {
-		settings_t(const kora::config_t &config, const user_settings_factory_t &factory);
+		settings_t(const std::string &name, const kora::config_t &config
+				, const user_settings_factory_t &factory);
 
 		settings_t(settings_t &&other);
 
@@ -104,7 +105,7 @@ public:
 		weights_t(weights_t &&other);
 
 		couple_with_info_t
-		get(size_t groups_count_, uint64_t size) const;
+		get(uint64_t size) const;
 
 		const couples_with_info_t &
 		data() const;

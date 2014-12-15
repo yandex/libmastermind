@@ -1,3 +1,10 @@
+libmastermind (8.24.1) lucid; urgency=low
+
+  * Set free_effective_space will be set to zero if it's not provided
+  * User settings API was added
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 11 Dec 2014 15:03:08 +0400
+
 libmastermind (8.23.5) lucid; urgency=low
 
   * MDS-488: couples move constructor was implemented

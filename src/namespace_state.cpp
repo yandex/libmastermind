@@ -10,8 +10,8 @@
 mastermind::namespace_state_t::user_settings_t::~user_settings_t() {
 }
 
-mastermind::namespace_state_t::data_t::settings_t::settings_t(const kora::config_t &state
-		, const user_settings_factory_t &factory)
+mastermind::namespace_state_t::data_t::settings_t::settings_t(const std::string &name
+		, const kora::config_t &state , const user_settings_factory_t &factory)
 	try
 	: groups_count(state.at<size_t>("groups-count"))
 	, success_copies_num(state.at<std::string>("success-copies-num"))
@@ -24,7 +24,7 @@ mastermind::namespace_state_t::data_t::settings_t::settings_t(const kora::config
 	}
 
 	if (factory) {
-		user_settings_ptr = factory(state);
+		user_settings_ptr = factory(name, state);
 	}
 } catch (const std::exception &ex) {
 	throw std::runtime_error(std::string("cannot create settings-state: ") + ex.what());
@@ -77,7 +77,7 @@ mastermind::namespace_state_t::data_t::couples_t::couples_t(const kora::config_t
 			}
 		}
 
-		couple_info.free_effective_space = couple_info_state.at<uint64_t>("free_effective_space");
+		couple_info.free_effective_space = couple_info_state.at<uint64_t>("free_effective_space", 0);
 
 		const auto &groups_info_state = couple_info_state.at("groups");
 
@@ -210,12 +210,7 @@ mastermind::namespace_state_t::data_t::weights_t::create_couples_with_info(
 }
 
 mastermind::namespace_state_t::data_t::weights_t::couple_with_info_t
-mastermind::namespace_state_t::data_t::weights_t::get(size_t groups_count_
-		, uint64_t size) const {
-	if (groups_count_ != groups_count) {
-		throw invalid_groups_count_error();
-	}
-
+mastermind::namespace_state_t::data_t::weights_t::get(uint64_t size) const {
 	auto amit = couples_by_avalible_memory.lower_bound(size);
 	if (amit == couples_by_avalible_memory.end()) {
 		throw not_enough_memory_error();
@@ -260,7 +255,7 @@ mastermind::namespace_state_t::data_t::data_t(std::string name_, const kora::con
 		, const user_settings_factory_t &factory)
 	try
 	: name(std::move(name_))
-	, settings(config.at("settings"), factory)
+	, settings(name, config.at("settings"), factory)
 	, couples(config.at("couples"))
 	, weights(config.at("weights"), settings.groups_count)
 	, statistics(config.at("statistics"))
@@ -347,9 +342,6 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 	oss << " couples=" << couples.couple_info_map.size();
 
 	extract = oss.str();
-}
-
-mastermind::namespace_state_t::namespace_state_t() {
 }
 
 mastermind::namespace_state_init_t::namespace_state_init_t(

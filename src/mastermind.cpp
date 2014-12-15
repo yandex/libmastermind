@@ -39,7 +39,7 @@ mastermind_t::mastermind_t(
 	: m_data(new data(remotes, logger, group_info_update_period,
 				"/var/tmp/libmastermind.cache",
 				std::numeric_limits<int>::max(), std::numeric_limits<int>::max(), "mastermind",
-				4000, 4000))
+				4000, 4000, namespace_state_t::user_settings_factory_t()))
 {
 }
 
@@ -52,7 +52,7 @@ mastermind_t::mastermind_t(
 	: m_data(new data(remotes_t{std::make_pair(host, port)},
 				logger, group_info_update_period, "/var/tmp/libmastermind.cache",
 				std::numeric_limits<int>::max(), std::numeric_limits<int>::max(), "mastermind",
-				4000, 4000))
+				4000, 4000, namespace_state_t::user_settings_factory_t()))
 {
 }
 
@@ -66,7 +66,7 @@ mastermind_t::mastermind_t(
 		)
 	: m_data(new data(remotes, logger, group_info_update_period, std::move(cache_path),
 				std::numeric_limits<int>::max(), expired_time, std::move(worker_name),
-				4000, 4000))
+				4000, 4000, namespace_state_t::user_settings_factory_t()))
 {
 }
 
@@ -79,7 +79,24 @@ mastermind_t::mastermind_t(const remotes_t &remotes,
 		int reconnect_timeout)
 	: m_data(new data(remotes, logger, group_info_update_period, std::move(cache_path),
 				warning_time, expire_time, std::move(worker_name),
-				enqueue_timeout, reconnect_timeout))
+				enqueue_timeout, reconnect_timeout,
+				namespace_state_t::user_settings_factory_t()))
+{
+}
+
+mastermind_t::mastermind_t(const remotes_t &remotes,
+		const std::shared_ptr<cocaine::framework::logger_t> &logger,
+		int group_info_update_period, std::string cache_path,
+		int warning_time, int expire_time,
+		std::string worker_name,
+		int enqueue_timeout,
+		int reconnect_timeout,
+		namespace_state_t::user_settings_factory_t user_settings_factory
+		)
+	: m_data(new data(remotes, logger, group_info_update_period, std::move(cache_path),
+				warning_time, expire_time, std::move(worker_name),
+				enqueue_timeout, reconnect_timeout,
+				std::move(user_settings_factory)))
 {
 }
 
@@ -91,7 +108,12 @@ mastermind_t::~mastermind_t()
 std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std::string &name_space, uint64_t size) {
 	try {
 		auto cache = m_data->namespaces_states.copy(name_space);
-		auto couple = cache.get_value().weights.get(count, size);
+
+		if (count != cache.get_value().settings.groups_count) {
+			throw invalid_groups_count_error();
+		}
+
+		auto couple = cache.get_value().weights.get(size);
 
 		{
 			std::ostringstream oss;
@@ -378,6 +400,12 @@ uint64_t mastermind_t::free_effective_space_in_couple_by_group(size_t group) {
 	}
 
 	return git->second.free_effective_space;
+}
+
+namespace_state_t
+mastermind_t::get_namespace_state(const std::string &name) const {
+	auto data = m_data->get_namespace_state(name);
+	return namespace_state_init_t(data);
 }
 
 std::string mastermind_t::json_group_weights() {
