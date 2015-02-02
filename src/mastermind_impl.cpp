@@ -691,6 +691,14 @@ void mastermind_t::data::deserialize() {
 	}
 }
 
+void
+mastermind_t::data::set_user_settings_factory(namespace_state_t::user_settings_factory_t user_settings_factory_) {
+	// TODO: forbid to change settings during background thread is running
+	std::lock_guard<std::mutex> lock_guard(m_mutex);
+
+	user_settings_factory = std::move(user_settings_factory_);
+}
+
 void mastermind_t::data::cache_force_update() {
 	std::lock_guard<std::mutex> lock(m_mutex);
 	(void) lock;

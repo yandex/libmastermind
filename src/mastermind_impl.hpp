@@ -120,6 +120,9 @@ struct mastermind_t::data {
 
 	void deserialize();
 
+	void
+	set_user_settings_factory(namespace_state_t::user_settings_factory_t user_settings_factory_);
+
 	void cache_force_update();
 	void set_update_cache_callback(const std::function<void (void)> &callback);
 	void set_update_cache_ext1_callback(const std::function<void (bool)> &callback);

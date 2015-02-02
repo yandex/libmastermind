@@ -230,6 +230,9 @@ public:
 	std::string json_namespaces_settings();
 	std::string json_namespace_statistics(const std::string &ns);
 
+	void
+	set_user_settings_factory(namespace_state_t::user_settings_factory_t user_settings_factory);
+
 	void cache_force_update();
 	void set_update_cache_callback(const std::function<void (void)> &callback);
 	void set_update_cache_ext1_callback(const std::function<void (bool)> &callback);

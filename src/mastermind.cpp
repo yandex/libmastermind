@@ -585,6 +585,11 @@ std::string mastermind_t::json_namespace_statistics(const std::string &ns) {
 	return kora::to_pretty_json(it->second.get_raw_value().as_object()["statistics"]);
 }
 
+void
+mastermind_t::set_user_settings_factory(namespace_state_t::user_settings_factory_t user_settings_factory) {
+	m_data->set_user_settings_factory(std::move(user_settings_factory));
+}
+
 void mastermind_t::cache_force_update() {
 	m_data->cache_force_update();
 }
