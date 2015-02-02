@@ -39,7 +39,7 @@ mastermind_t::mastermind_t(
 	: m_data(new data(remotes, logger, group_info_update_period,
 				"/var/tmp/libmastermind.cache",
 				std::numeric_limits<int>::max(), std::numeric_limits<int>::max(), "mastermind",
-				4000, 4000, namespace_state_t::user_settings_factory_t()))
+				4000, 4000, namespace_state_t::user_settings_factory_t(), true))
 {
 }
 
@@ -52,7 +52,7 @@ mastermind_t::mastermind_t(
 	: m_data(new data(remotes_t{std::make_pair(host, port)},
 				logger, group_info_update_period, "/var/tmp/libmastermind.cache",
 				std::numeric_limits<int>::max(), std::numeric_limits<int>::max(), "mastermind",
-				4000, 4000, namespace_state_t::user_settings_factory_t()))
+				4000, 4000, namespace_state_t::user_settings_factory_t(), true))
 {
 }
 
@@ -66,7 +66,7 @@ mastermind_t::mastermind_t(
 		)
 	: m_data(new data(remotes, logger, group_info_update_period, std::move(cache_path),
 				std::numeric_limits<int>::max(), expired_time, std::move(worker_name),
-				4000, 4000, namespace_state_t::user_settings_factory_t()))
+				4000, 4000, namespace_state_t::user_settings_factory_t(), true))
 {
 }
 
@@ -80,7 +80,7 @@ mastermind_t::mastermind_t(const remotes_t &remotes,
 	: m_data(new data(remotes, logger, group_info_update_period, std::move(cache_path),
 				warning_time, expire_time, std::move(worker_name),
 				enqueue_timeout, reconnect_timeout,
-				namespace_state_t::user_settings_factory_t()))
+				namespace_state_t::user_settings_factory_t(), true))
 {
 }
 
@@ -96,13 +96,46 @@ mastermind_t::mastermind_t(const remotes_t &remotes,
 	: m_data(new data(remotes, logger, group_info_update_period, std::move(cache_path),
 				warning_time, expire_time, std::move(worker_name),
 				enqueue_timeout, reconnect_timeout,
-				std::move(user_settings_factory)))
+				std::move(user_settings_factory), true))
+{
+}
+
+mastermind_t::mastermind_t(const remotes_t &remotes,
+		const std::shared_ptr<cocaine::framework::logger_t> &logger,
+		int group_info_update_period, std::string cache_path,
+		int warning_time, int expire_time,
+		std::string worker_name,
+		int enqueue_timeout,
+		int reconnect_timeout,
+		bool auto_start
+		)
+	: m_data(new data(remotes, logger, group_info_update_period, std::move(cache_path),
+				warning_time, expire_time, std::move(worker_name),
+				enqueue_timeout, reconnect_timeout,
+				namespace_state_t::user_settings_factory_t(), auto_start))
 {
 }
 
 mastermind_t::~mastermind_t()
 {
+	if (m_data->is_running()) {
+		m_data->stop();
+	}
+}
+
+void
+mastermind_t::start() {
+	m_data->start();
+}
+
+void
+mastermind_t::stop() {
 	m_data->stop();
+}
+
+bool
+mastermind_t::is_running() const {
+	return m_data->is_running();
 }
 
 std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std::string &name_space, uint64_t size) {
@@ -550,6 +583,11 @@ std::string mastermind_t::json_namespace_statistics(const std::string &ns) {
 	}
 
 	return kora::to_pretty_json(it->second.get_raw_value().as_object()["statistics"]);
+}
+
+void
+mastermind_t::set_user_settings_factory(namespace_state_t::user_settings_factory_t user_settings_factory) {
+	m_data->set_user_settings_factory(std::move(user_settings_factory));
 }
 
 void mastermind_t::cache_force_update() {
