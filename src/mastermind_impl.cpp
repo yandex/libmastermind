@@ -60,8 +60,6 @@ mastermind_t::data::data(
 	, user_settings_factory(std::move(user_settings_factory_))
 	, cache_is_expired(false)
 {
-	deserialize();
-
 	if (auto_start) {
 		start();
 	}
@@ -94,6 +92,8 @@ mastermind_t::data::start() {
 	if (is_running()) {
 		throw update_loop_already_started();
 	}
+
+	deserialize();
 
 	m_done = false;
 	m_weight_cache_update_thread = std::thread(std::bind(
