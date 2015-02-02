@@ -183,8 +183,26 @@ public:
 			int reconnect_timeout,
 			namespace_state_t::user_settings_factory_t user_settings_factory
 			);
+	mastermind_t(const remotes_t &remotes,
+			const std::shared_ptr<cocaine::framework::logger_t> &logger,
+			int group_info_update_period, std::string cache_path,
+			int warning_time, int expire_time,
+			std::string worker_name,
+			int enqueue_timeout,
+			int reconnect_timeout,
+			bool auto_start
+			);
 
 	~mastermind_t();
+
+	void
+	start();
+
+	void
+	stop();
+
+	bool
+	is_running() const;
 
 	std::vector<int> get_metabalancer_groups(uint64_t count = 0, const std::string &name_space = std::string("default"), uint64_t size = 0);
 	group_info_response_t get_metabalancer_group_info(int group);

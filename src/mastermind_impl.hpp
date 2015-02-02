@@ -49,13 +49,20 @@ struct mastermind_t::data {
 			int group_info_update_period, std::string cache_path,
 			int warning_time_, int expire_time_, std::string worker_name,
 			int enqueue_timeout_, int reconnect_timeout_,
-			namespace_state_t::user_settings_factory_t user_settings_factory_);
+			namespace_state_t::user_settings_factory_t user_settings_factory_, bool auto_start);
 	~data();
 
 	std::shared_ptr<const namespace_state_init_t::data_t>
 	get_namespace_state(const std::string &name) const;
 
-	void stop();
+	void
+	start();
+
+	void
+	stop();
+
+	bool
+	is_running() const;
 
 	void reconnect();
 

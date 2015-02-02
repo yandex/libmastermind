@@ -19,6 +19,20 @@
 
 #include "libmastermind/error.hpp"
 
+namespace std {
+
+std::error_code
+make_error_code(mastermind::mastermind_errc e) {
+	return std::error_code(static_cast<int>(e), mastermind::mastermind_category());
+}
+
+std::error_condition
+make_error_condition(mastermind::mastermind_errc e) {
+	return std::error_condition(static_cast<int>(e), mastermind::mastermind_category());
+}
+
+} // namespace std
+
 namespace mastermind {
 
 const char *libmastermind_category_impl::name() const {
@@ -47,6 +61,34 @@ const std::error_category &libmastermind_category() {
 	return instance;
 }
 
+class mastermind_category_t
+	: public std::error_category
+{
+public:
+	const char *name() const {
+		return "mastermind category";
+	}
+
+	std::string
+	message(int ev) const {
+		switch(static_cast<mastermind_errc>(ev)) {
+		case mastermind_errc::update_loop_already_started:
+			return "update loop already started";
+		case mastermind_errc::update_loop_already_stopped:
+			return "update loop already stopped";
+		default:
+			return "unknown mastermind error";
+		}
+	}
+};
+
+const std::error_category &
+mastermind_category() {
+	const static mastermind_category_t instance;
+	return instance;
+}
+
+
 std::error_code make_error_code(libmastermind_error::libmastermind_error_t e) {
 	return std::error_code(static_cast<int>(e), libmastermind_category());
 }
@@ -73,6 +115,26 @@ invalid_groups_count_error::invalid_groups_count_error()
 
 cache_is_expired_error::cache_is_expired_error()
 	: std::system_error(make_error_code(libmastermind_error::cache_is_expired))
+{}
+
+mastermind_error::mastermind_error(std::error_code error_code_)
+	: std::runtime_error(error_code_.message())
+	, error_code(std::move(error_code_))
+{}
+
+const std::error_code &
+mastermind_error::code() const {
+	return error_code;
+}
+
+update_loop_already_started::update_loop_already_started()
+	: mastermind_error(std::make_error_code(
+				mastermind::mastermind_errc::update_loop_already_started))
+{}
+
+update_loop_already_stopped::update_loop_already_stopped()
+	: mastermind_error(std::make_error_code(
+				mastermind::mastermind_errc::update_loop_already_stopped))
 {}
 
 } // namespace mastermind
