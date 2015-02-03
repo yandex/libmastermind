@@ -1,3 +1,10 @@
+libmastermind (8.25.1) lucid; urgency=low
+
+  * MDS-587: io-loop control is added
+    set_user_settings_factory is added
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Tue, 03 Feb 2015 13:21:54 +0400
+
 libmastermind (8.24.1) lucid; urgency=low
 
   * Set free_effective_space will be set to zero if it's not provided
