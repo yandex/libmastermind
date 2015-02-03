@@ -8,10 +8,10 @@ Build-Depends: debhelper (>= 5),
  libboost-dev,
  libboost-python-dev,
  libboost-thread-dev,
- cocaine-framework-native (>= 0.11.1),
- cocaine-framework-native-dev (>= 0.11.1),
- libcocaine-core2 (>= 0.11),
- libcocaine-dev (>= 0.11),
+ cocaine-framework-native (>= 0.11.1), cocaine-framework-native (<< 0.12),
+ cocaine-framework-native-dev (>= 0.11.1), cocaine-framework-native-dev (<< 0.12),
+ libcocaine-core2 (>= 0.11), libcocaine-core2 (<< 0.12),
+ libcocaine-dev (>= 0.11), libcocaine-dev (<< 0.12),
  libmsgpack-dev,
  libboost-system-dev,
  libjsoncpp-dev,
@@ -20,7 +20,7 @@ Standards-Version: 3.9.1
 
 Package: libmastermind
 Architecture: any
-Depends: ${shlibs:Depends}, cocaine-framework-native (>= 0.11.1), libcocaine-core2 (>= 0.11)
+Depends: ${shlibs:Depends}, cocaine-framework-native (>= 0.11.1), cocaine-framework-native (<< 0.12), libcocaine-core2 (>= 0.11), libcocaine-core2 (<< 0.12)
 Description: Client for Mastermind service
 
 Package: libmastermind-dev
