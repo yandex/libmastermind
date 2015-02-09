@@ -36,7 +36,8 @@ mastermind_t::data::data(
 		std::string worker_name,
 		int enqueue_timeout_,
 		int reconnect_timeout_,
-		namespace_state_t::user_settings_factory_t user_settings_factory_
+		namespace_state_t::user_settings_factory_t user_settings_factory_,
+		bool auto_start
 		)
 	: m_logger(logger)
 	, m_remotes(remotes)
@@ -59,9 +60,9 @@ mastermind_t::data::data(
 	, user_settings_factory(std::move(user_settings_factory_))
 	, cache_is_expired(false)
 {
-	deserialize();
-
-	m_weight_cache_update_thread = std::thread(std::bind(&mastermind_t::data::collect_info_loop, this));
+	if (auto_start) {
+		start();
+	}
 }
 
 mastermind_t::data::~data() {
@@ -86,7 +87,25 @@ mastermind_t::data::get_namespace_state(const std::string &name) const {
 	return std::shared_ptr<const namespace_state_init_t::data_t>();
 }
 
-void mastermind_t::data::stop() {
+void
+mastermind_t::data::start() {
+	if (is_running()) {
+		throw update_loop_already_started();
+	}
+
+	deserialize();
+
+	m_done = false;
+	m_weight_cache_update_thread = std::thread(std::bind(
+				&mastermind_t::data::collect_info_loop, this));
+}
+
+void
+mastermind_t::data::stop() {
+	if (!is_running()) {
+		throw update_loop_already_stopped();
+	}
+
 	try {
 		{
 			std::lock_guard<std::mutex> lock(m_mutex);
@@ -99,6 +118,11 @@ void mastermind_t::data::stop() {
 	}
 	m_app.reset();
 	m_service_manager.reset();
+}
+
+bool
+mastermind_t::data::is_running() const {
+	return std::thread::id() != m_weight_cache_update_thread.get_id();
 }
 
 void mastermind_t::data::reconnect() {
@@ -665,6 +689,14 @@ void mastermind_t::data::deserialize() {
 		COCAINE_LOG_WARNING(m_logger
 				, "libmastermind: cannot deserialize libmastermind cache");
 	}
+}
+
+void
+mastermind_t::data::set_user_settings_factory(namespace_state_t::user_settings_factory_t user_settings_factory_) {
+	// TODO: forbid to change settings during background thread is running
+	std::lock_guard<std::mutex> lock_guard(m_mutex);
+
+	user_settings_factory = std::move(user_settings_factory_);
 }
 
 void mastermind_t::data::cache_force_update() {

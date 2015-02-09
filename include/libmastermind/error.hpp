@@ -84,6 +84,14 @@ public:
 	cache_is_expired_error();
 };
 
+enum class mastermind_errc {
+	  update_loop_already_started = 1
+	, update_loop_already_stopped
+};
+
+const std::error_category &
+mastermind_category();
+
 } // namespace mastermind
 
 namespace std {
@@ -93,6 +101,45 @@ struct is_error_code_enum<mastermind::libmastermind_error::libmastermind_error_t
 	: public true_type
 {};
 
+template<>
+struct is_error_code_enum<mastermind::mastermind_errc>
+	: public true_type
+{};
+
+std::error_code
+make_error_code(mastermind::mastermind_errc e);
+
+std::error_condition
+make_error_condition(mastermind::mastermind_errc e);
+
 } // namespace std
+
+namespace mastermind {
+
+class mastermind_error : public std::runtime_error
+{
+public:
+	mastermind_error(std::error_code error_code_);
+
+	const std::error_code &
+	code() const;
+
+private:
+	std::error_code error_code;
+};
+
+class update_loop_already_started : public mastermind_error
+{
+public:
+	update_loop_already_started();
+};
+
+class update_loop_already_stopped : public mastermind_error
+{
+public:
+	update_loop_already_stopped();
+};
+
+} // namespace mastermind
 
 #endif /* INCLUDE__LIBMASTERMIND__ERROR_H */
