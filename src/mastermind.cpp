@@ -156,20 +156,20 @@ std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std
 				<< "}; response={"
 				<< "couple=[";
 			{
-				auto &&groups = std::get<0>(couple);
+				auto &&groups = couple.groups;
 				for (auto beg = groups.begin(), it = beg, end = groups.end(); it != end; ++it) {
 					if (beg != it) oss << ", ";
 					oss << *it;
 				}
 			}
-			oss << "], weight=" << std::get<1>(couple) << ", free-space=" << std::get<2>(couple)
+			oss << "], weight=" << couple.weight << ", free-space=" << couple.memory
 				<< "};";
 
 			auto msg = oss.str();
 			COCAINE_LOG_INFO(m_data->m_logger, "%s", msg.c_str());
 		}
 
-		return std::get<0>(couple);
+		return couple.groups;
 	} catch(const std::system_error &ex) {
 		COCAINE_LOG_ERROR(
 			m_data->m_logger,
@@ -386,10 +386,10 @@ std::vector<std::tuple<std::vector<int>, uint64_t, uint64_t>> mastermind_t::get_
 	std::map<int, std::tuple<std::vector<int>, uint64_t, uint64_t>> result_map;
 
 	for (auto it = weights.begin(), end = weights.end(); it != end; ++it) {
-		auto weight = std::get<1>(*it);
-		auto memory = std::get<2>(*it);
-		const auto &couple = std::get<0>(*it);
-		auto group_id = *std::min_element(couple.begin(), couple.end());
+		auto weight = it->weight;
+		auto memory = it->memory;
+		const auto &couple = it->groups;
+		auto group_id = it->id;
 
 		result_map.insert(std::make_pair(group_id
 					, std::make_tuple(couple, weight, memory)));
