@@ -20,6 +20,7 @@
 #ifndef INCLUDE__LIBMASTERMIND__MASTERMIND_HPP
 #define INCLUDE__LIBMASTERMIND__MASTERMIND_HPP
 
+#include <libmastermind/common.hpp>
 #include <libmastermind/error.hpp>
 
 #include <cocaine/framework/logging.hpp>
@@ -35,9 +36,6 @@
 #include <memory>
 
 namespace mastermind {
-
-typedef int group_t;
-typedef std::vector<int> groups_t;
 
 struct group_info_response_t {
 	std::vector<std::string> nodes;
