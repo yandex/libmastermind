@@ -41,7 +41,6 @@ weights_t::weights_t(const kora::config_t &config
 	: groups_count(groups_count_)
 	, couples_info(create(config, groups_count))
 	, couples_by_avalible_memory(create(couples_info))
-
 {
 } catch (const std::exception &ex) {
 	throw std::runtime_error(std::string("cannot create weights-state: ") + ex.what());
@@ -148,8 +147,8 @@ weights_t::get(uint64_t size) const {
 	return couples_info[it->index];
 }
 
-/*namespace_state_t::data_t::weights_t::weighted_couples_t
-namespace_state_t::data_t::weights_t::get_all(uint64_t size) const {
+weighted_couple_indices_t
+weights_t::get_all(uint64_t size) const {
 	auto amit = couples_by_avalible_memory.lower_bound(size);
 	if (amit == couples_by_avalible_memory.end()) {
 		throw not_enough_memory_error();
@@ -157,11 +156,6 @@ namespace_state_t::data_t::weights_t::get_all(uint64_t size) const {
 
 	return amit->second;
 }
-
-couple_with_info_t
-namespace_state_t::data_t::weights_t::couple_by_index(size_t index) const {
-	return couples_with_info[index];
-}*/
 
 const couples_info_t &
 weights_t::data() const {

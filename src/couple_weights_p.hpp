@@ -87,11 +87,8 @@ struct weights_t {
 	couple_info_t
 	get(uint64_t size) const;
 
-	/*weighted_couples_t
+	weighted_couple_indices_t
 	get_all(uint64_t size) const;
-
-	couple_with_info_t
-	couple_by_index(size_t index) const;*/
 
 	const couples_info_t &
 	data() const;
