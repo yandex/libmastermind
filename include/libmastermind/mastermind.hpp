@@ -22,6 +22,7 @@
 
 #include <libmastermind/common.hpp>
 #include <libmastermind/error.hpp>
+#include <libmastermind/couple_sequence.hpp>
 
 #include <cocaine/framework/logging.hpp>
 
@@ -123,6 +124,7 @@ public:
 	class weights_t {
 	public:
 		groups_t groups(uint64_t size = 0) const;
+		couple_sequence_t couple_sequence(uint64_t size = 0) const;
 
 	private:
 		friend class namespace_state_t;

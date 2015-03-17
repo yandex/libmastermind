@@ -18,6 +18,7 @@
 */
 
 #include "namespace_state_p.hpp"
+#include "couple_sequence_p.hpp"
 
 size_t
 mastermind::namespace_state_t::settings_t::groups_count() const {
@@ -83,6 +84,13 @@ mastermind::namespace_state_t::couples_t::couples_t(const namespace_state_t &nam
 mastermind::groups_t
 mastermind::namespace_state_t::weights_t::groups(uint64_t size) const {
 	return namespace_state.data->weights.get(size).groups;
+}
+
+mastermind::couple_sequence_t
+mastermind::namespace_state_t::weights_t::couple_sequence(uint64_t size) const {
+	auto data = std::make_shared<couple_sequence_init_t::data_t>(
+			namespace_state.data->weights.get_all(size));
+	return couple_sequence_init_t(std::move(data));
 }
 
 mastermind::namespace_state_t::weights_t::weights_t(const namespace_state_t &namespace_state_)
