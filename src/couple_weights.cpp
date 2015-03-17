@@ -115,7 +115,7 @@ weights_t::create(
 			total_weight += weight;
 
 			couples_by_avalible_memory[avalible_memory].emplace_back(
-					weighted_couple_index_t{total_weight, index2}
+					weighted_couple_info_t{total_weight, couple_info}
 			);
 		}
 	}
@@ -144,10 +144,10 @@ weights_t::get(uint64_t size) const {
 		throw couple_not_found_error();
 	}
 
-	return couples_info[it->index];
+	return it->couple_info;
 }
 
-weighted_couple_indices_t
+weighted_couples_info_t
 weights_t::get_all(uint64_t size) const {
 	auto amit = couples_by_avalible_memory.lower_bound(size);
 	if (amit == couples_by_avalible_memory.end()) {

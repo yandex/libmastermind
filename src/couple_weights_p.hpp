@@ -50,34 +50,34 @@ memory_comparator(const couple_info_t &lhs, const couple_info_t &rhs);
 
 typedef std::vector<couple_info_t> couples_info_t;
 
-class weighted_couple_index_t {
+class weighted_couple_info_t {
 public:
-	weighted_couple_index_t(uint64_t weight_, size_t index_)
+	weighted_couple_info_t(uint64_t weight_, couple_info_t couple_info_)
 		: weight(weight_)
-		, index(index_)
+		, couple_info(std::move(couple_info_))
 	{}
 
 	uint64_t weight;
-	size_t index;
+	couple_info_t couple_info;
 
 	friend
 	bool
-	operator < (const weighted_couple_index_t &lhs, const weighted_couple_index_t &rhs) {
+	operator < (const weighted_couple_info_t &lhs, const weighted_couple_info_t &rhs) {
 		return lhs.weight < rhs.weight;
 	}
 
 	friend
 	bool
-	operator < (const weighted_couple_index_t &lhs, const uint64_t &rhs_weight) {
+	operator < (const weighted_couple_info_t &lhs, const uint64_t &rhs_weight) {
 		return lhs.weight < rhs_weight;
 	}
 
 private:
 };
 
-typedef std::vector<weighted_couple_index_t> weighted_couple_indices_t;
+typedef std::vector<weighted_couple_info_t> weighted_couples_info_t;
 
-typedef std::map<uint64_t, weighted_couple_indices_t> couples_by_avalible_memory_t;
+typedef std::map<uint64_t, weighted_couples_info_t> couples_by_avalible_memory_t;
 
 struct weights_t {
 	weights_t(const kora::config_t &config, size_t groups_count_);
@@ -87,7 +87,7 @@ struct weights_t {
 	couple_info_t
 	get(uint64_t size) const;
 
-	weighted_couple_indices_t
+	weighted_couples_info_t
 	get_all(uint64_t size) const;
 
 	const couples_info_t &
