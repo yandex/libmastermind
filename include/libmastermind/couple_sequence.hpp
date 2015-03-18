@@ -76,6 +76,9 @@ public:
 	const_iterator
 	end() const;
 
+	size_t
+	size() const;
+
 protected:
 	class data_t;
 

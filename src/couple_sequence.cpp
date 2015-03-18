@@ -82,3 +82,8 @@ mastermind::couple_sequence_t::end() const {
 	return couple_sequence_const_iterator_init_t(nullptr);
 }
 
+size_t
+mastermind::couple_sequence_t::size() const {
+	return data->weighted_couples_info.size();
+}
+
