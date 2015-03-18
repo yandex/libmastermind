@@ -27,7 +27,7 @@
 
 namespace mastermind {
 
-class couple_sequence_iterator_t::data_t
+class couple_sequence_const_iterator_t::data_t
 {
 public:
 	data_t(ns_state::weight::weighted_couples_info_t weighted_couples_info_)
@@ -82,7 +82,7 @@ public:
 		} \
 	}
 
-INIT_CLASS(couple_sequence_iterator);
+INIT_CLASS(couple_sequence_const_iterator);
 INIT_CLASS(couple_sequence);
 
 } // namespace mastermind

@@ -36,11 +36,11 @@ public:
 protected:
 };
 
-class couple_sequence_iterator_t
-	: public std::iterator<std::forward_iterator_tag, couple_info_t>
+class couple_sequence_const_iterator_t
+	: public std::iterator<std::forward_iterator_tag, const couple_info_t>
 {
 public:
-	typedef couple_sequence_iterator_t self_type;
+	typedef couple_sequence_const_iterator_t self_type;
 
 	reference
 	operator * () const;
@@ -68,20 +68,13 @@ protected:
 
 class couple_sequence_t {
 public:
-	typedef couple_sequence_iterator_t iterator;
-	//typedef ... const_iterator;
+	typedef couple_sequence_const_iterator_t const_iterator;
 
-	iterator
-	begin();
+	const_iterator
+	begin() const;
 
-	iterator
-	end();
-
-	//const_iterator
-	//begin() const;
-
-	//const_iterator
-	//end() const;
+	const_iterator
+	end() const;
 
 protected:
 	class data_t;

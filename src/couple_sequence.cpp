@@ -20,18 +20,18 @@
 #include "libmastermind/couple_sequence.hpp"
 #include "couple_sequence_p.hpp"
 
-mastermind::couple_sequence_iterator_t::reference
-mastermind::couple_sequence_iterator_t::operator * () const {
+mastermind::couple_sequence_const_iterator_t::reference
+mastermind::couple_sequence_const_iterator_t::operator * () const {
 	return data->couples_info[data->current_index];
 }
 
-mastermind::couple_sequence_iterator_t::pointer
-mastermind::couple_sequence_iterator_t::operator -> () const {
+mastermind::couple_sequence_const_iterator_t::pointer
+mastermind::couple_sequence_const_iterator_t::operator -> () const {
 	return &data->couples_info[data->current_index];
 }
 
 bool
-mastermind::couple_sequence_iterator_t::operator == (const self_type &other) const {
+mastermind::couple_sequence_const_iterator_t::operator == (const self_type &other) const {
 	if (data && other.data) {
 		return data->current_index == other.data->current_index;
 	}
@@ -51,34 +51,34 @@ mastermind::couple_sequence_iterator_t::operator == (const self_type &other) con
 }
 
 bool
-mastermind::couple_sequence_iterator_t::operator != (const self_type &other) const {
+mastermind::couple_sequence_const_iterator_t::operator != (const self_type &other) const {
 	return !(*this == other);
 }
 
-mastermind::couple_sequence_iterator_t::self_type &
-mastermind::couple_sequence_iterator_t::operator ++ () {
+mastermind::couple_sequence_const_iterator_t::self_type &
+mastermind::couple_sequence_const_iterator_t::operator ++ () {
 	data->try_extract_next();
 	data->current_index += 1;
 	return *this;
 }
 
-mastermind::couple_sequence_iterator_t::self_type
-mastermind::couple_sequence_iterator_t::operator ++ (int) {
+mastermind::couple_sequence_const_iterator_t::self_type
+mastermind::couple_sequence_const_iterator_t::operator ++ (int) {
 	self_type result;
 	result.data = std::make_shared<data_t>(*data);
 	++result;
 	return result;
 }
 
-mastermind::couple_sequence_t::iterator
-mastermind::couple_sequence_t::begin() {
-	auto d = std::make_shared<couple_sequence_iterator_init_t::data_t>(
+mastermind::couple_sequence_t::const_iterator
+mastermind::couple_sequence_t::begin() const {
+	auto d = std::make_shared<couple_sequence_const_iterator_init_t::data_t>(
 			data->weighted_couples_info);
-	return couple_sequence_iterator_init_t(std::move(d));
+	return couple_sequence_const_iterator_init_t(std::move(d));
 }
 
-mastermind::couple_sequence_t::iterator
-mastermind::couple_sequence_t::end() {
-	return couple_sequence_iterator_init_t(nullptr);
+mastermind::couple_sequence_t::const_iterator
+mastermind::couple_sequence_t::end() const {
+	return couple_sequence_const_iterator_init_t(nullptr);
 }
 
