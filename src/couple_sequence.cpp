@@ -83,7 +83,7 @@ mastermind::couple_sequence_t::begin() const {
 
 mastermind::couple_sequence_t::const_iterator
 mastermind::couple_sequence_t::end() const {
-	return couple_sequence_const_iterator_init_t(nullptr);
+	return couple_sequence_const_iterator_init_t(std::shared_ptr<couple_sequence_const_iterator_init_t::data_t>());
 }
 
 size_t
