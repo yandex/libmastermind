@@ -123,8 +123,16 @@ public:
 
 	class weights_t {
 	public:
+		enum class feedback_tag {
+			  available
+			, partly_unavailable
+			, temporary_unavailable
+			, permanently_unavailable
+		};
+
 		groups_t groups(uint64_t size = 0) const;
 		couple_sequence_t couple_sequence(uint64_t size = 0) const;
+		void set_feedback(group_t couple_id, feedback_tag feedback);
 
 	private:
 		friend class namespace_state_t;

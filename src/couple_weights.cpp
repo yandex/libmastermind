@@ -125,15 +125,7 @@ weights_t::create(
 
 couple_info_t
 weights_t::get(uint64_t size) const {
-	auto amit = couples_by_avalible_memory.lower_bound(size);
-	if (amit == couples_by_avalible_memory.end()) {
-		throw not_enough_memory_error();
-	}
-
-	auto &weighted_groups = amit->second;
-	if (weighted_groups.empty()) {
-		throw couple_not_found_error();
-	}
+	auto weighted_groups = get_all(size);
 
 	auto total_weight = weighted_groups.back().weight;
 	double shoot_point = double(random()) / RAND_MAX * total_weight;
@@ -149,17 +141,54 @@ weights_t::get(uint64_t size) const {
 
 weighted_couples_info_t
 weights_t::get_all(uint64_t size) const {
-	auto amit = couples_by_avalible_memory.lower_bound(size);
-	if (amit == couples_by_avalible_memory.end()) {
+	weighted_couples_info_t weighted_couples_info;
+	uint64_t total_weight = 0;
+
+	{
+		lock_guard_t lock_guard(couples_info_mutex);
+		for (auto it = couples_info.begin(), end = couples_info.end();
+				it != end; ++it) {
+
+			if (it->memory < size) {
+				break;
+			}
+
+			uint64_t weight = it->weight * it->coefficient;
+
+			if (weight == 0) {
+				continue;
+			}
+
+			total_weight += weight;
+
+			weighted_couples_info.emplace_back(total_weight, *it);
+		}
+	}
+
+	if (weighted_couples_info.empty()) {
 		throw not_enough_memory_error();
 	}
 
-	return amit->second;
+	return weighted_couples_info;
 }
 
 const couples_info_t &
 weights_t::data() const {
 	return couples_info;
+}
+
+void
+weights_t::set_coefficient(group_t couple_id, double coefficient) {
+	for (auto it = couples_info.begin(), end = couples_info.end(); it != end; ++it) {
+		const auto &groups = it->groups;
+		auto cit = std::find(groups.begin(), groups.end(), couple_id);
+
+		if (cit != groups.end()) {
+			lock_guard_t lock_guard(couples_info_mutex);
+			it->coefficient = std::min(it->coefficient, coefficient);
+			break;
+		}
+	}
 }
 
 } // namespace weight
