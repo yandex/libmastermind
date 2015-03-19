@@ -68,7 +68,7 @@ mastermind_t::data::data(
 mastermind_t::data::~data() {
 }
 
-std::shared_ptr<const namespace_state_init_t::data_t>
+std::shared_ptr<namespace_state_init_t::data_t>
 mastermind_t::data::get_namespace_state(const std::string &name) const {
 	try {
 		auto ns_state_cache = namespaces_states.copy(name);
@@ -84,7 +84,7 @@ mastermind_t::data::get_namespace_state(const std::string &name) const {
 				, name.c_str(), ex.what());
 	}
 
-	return std::shared_ptr<const namespace_state_init_t::data_t>();
+	return std::shared_ptr<namespace_state_init_t::data_t>();
 }
 
 void

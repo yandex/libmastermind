@@ -147,7 +147,7 @@ public:
 protected:
 	class data_t;
 
-	std::shared_ptr<const data_t> data;
+	std::shared_ptr<data_t> data;
 
 private:
 };

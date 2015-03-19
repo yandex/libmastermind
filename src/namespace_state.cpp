@@ -223,7 +223,7 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 }
 
 mastermind::namespace_state_init_t::namespace_state_init_t(
-		std::shared_ptr<const namespace_state_t::data_t> data_) {
+		std::shared_ptr<namespace_state_t::data_t> data_) {
 	data = std::move(data_);
 }
 

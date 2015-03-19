@@ -126,7 +126,7 @@ public:
 class namespace_state_init_t
 	: public namespace_state_t {
 public:
-	namespace_state_init_t(std::shared_ptr<const data_t> data_);
+	namespace_state_init_t(std::shared_ptr<data_t> data_);
 
 	struct data_t : namespace_state_t::data_t {
 		data_t(std::string name, const kora::config_t &config

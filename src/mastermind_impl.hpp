@@ -52,7 +52,7 @@ struct mastermind_t::data {
 			namespace_state_t::user_settings_factory_t user_settings_factory_, bool auto_start);
 	~data();
 
-	std::shared_ptr<const namespace_state_init_t::data_t>
+	std::shared_ptr<namespace_state_init_t::data_t>
 	get_namespace_state(const std::string &name) const;
 
 	void
