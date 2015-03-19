@@ -76,6 +76,8 @@ public:
 			return "update loop already started";
 		case mastermind_errc::update_loop_already_stopped:
 			return "update loop already stopped";
+		case mastermind_errc::unknown_feedback:
+			return "unknown feedback";
 		default:
 			return "unknown mastermind error";
 		}
@@ -136,6 +138,23 @@ update_loop_already_stopped::update_loop_already_stopped()
 	: mastermind_error(std::make_error_code(
 				mastermind::mastermind_errc::update_loop_already_stopped))
 {}
+
+unknown_feedback::unknown_feedback(group_t couple_id_, int feedback_)
+	: mastermind_error(std::make_error_code(
+				mastermind::mastermind_errc::unknown_feedback))
+	, m_couple_id(couple_id_)
+	, m_feedback(feedback_)
+{}
+
+group_t
+unknown_feedback::couple_id() const {
+	return m_couple_id;
+}
+
+int
+unknown_feedback::feedback() const {
+	return m_feedback;
+}
 
 } // namespace mastermind
 

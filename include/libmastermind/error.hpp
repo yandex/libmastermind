@@ -20,6 +20,8 @@
 #ifndef INCLUDE__LIBMASTERMIND__ERROR_H
 #define INCLUDE__LIBMASTERMIND__ERROR_H
 
+#include <libmastermind/common.hpp>
+
 #include <system_error>
 
 namespace mastermind {
@@ -87,6 +89,7 @@ public:
 enum class mastermind_errc {
 	  update_loop_already_started = 1
 	, update_loop_already_stopped
+	, unknown_feedback
 };
 
 const std::error_category &
@@ -138,6 +141,22 @@ class update_loop_already_stopped : public mastermind_error
 {
 public:
 	update_loop_already_stopped();
+};
+
+class unknown_feedback : public mastermind_error
+{
+public:
+	unknown_feedback(group_t couple_id_, int feedback_);
+
+	group_t
+	couple_id() const;
+
+	int
+	feedback() const;
+
+private:
+	group_t m_couple_id;
+	int m_feedback;
 };
 
 } // namespace mastermind

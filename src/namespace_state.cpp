@@ -122,128 +122,6 @@ mastermind::namespace_state_t::data_t::couples_t::couples_t(couples_t &&other)
 {
 }
 
-mastermind::namespace_state_t::data_t::weights_t::weights_t(const kora::config_t &config
-		, size_t groups_count_)
-	try
-	: groups_count(groups_count_)
-	, couples_with_info(create_couples_with_info(config, groups_count))
-	, couples_by_avalible_memory(create_couples_with_info(couples_with_info))
-
-{
-} catch (const std::exception &ex) {
-	throw std::runtime_error(std::string("cannot create weights-state: ") + ex.what());
-}
-
-mastermind::namespace_state_t::data_t::weights_t::weights_t(weights_t &&other)
-	: groups_count(other.groups_count)
-	, couples_with_info(std::move(other.couples_with_info))
-	, couples_by_avalible_memory(std::move(other.couples_by_avalible_memory))
-{
-}
-
-mastermind::namespace_state_t::data_t::weights_t::couples_with_info_t
-mastermind::namespace_state_t::data_t::weights_t::create_couples_with_info(
-		const kora::config_t &config, size_t groups_count) {
-	const auto &couples = config.at(boost::lexical_cast<std::string>(groups_count))
-		.underlying_object().as_array();
-
-	couples_with_info_t couples_with_info;
-
-	for (auto it = couples.begin(), end = couples.end(); it != end; ++it) {
-		const auto &couple = it->as_array();
-
-		groups_t groups;
-
-		{
-			const auto &dynamic_groups = couple[0].as_array();
-
-			for (auto it = dynamic_groups.begin(), end = dynamic_groups.end();
-					it != end; ++it) {
-				groups.emplace_back(it->to<group_t>());
-			}
-		}
-
-		if (groups.size() != groups_count) {
-			std::ostringstream oss;
-			oss
-				<< "groups.size is not equeal for groups_count(" << groups_count
-				<< "), groups=" << groups;
-			throw std::runtime_error(oss.str());
-		}
-
-		couples_with_info.emplace_back(std::make_tuple(groups
-					, couple[1].to<uint64_t>(), couple[2].to<uint64_t>()));
-	}
-
-	std::sort(couples_with_info.begin(), couples_with_info.end(), couples_with_info_cmp);
-
-	return couples_with_info;
-}
-
-mastermind::namespace_state_t::data_t::weights_t::couples_by_avalible_memory_t
-mastermind::namespace_state_t::data_t::weights_t::create_couples_with_info(
-		const couples_with_info_t &couples_with_info) {
-	couples_by_avalible_memory_t couples_by_avalible_memory;
-
-	for (size_t index = 0; index != couples_with_info.size(); ++index) {
-		auto avalible_memory = std::get<2>(couples_with_info[index]);
-		uint64_t total_weight = 0;
-
-		for (size_t index2 = 0; index2 <= index; ++index2) {
-			const auto &couple_with_info = couples_with_info[index2];
-
-			auto weight = std::get<1>(couple_with_info);
-
-			if (weight == 0) {
-				continue;
-			}
-
-			total_weight += weight;
-
-			couples_by_avalible_memory[avalible_memory].insert(
-				std::make_pair(total_weight, index2)
-			);
-		}
-	}
-
-	return couples_by_avalible_memory;
-}
-
-mastermind::namespace_state_t::data_t::weights_t::couple_with_info_t
-mastermind::namespace_state_t::data_t::weights_t::get(uint64_t size) const {
-	auto amit = couples_by_avalible_memory.lower_bound(size);
-	if (amit == couples_by_avalible_memory.end()) {
-		throw not_enough_memory_error();
-	}
-
-	auto &weighted_groups = amit->second;
-	if (weighted_groups.empty()) {
-		throw couple_not_found_error();
-	}
-
-	auto total_weight = weighted_groups.rbegin()->first;
-	double shoot_point = double(random()) / RAND_MAX * total_weight;
-	auto it = weighted_groups.lower_bound(uint64_t(shoot_point));
-
-	if (it == weighted_groups.end()) {
-		throw couple_not_found_error();
-	}
-
-	return couples_with_info[it->second];
-}
-
-const mastermind::namespace_state_t::data_t::weights_t::couples_with_info_t &
-mastermind::namespace_state_t::data_t::weights_t::data() const {
-	return couples_with_info;
-}
-
-bool
-mastermind::namespace_state_t::data_t::weights_t::couples_with_info_cmp(
-		const couple_with_info_t &lhs, const couple_with_info_t &rhs) {
-	return std::get<2>(lhs) > std::get<2>(rhs);
-}
-
-
 mastermind::namespace_state_t::data_t::statistics_t::statistics_t(const kora::config_t &state)
 	try
 {
@@ -295,7 +173,7 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 		const auto &weights_data = weights.data();
 
 		for (auto it = weights_data.begin(), end = weights_data.end(); it != end; ++it) {
-			auto weight = std::get<1>(*it);
+			auto weight = it->weight;
 
 			if (weight != 0) {
 				nonzero_weights += 1;
@@ -303,7 +181,7 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 
 			{
 				auto couple_it = couples.couple_info_map.cend();
-				const auto &groups = std::get<0>(*it);
+				const auto &groups = it->groups;
 
 				for (auto git = groups.begin(), gend = groups.end(); git != gend; ++git) {
 					auto group_info_it = couples.group_info_map.find(*git);
@@ -345,7 +223,7 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 }
 
 mastermind::namespace_state_init_t::namespace_state_init_t(
-		std::shared_ptr<const namespace_state_t::data_t> data_) {
+		std::shared_ptr<namespace_state_t::data_t> data_) {
 	data = std::move(data_);
 }
 
