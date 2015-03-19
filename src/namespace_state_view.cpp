@@ -110,11 +110,7 @@ mastermind::namespace_state_t::weights_t::set_feedback(group_t couple_id
 		namespace_state.data->weights.set_coefficient(couple_id, 0);
 		break;
 	default:
-		// TODO: specialize exception type
-		std::ostringstream oss;
-		oss << "unknown feedback_tag: couple_id=" << couple_id
-			<< "; feedback=" << static_cast<int>(feedback) << ";";
-		throw std::runtime_error(oss.str());
+		throw unknown_feedback(couple_id, static_cast<int>(feedback));
 	}
 
 }
