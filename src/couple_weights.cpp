@@ -40,7 +40,6 @@ weights_t::weights_t(const kora::config_t &config
 	try
 	: groups_count(groups_count_)
 	, couples_info(create(config, groups_count))
-	, couples_by_avalible_memory(create(couples_info))
 {
 } catch (const std::exception &ex) {
 	throw std::runtime_error(std::string("cannot create weights-state: ") + ex.what());
@@ -49,7 +48,6 @@ weights_t::weights_t(const kora::config_t &config
 weights_t::weights_t(weights_t &&other)
 	: groups_count(other.groups_count)
 	, couples_info(std::move(other.couples_info))
-	, couples_by_avalible_memory(std::move(other.couples_by_avalible_memory))
 {
 }
 
@@ -92,35 +90,6 @@ weights_t::create(
 	std::sort(couples_info.begin(), couples_info.end(), memory_comparator);
 
 	return couples_info;
-}
-
-couples_by_avalible_memory_t
-weights_t::create(
-		const couples_info_t &couples_info) {
-	couples_by_avalible_memory_t couples_by_avalible_memory;
-
-	for (size_t index = 0; index != couples_info.size(); ++index) {
-		auto avalible_memory = couples_info[index].memory;
-		uint64_t total_weight = 0;
-
-		for (size_t index2 = 0; index2 <= index; ++index2) {
-			const auto &couple_info = couples_info[index2];
-
-			auto weight = couple_info.weight;
-
-			if (weight == 0) {
-				continue;
-			}
-
-			total_weight += weight;
-
-			couples_by_avalible_memory[avalible_memory].emplace_back(
-					weighted_couple_info_t{total_weight, couple_info}
-			);
-		}
-	}
-
-	return couples_by_avalible_memory;
 }
 
 couple_info_t

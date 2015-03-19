@@ -86,8 +86,6 @@ private:
 
 typedef std::vector<weighted_couple_info_t> weighted_couples_info_t;
 
-typedef std::map<uint64_t, weighted_couples_info_t> couples_by_avalible_memory_t;
-
 struct weights_t {
 	weights_t(const kora::config_t &config, size_t groups_count_);
 
@@ -113,14 +111,9 @@ private:
 	couples_info_t
 	create(const kora::config_t &config, size_t groups_count);
 
-	static
-	couples_by_avalible_memory_t
-	create(const couples_info_t &couples_info);
-
 	const size_t groups_count;
 	couples_info_t couples_info;
 	mutable mutex_t couples_info_mutex;
-	const couples_by_avalible_memory_t couples_by_avalible_memory;
 };
 
 } // namespace weight
