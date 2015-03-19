@@ -72,6 +72,10 @@ mastermind::couple_sequence_const_iterator_t::operator ++ (int) {
 
 mastermind::couple_sequence_t::const_iterator
 mastermind::couple_sequence_t::begin() const {
+	if (!data) {
+		return end();
+	}
+
 	auto d = std::make_shared<couple_sequence_const_iterator_init_t::data_t>(
 			data->weighted_couples_info);
 	return couple_sequence_const_iterator_init_t(std::move(d));
@@ -84,6 +88,10 @@ mastermind::couple_sequence_t::end() const {
 
 size_t
 mastermind::couple_sequence_t::size() const {
+	if (!data) {
+		return 0;
+	}
+
 	return data->weighted_couples_info.size();
 }
 
