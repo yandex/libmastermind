@@ -61,13 +61,15 @@ typedef std::vector<couple_info_t> couples_info_t;
 
 class weighted_couple_info_t {
 public:
-	weighted_couple_info_t(uint64_t weight_, couple_info_t couple_info_)
+	typedef couples_info_t::const_iterator const_iterator_t;
+
+	weighted_couple_info_t(uint64_t weight_, const_iterator_t couple_info_)
 		: weight(weight_)
 		, couple_info(std::move(couple_info_))
 	{}
 
 	uint64_t weight;
-	couple_info_t couple_info;
+	const_iterator_t couple_info;
 
 	friend
 	bool

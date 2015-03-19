@@ -49,8 +49,8 @@ public:
 				, weighted_couples_info.end(), uint64_t(shoot_point));
 
 		couple_info_t couple_info;
-		couple_info.id = it->couple_info.id;
-		couple_info.groups = it->couple_info.groups;
+		couple_info.id = it->couple_info->id;
+		couple_info.groups = it->couple_info->groups;
 		couples_info.emplace_back(couple_info);
 
 		weighted_couples_info.erase(it);

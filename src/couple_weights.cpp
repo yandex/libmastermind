@@ -105,12 +105,13 @@ weights_t::get(uint64_t size) const {
 		throw couple_not_found_error();
 	}
 
-	return it->couple_info;
+	return *it->couple_info;
 }
 
 weighted_couples_info_t
 weights_t::get_all(uint64_t size) const {
 	weighted_couples_info_t weighted_couples_info;
+	weighted_couples_info.reserve(couples_info.size());
 	uint64_t total_weight = 0;
 
 	{
@@ -130,7 +131,7 @@ weights_t::get_all(uint64_t size) const {
 
 			total_weight += weight;
 
-			weighted_couples_info.emplace_back(total_weight, *it);
+			weighted_couples_info.emplace_back(total_weight, it);
 		}
 	}
 
