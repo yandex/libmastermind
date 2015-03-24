@@ -250,6 +250,13 @@ public:
 		return it->second;
 	}
 
+	bool
+	remove(const std::string &key) {
+		std::lock_guard<std::mutex> lock_guard(mutex);
+		return cache_map.erase(key);
+	}
+
+
 private:
 	mutable std::mutex mutex;
 	cache_map_t cache_map;
