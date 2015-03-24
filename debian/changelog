@@ -1,3 +1,9 @@
+libmastermind (8.27.1) lucid; urgency=low
+
+  * MDS-502: deleted namespaces are removed from cache
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Tue, 24 Mar 2015 14:54:14 +0400
+
 libmastermind (8.26.1) lucid; urgency=low
 
   * MDS-669: The method couple_sequence was added into class weight_t of
