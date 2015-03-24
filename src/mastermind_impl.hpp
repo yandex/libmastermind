@@ -106,6 +106,9 @@ struct mastermind_t::data {
 
 	void serialize();
 
+	bool
+	namespace_state_is_deleted(const kora::dynamic_t &raw_value);
+
 	namespace_state_init_t::data_t
 	create_namespaces_states(const std::string &name, const kora::dynamic_t &raw_value);
 
