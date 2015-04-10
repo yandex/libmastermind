@@ -68,7 +68,7 @@ mastermind_t::data::data(
 mastermind_t::data::~data() {
 }
 
-std::shared_ptr<const namespace_state_init_t::data_t>
+std::shared_ptr<namespace_state_init_t::data_t>
 mastermind_t::data::get_namespace_state(const std::string &name) const {
 	try {
 		auto ns_state_cache = namespaces_states.copy(name);
@@ -84,7 +84,7 @@ mastermind_t::data::get_namespace_state(const std::string &name) const {
 				, name.c_str(), ex.what());
 	}
 
-	return std::shared_ptr<const namespace_state_init_t::data_t>();
+	return std::shared_ptr<namespace_state_init_t::data_t>();
 }
 
 void
@@ -206,6 +206,22 @@ mastermind_t::data::collect_namespaces_states() {
 			const auto &name = it->first;
 
 			try {
+				if (namespace_state_is_deleted(it->second)) {
+					std::ostringstream oss;
+					oss << "libmastermind: namespace \"" << name
+						<< "\" was detected as deleted ";
+
+					if (namespaces_states.remove(name)) {
+						oss << "and was removed from the cache";
+					} else {
+						oss << "but it is not already in the cache";
+					}
+
+					auto msg = oss.str();
+					COCAINE_LOG_INFO(m_logger, "%s", msg.c_str());
+					continue;
+				}
+
 				auto ns_state = create_namespaces_states(name, it->second);
 
 				// TODO: check new ns_state is better than the old one
@@ -483,6 +499,33 @@ void mastermind_t::data::serialize() {
 	std::ofstream output(m_cache_path.c_str());
 	std::copy(sbuffer.data(), sbuffer.data() + sbuffer.size()
 			, std::ostreambuf_iterator<char>(output));
+}
+
+bool
+mastermind_t::data::namespace_state_is_deleted(const kora::dynamic_t &raw_value) {
+	const auto &state_object = raw_value.as_object();
+	auto it_settings = state_object.find("settings");
+
+	if (it_settings == state_object.end()) {
+		return false;
+	}
+
+	const auto &settings_object = it_settings->second.as_object();
+	auto it_service = settings_object.find("__service");
+
+	if (it_service == settings_object.end()) {
+		return false;
+	}
+
+	const auto &service_object = it_service->second.as_object();
+	auto it_is_deleted = service_object.find("is_deleted");
+
+	if (it_is_deleted == service_object.end()) {
+		return false;
+	}
+
+	const auto &is_deleted_object = it_is_deleted->second;
+	return is_deleted_object.to<bool>();
 }
 
 namespace_state_init_t::data_t

@@ -1,3 +1,22 @@
+libmastermind (8.27.1) lucid; urgency=low
+
+  * MDS-502: deleted namespaces are removed from cache
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Tue, 24 Mar 2015 14:54:14 +0400
+
+libmastermind (8.26.1) lucid; urgency=low
+
+  * MDS-669: The method couple_sequence was added into class weight_t of
+    namespace_state_t. It returns a sequence of couples that have enough disk
+    space.
+  * MDS-671: A feedback mechanism was added. One can use it via set_feedback
+    that takes two arguments: couple_id and feedback. The feedback can be one
+    of available, partly_unavailable, temporary_unavailable or
+    permanently_unavailable.
+  * API and possible ABI were broken
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 19 Mar 2015 17:25:55 +0400
+
 libmastermind (8.25.1) lucid; urgency=low
 
   * MDS-587: io-loop control is added

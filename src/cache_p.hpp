@@ -125,6 +125,15 @@ public:
 		return name;
 	}
 
+	value_type &
+	get_value() {
+		if (is_expired()) {
+			throw cache_is_expired_error();
+		}
+
+		return std::get<0>(*shared_value);
+	}
+
 	const value_type &
 	get_value() const {
 		if (is_expired()) {
@@ -132,6 +141,15 @@ public:
 		}
 
 		return std::get<0>(*shared_value);
+	}
+
+	std::shared_ptr<value_type>
+	get_shared_value() {
+		if (is_expired()) {
+			throw cache_is_expired_error();
+		}
+
+		return std::shared_ptr<value_type>(shared_value, &get_value());
 	}
 
 	std::shared_ptr<const value_type>
@@ -231,6 +249,13 @@ public:
 
 		return it->second;
 	}
+
+	bool
+	remove(const std::string &key) {
+		std::lock_guard<std::mutex> lock_guard(mutex);
+		return cache_map.erase(key);
+	}
+
 
 private:
 	mutable std::mutex mutex;

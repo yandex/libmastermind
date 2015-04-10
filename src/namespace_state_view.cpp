@@ -18,6 +18,7 @@
 */
 
 #include "namespace_state_p.hpp"
+#include "couple_sequence_p.hpp"
 
 size_t
 mastermind::namespace_state_t::settings_t::groups_count() const {
@@ -82,7 +83,36 @@ mastermind::namespace_state_t::couples_t::couples_t(const namespace_state_t &nam
 
 mastermind::groups_t
 mastermind::namespace_state_t::weights_t::groups(uint64_t size) const {
-	return std::get<0>(namespace_state.data->weights.get(size));
+	return namespace_state.data->weights.get(size).groups;
+}
+
+mastermind::couple_sequence_t
+mastermind::namespace_state_t::weights_t::couple_sequence(uint64_t size) const {
+	auto data = std::make_shared<couple_sequence_init_t::data_t>(
+			namespace_state.data->weights.get_all(size));
+	return couple_sequence_init_t(std::move(data));
+}
+
+void
+mastermind::namespace_state_t::weights_t::set_feedback(group_t couple_id
+		, feedback_tag feedback) {
+	switch (feedback) {
+	case feedback_tag::available:
+		namespace_state.data->weights.set_coefficient(couple_id, 1);
+		break;
+	case feedback_tag::partly_unavailable:
+		namespace_state.data->weights.set_coefficient(couple_id, 0.1);
+		break;
+	case feedback_tag::temporary_unavailable:
+		namespace_state.data->weights.set_coefficient(couple_id, 0.01);
+		break;
+	case feedback_tag::permanently_unavailable:
+		namespace_state.data->weights.set_coefficient(couple_id, 0);
+		break;
+	default:
+		throw unknown_feedback(couple_id, static_cast<int>(feedback));
+	}
+
 }
 
 mastermind::namespace_state_t::weights_t::weights_t(const namespace_state_t &namespace_state_)

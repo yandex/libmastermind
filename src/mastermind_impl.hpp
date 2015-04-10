@@ -52,7 +52,7 @@ struct mastermind_t::data {
 			namespace_state_t::user_settings_factory_t user_settings_factory_, bool auto_start);
 	~data();
 
-	std::shared_ptr<const namespace_state_init_t::data_t>
+	std::shared_ptr<namespace_state_init_t::data_t>
 	get_namespace_state(const std::string &name) const;
 
 	void
@@ -105,6 +105,9 @@ struct mastermind_t::data {
 	generate_fake_caches();
 
 	void serialize();
+
+	bool
+	namespace_state_is_deleted(const kora::dynamic_t &raw_value);
 
 	namespace_state_init_t::data_t
 	create_namespaces_states(const std::string &name, const kora::dynamic_t &raw_value);

@@ -20,7 +20,9 @@
 #ifndef INCLUDE__LIBMASTERMIND__MASTERMIND_HPP
 #define INCLUDE__LIBMASTERMIND__MASTERMIND_HPP
 
+#include <libmastermind/common.hpp>
 #include <libmastermind/error.hpp>
+#include <libmastermind/couple_sequence.hpp>
 
 #include <cocaine/framework/logging.hpp>
 
@@ -35,9 +37,6 @@
 #include <memory>
 
 namespace mastermind {
-
-typedef int group_t;
-typedef std::vector<int> groups_t;
 
 struct group_info_response_t {
 	std::vector<std::string> nodes;
@@ -124,7 +123,16 @@ public:
 
 	class weights_t {
 	public:
+		enum class feedback_tag {
+			  available
+			, partly_unavailable
+			, temporary_unavailable
+			, permanently_unavailable
+		};
+
 		groups_t groups(uint64_t size = 0) const;
+		couple_sequence_t couple_sequence(uint64_t size = 0) const;
+		void set_feedback(group_t couple_id, feedback_tag feedback);
 
 	private:
 		friend class namespace_state_t;
@@ -147,7 +155,7 @@ public:
 protected:
 	class data_t;
 
-	std::shared_ptr<const data_t> data;
+	std::shared_ptr<data_t> data;
 
 private:
 };

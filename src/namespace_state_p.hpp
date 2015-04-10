@@ -21,6 +21,7 @@
 #define SRC__NAMESPACE_STATE_P__HPP
 
 #include "libmastermind/mastermind.hpp"
+#include "couple_weights_p.hpp"
 
 #include "cocaine/traits/dynamic.hpp"
 
@@ -96,45 +97,14 @@ public:
 		couple_info_map_t couple_info_map;
 	};
 
-	struct weights_t {
-		typedef std::tuple<groups_t, uint64_t, uint64_t> couple_with_info_t;
-		typedef std::vector<couple_with_info_t> couples_with_info_t;
-
-		weights_t(const kora::config_t &config, size_t groups_count_);
-
-		weights_t(weights_t &&other);
-
-		couple_with_info_t
-		get(uint64_t size) const;
-
-		const couples_with_info_t &
-		data() const;
-
-	private:
-		typedef std::reference_wrapper<const couple_with_info_t> const_couple_ref_t;
-		typedef std::map<uint64_t, size_t> weighted_couples_t;
-		typedef std::map<uint64_t, weighted_couples_t> couples_by_avalible_memory_t;
-
-		static
-		couples_with_info_t
-		create_couples_with_info(const kora::config_t &config, size_t groups_count);
-
-		static
-		couples_by_avalible_memory_t
-		create_couples_with_info(const couples_with_info_t &couples_with_info);
-
-		static
-		bool
-		couples_with_info_cmp(const couple_with_info_t &lhs, const couple_with_info_t &rhs);
-
-		const size_t groups_count;
-		const couples_with_info_t couples_with_info;
-		const couples_by_avalible_memory_t couples_by_avalible_memory;
-	};
-
 	struct statistics_t {
 		statistics_t(const kora::config_t &config);
 	};
+
+	/*struct weights_t {
+		weights_t(const kora::config_t &config, size_t groups_count_) {}
+		groups_t get(size_t size) const { return groups_t(); }
+	};*/
 
 	data_t(std::string name, const kora::config_t &config
 			, const user_settings_factory_t &factory);
@@ -147,7 +117,7 @@ public:
 
 	settings_t settings;
 	couples_t couples;
-	weights_t weights;
+	ns_state::weight::weights_t weights;
 	statistics_t statistics;
 
 	std::string extract;
@@ -156,7 +126,7 @@ public:
 class namespace_state_init_t
 	: public namespace_state_t {
 public:
-	namespace_state_init_t(std::shared_ptr<const data_t> data_);
+	namespace_state_init_t(std::shared_ptr<data_t> data_);
 
 	struct data_t : namespace_state_t::data_t {
 		data_t(std::string name, const kora::config_t &config
