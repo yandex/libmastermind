@@ -42,6 +42,9 @@ class couple_sequence_const_iterator_t
 public:
 	typedef couple_sequence_const_iterator_t self_type;
 
+	couple_sequence_const_iterator_t();
+	couple_sequence_const_iterator_t(const self_type &that);
+
 	reference
 	operator * () const;
 
@@ -59,6 +62,9 @@ public:
 
 	self_type
 	operator ++ (int);
+
+	self_type &
+	operator = (const self_type &that);
 
 protected:
 	class data_t;
