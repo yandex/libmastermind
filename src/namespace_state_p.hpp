@@ -50,6 +50,8 @@ public:
 			std::string write;
 		} auth_keys;
 
+		groups_t static_groups;
+
 		user_settings_ptr_t user_settings_ptr;
 	};
 

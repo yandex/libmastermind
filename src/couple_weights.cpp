@@ -36,10 +36,10 @@ memory_comparator(const couple_info_t &lhs, const couple_info_t &rhs) {
 }
 
 weights_t::weights_t(const kora::config_t &config
-		, size_t groups_count_)
+		, size_t groups_count_, bool ns_is_static_)
 	try
 	: groups_count(groups_count_)
-	, couples_info(create(config, groups_count))
+	, couples_info(create(config, groups_count, ns_is_static_))
 {
 } catch (const std::exception &ex) {
 	throw std::runtime_error(std::string("cannot create weights-state: ") + ex.what());
@@ -53,8 +53,19 @@ weights_t::weights_t(weights_t &&other)
 
 couples_info_t
 weights_t::create(
-		const kora::config_t &config, size_t groups_count) {
-	const auto &couples = config.at(boost::lexical_cast<std::string>(groups_count))
+		const kora::config_t &config, size_t groups_count, bool ns_is_static) {
+	const auto key = boost::lexical_cast<std::string>(groups_count);
+
+	if (ns_is_static) {
+		// Static namespace can be used without weights
+		const auto &object = config.underlying_object().as_object();
+		auto it = object.find(key);
+		if (object.end() == it) {
+			return couples_info_t{};
+		}
+	}
+
+	const auto &couples = config.at(key)
 		.underlying_object().as_array();
 
 	couples_info_t couples_info;
