@@ -143,6 +143,11 @@ public:
 		return std::get<0>(*shared_value);
 	}
 
+	const value_type &
+	get_value_unsafe() const {
+		return std::get<0>(*shared_value);
+	}
+
 	std::shared_ptr<value_type>
 	get_shared_value() {
 		if (is_expired()) {

@@ -64,6 +64,9 @@ struct mastermind_t::data {
 	bool
 	is_running() const;
 
+	bool
+	is_valid() const;
+
 	void reconnect();
 
 	template <typename T>
