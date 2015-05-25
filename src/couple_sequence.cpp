@@ -20,6 +20,17 @@
 #include "libmastermind/couple_sequence.hpp"
 #include "couple_sequence_p.hpp"
 
+mastermind::couple_sequence_const_iterator_t::couple_sequence_const_iterator_t()
+{}
+
+mastermind::couple_sequence_const_iterator_t::couple_sequence_const_iterator_t(
+		const self_type &that)
+{
+	if (that.data) {
+		data = std::make_shared<data_t>(*that.data);
+	}
+}
+
 mastermind::couple_sequence_const_iterator_t::reference
 mastermind::couple_sequence_const_iterator_t::operator * () const {
 	return data->couples_info[data->current_index];
@@ -66,8 +77,14 @@ mastermind::couple_sequence_const_iterator_t::self_type
 mastermind::couple_sequence_const_iterator_t::operator ++ (int) {
 	self_type result;
 	result.data = std::make_shared<data_t>(*data);
-	++result;
+	++*this;
 	return result;
+}
+
+mastermind::couple_sequence_const_iterator_t::self_type &
+mastermind::couple_sequence_const_iterator_t::operator = (const self_type &that) {
+	data = std::make_shared<data_t>(*that.data);
+	return *this;
 }
 
 mastermind::couple_sequence_t::const_iterator

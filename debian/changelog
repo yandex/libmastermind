@@ -1,3 +1,17 @@
+libmastermind (8.28.2) lucid; urgency=low
+
+  * Version bump because of missmerge
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Fri, 10 Apr 2015 17:36:31 +0400
+
+libmastermind (8.28.1) lucid; urgency=low
+
+  * Class couple_sequence_const_iterator_t was updated
+    Post-increment operator was fixed.
+    Copy constructor and assigment operator were added.
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Fri, 10 Apr 2015 17:32:18 +0400
+
 libmastermind (8.27.1) lucid; urgency=low
 
   * MDS-502: deleted namespaces are removed from cache
