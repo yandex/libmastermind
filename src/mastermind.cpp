@@ -138,6 +138,11 @@ mastermind_t::is_running() const {
 	return m_data->is_running();
 }
 
+bool
+mastermind_t::is_valid() const {
+	return m_data->is_valid();
+}
+
 std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std::string &name_space, uint64_t size) {
 	try {
 		auto cache = m_data->namespaces_states.copy(name_space);
