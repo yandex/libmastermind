@@ -125,6 +125,33 @@ mastermind_t::data::is_running() const {
 	return std::thread::id() != m_weight_cache_update_thread.get_id();
 }
 
+bool
+mastermind_t::data::is_valid() const {
+	auto cache_map = namespaces_states.copy();
+	size_t important_namespaces = 0;
+
+	for (auto it = cache_map.begin(), end = cache_map.end(); it != end; ++it) {
+		const auto &cache = it->second;
+
+		if (user_settings_factory && !cache.get_value_unsafe().settings.user_settings_ptr) {
+			// That means proxy is not interested in this namespace
+			continue;
+		}
+
+		++important_namespaces;
+
+		if (cache.is_expired()) {
+			return false;
+		}
+	}
+
+	if (important_namespaces == 0) {
+		return false;
+	}
+
+	return true;
+}
+
 void mastermind_t::data::reconnect() {
 	std::lock_guard<std::mutex> lock(m_reconnect_mutex);
 	(void) lock;

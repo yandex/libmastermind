@@ -23,6 +23,14 @@ mastermind::namespace_state_t::data_t::settings_t::settings_t(const std::string 
 		auth_keys.read = auth_keys_state.at<std::string>("write", "");
 	}
 
+	if (state.has("static-couple")) {
+		const auto &static_couple_config = state.at("static-couple");
+
+		for (size_t index = 0, size = static_couple_config.size(); index != size; ++index) {
+			static_groups.emplace_back(static_couple_config.at<group_t>(index));
+		}
+	}
+
 	if (factory) {
 		user_settings_ptr = factory(name, state);
 	}
@@ -135,7 +143,7 @@ mastermind::namespace_state_t::data_t::data_t(std::string name_, const kora::con
 	: name(std::move(name_))
 	, settings(name, config.at("settings"), factory)
 	, couples(config.at("couples"))
-	, weights(config.at("weights"), settings.groups_count)
+	, weights(config.at("weights"), settings.groups_count, !settings.static_groups.empty())
 	, statistics(config.at("statistics"))
 {
 	check_consistency();
@@ -210,11 +218,23 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 			}
 		}
 
+		bool is_static = false;
+
 		if (nonzero_weights == 0) {
-			throw std::runtime_error("no weighted coulples were obtained from mastermind");
+			if (settings.static_groups.empty()) {
+				throw std::runtime_error("no weighted coulples were obtained from mastermind");
+			} else {
+				// Because namespace has static couple
+				nonzero_weights = 1;
+				is_static = true;
+			}
 		}
 
 		oss << " couples-for-write=" << nonzero_weights;
+
+		if (is_static) {
+			oss << " [static]";
+		}
 	}
 
 	oss << " couples=" << couples.couple_info_map.size();
