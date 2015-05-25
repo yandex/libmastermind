@@ -1,3 +1,15 @@
+libmastermind (8.29.1) lucid; urgency=low
+
+  * MDS-948: Invalid weights is not a reason to invalidate static namespace
+    Namespace with static couple will not be invalidated if it does not have
+    weighted couples for writing.
+  * MDS-490: Method is_valid was added
+    Method is_valid checks state of libmastermind's caches and returns true
+    if all namespace_state caches, that proxy is interested in, are not
+    expired and their number is not equal to zero.
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 25 May 2015 16:09:48 +0300
+
 libmastermind (8.28.2) lucid; urgency=low
 
   * Version bump because of missmerge
