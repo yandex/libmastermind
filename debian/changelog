@@ -1,3 +1,11 @@
+libmastermind (8.30.1) lucid; urgency=low
+
+  * MDS-775: Ns state can be applied without weigthed couples
+    If namespace is marked as full, libmastermind will apply it.
+    Also method ns_is_full() was added into statistics of ns_state.
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 04 Jun 2015 16:14:32 +0300
+
 libmastermind (8.29.1) lucid; urgency=low
 
   * MDS-948: Invalid weights is not a reason to invalidate static namespace
