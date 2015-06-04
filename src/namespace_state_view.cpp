@@ -120,6 +120,16 @@ mastermind::namespace_state_t::weights_t::weights_t(const namespace_state_t &nam
 {
 }
 
+bool
+mastermind::namespace_state_t::statistics_t::ns_is_full() {
+	return namespace_state.data->statistics.ns_is_full();
+}
+
+mastermind::namespace_state_t::statistics_t::statistics_t(const namespace_state_t &namespace_state_)
+	: namespace_state(namespace_state_)
+{
+}
+
 mastermind::namespace_state_t::settings_t
 mastermind::namespace_state_t::settings() const {
 	return settings_t(*this);
@@ -133,6 +143,11 @@ mastermind::namespace_state_t::couples() const {
 mastermind::namespace_state_t::weights_t
 mastermind::namespace_state_t::weights() const {
 	return weights_t(*this);
+}
+
+mastermind::namespace_state_t::statistics_t
+mastermind::namespace_state_t::statistics() const {
+	return statistics_t(*this);
 }
 
 const std::string &mastermind::namespace_state_t::name() const {

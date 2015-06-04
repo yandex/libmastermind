@@ -101,6 +101,12 @@ public:
 
 	struct statistics_t {
 		statistics_t(const kora::config_t &config);
+
+		bool
+		ns_is_full() const;
+
+	private:
+		bool is_full;
 	};
 
 	/*struct weights_t {

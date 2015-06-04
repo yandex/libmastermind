@@ -142,11 +142,25 @@ public:
 		const namespace_state_t &namespace_state;
 	};
 
+	class statistics_t {
+	public:
+		bool
+		ns_is_full();
+	private:
+		friend class namespace_state_t;
+
+		statistics_t(const namespace_state_t &namespace_state_);
+
+		const namespace_state_t &namespace_state;
+	};
+
 	settings_t settings() const;
 
 	couples_t couples() const;
 
 	weights_t weights() const;
+
+	statistics_t statistics() const;
 
 	const std::string &name() const;
 
