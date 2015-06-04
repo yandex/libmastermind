@@ -130,11 +130,18 @@ mastermind::namespace_state_t::data_t::couples_t::couples_t(couples_t &&other)
 {
 }
 
-mastermind::namespace_state_t::data_t::statistics_t::statistics_t(const kora::config_t &state)
+mastermind::namespace_state_t::data_t::statistics_t::statistics_t(const kora::config_t &config)
 	try
+	: is_full(config.at("is_full", false))
 {
+	// TODO: log whether is_full is provided by mastermind
 } catch (const std::exception &ex) {
 	throw std::runtime_error(std::string("cannot create statistics-state: ") + ex.what());
+}
+
+bool
+mastermind::namespace_state_t::data_t::statistics_t::ns_is_full() const {
+	return is_full;
 }
 
 mastermind::namespace_state_t::data_t::data_t(std::string name_, const kora::config_t &config
@@ -191,6 +198,14 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 				auto couple_it = couples.couple_info_map.cend();
 				const auto &groups = it->groups;
 
+				if (groups.size() != settings.groups_count) {
+					std::ostringstream oss;
+					oss
+						<< "groups.size is not equeal for groups_count(" << settings.groups_count
+						<< "), groups=" << groups;
+					throw std::runtime_error(oss.str());
+				}
+
 				for (auto git = groups.begin(), gend = groups.end(); git != gend; ++git) {
 					auto group_info_it = couples.group_info_map.find(*git);
 
@@ -220,7 +235,7 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 
 		bool is_static = false;
 
-		if (nonzero_weights == 0) {
+		if (nonzero_weights == 0 && !statistics.ns_is_full()) {
 			if (settings.static_groups.empty()) {
 				throw std::runtime_error("no weighted coulples were obtained from mastermind");
 			} else {
@@ -234,6 +249,10 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 
 		if (is_static) {
 			oss << " [static]";
+		}
+
+		if (statistics.ns_is_full()) {
+			oss << " [full]";
 		}
 	}
 
