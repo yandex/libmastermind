@@ -201,7 +201,7 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 				if (groups.size() != settings.groups_count) {
 					std::ostringstream oss;
 					oss
-						<< "groups.size is not equeal for groups_count(" << settings.groups_count
+						<< "groups.size is not equal to groups_count(" << settings.groups_count
 						<< "), groups=" << groups;
 					throw std::runtime_error(oss.str());
 				}
@@ -237,7 +237,7 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 
 		if (nonzero_weights == 0 && !statistics.ns_is_full()) {
 			if (settings.static_groups.empty()) {
-				throw std::runtime_error("no weighted coulples were obtained from mastermind");
+				throw std::runtime_error("no weighted couples were obtained from mastermind");
 			} else {
 				// Because namespace has static couple
 				nonzero_weights = 1;
