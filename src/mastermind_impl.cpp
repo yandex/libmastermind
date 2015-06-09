@@ -44,8 +44,7 @@ mastermind_t::data::data(
 	, m_next_remote(0)
 	, m_cache_path(std::move(cache_path))
 	, m_worker_name(std::move(worker_name))
-	, cache_groups({std::map<std::string, groups_t>(), kora::dynamic_t::empty_array
-			, "cache_groups"})
+	, cached_keys({{}, kora::dynamic_t::empty_object, "cached_keys"})
 	, elliptics_remotes({std::vector<std::string>(), kora::dynamic_t::empty_array
 			, "elliptics_remotes"})
 	, namespaces_settings({"namespaces_settings"})
@@ -273,16 +272,16 @@ mastermind_t::data::collect_namespaces_states() {
 	}
 }
 
-bool mastermind_t::data::collect_cache_groups() {
+bool mastermind_t::data::collect_cached_keys() {
 	try {
-		auto raw_cache_groups = enqueue("get_cached_keys");
-		auto cache = create_cache_groups("", raw_cache_groups);
+		auto raw = enqueue("get_cached_keys");
+		auto cache = create_cached_keys("", raw);
 
-		cache_groups.set({std::move(cache), std::move(raw_cache_groups)});
+		cached_keys.set({std::move(cache), std::move(raw)});
 		return true;
 	} catch(const std::exception &ex) {
 		COCAINE_LOG_ERROR(m_logger
-				, "libmastermind: cannot process collect_cache_groups: %s"
+				, "libmastermind: cannot process collect_cached_keys: %s"
 				, ex.what());
 	}
 	return false;
@@ -320,12 +319,10 @@ void mastermind_t::data::collect_info_loop_impl() {
 		spent_time_printer_t helper("collect_namespaces_states", m_logger);
 		collect_namespaces_states();
 	}
-#if 0
 	{
-		spent_time_printer_t helper("collect_cache_groups", m_logger);
-		collect_cache_groups();
+		spent_time_printer_t helper("collect_cached_keys", m_logger);
+		collect_cached_keys();
 	}
-#endif
 	{
 		spent_time_printer_t helper("collect_elliptics_remotes", m_logger);
 		collect_elliptics_remotes();
@@ -398,16 +395,14 @@ mastermind_t::data::cache_expire() {
 
 	cache_is_expired = false;
 
-#if 0
 	{
-		auto cache = cache_groups.copy();
-		if (!cache.is_expired() && check_cache_for_expire("cache_groups", cache
+		auto cache = cached_keys.copy();
+		if (!cache.is_expired() && check_cache_for_expire("cached_keys", cache
 					, preferable_life_time, warning_time, expire_time)) {
 			cache.set_expire(true);
-			cache_groups.set(cache);
+			cached_keys.set(cache);
 		}
 	}
-#endif
 
 	{
 		auto cache = elliptics_remotes.copy();
@@ -494,14 +489,13 @@ void mastermind_t::data::serialize() {
 	kora::dynamic_t raw_cache = kora::dynamic_t::empty_object;
 	auto &raw_cache_object = raw_cache.as_object();
 
+	// TODO: remove ridiculous macros
 #define PACK_CACHE(cache) \
 	do { \
 		raw_cache_object[#cache] = cache.copy().serialize(); \
 	} while (false)
 
-#if 0
-	PACK_CACHE(cache_groups);
-#endif
+	PACK_CACHE(cached_keys);
 	PACK_CACHE(elliptics_remotes);
 
 #undef PACK_CACHE
@@ -564,34 +558,11 @@ mastermind_t::data::create_namespaces_states(const std::string &name
 	return ns_state;
 }
 
-std::map<std::string, groups_t>
-mastermind_t::data::create_cache_groups(const std::string &name
+mastermind::cached_keys_t
+mastermind_t::data::create_cached_keys(const std::string &name
 		, const kora::dynamic_t &raw_value) {
 	(void) name;
-
-	std::map<std::string, groups_t> result;
-
-	const auto &raw_value_array = raw_value.as_array();
-
-	for (auto p_it = raw_value_array.begin(), p_end = raw_value_array.end();
-			p_it != p_end; ++p_it) {
-		const auto &pair = p_it->as_array();
-		const auto &name = pair[0].to<std::string>();
-		const auto &raw_groups = pair[1].as_array();
-		groups_t groups;
-
-		for (auto it = raw_groups.begin(), end = raw_groups.end(); it != end; ++it) {
-			groups.emplace_back(it->to<group_t>());
-		}
-
-		result.insert(std::make_pair(name, groups));
-	}
-
-	if (result.empty()) {
-		throw std::runtime_error("cache-groups list is empty");
-	}
-
-	return result;
+	return {raw_value};
 }
 
 std::vector<std::string>
@@ -719,9 +690,17 @@ void mastermind_t::data::deserialize() {
 			} \
 		} while (false)
 
-#if 0
-		TRY_UNPACK_CACHE(cache_groups);
-#endif
+		try {
+			cached_keys.set(synchronized_cache_t<cached_keys_t>::cache_type(
+						raw_cache_object["cached_keys"].as_object()
+						, std::bind(&data::create_cached_keys, this
+							, std::placeholders::_1, std::placeholders::_2)
+						, "cached_keys"));
+		} catch (const std::exception &ex) {
+			COCAINE_LOG_ERROR(m_logger, "libmastermind: cannot deserialize cache cached_keys: %s"
+					, ex.what());
+		}
+
 		TRY_UNPACK_CACHE(elliptics_remotes);
 
 #undef TRY_UNPACK_CACHE
