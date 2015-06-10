@@ -42,7 +42,7 @@ class libmastermind_category_impl
 	: public std::error_category
 {
 public:
-	const char *name() const;
+	const char *name() const noexcept;
 	std::string message(int ev) const;
 };
 
