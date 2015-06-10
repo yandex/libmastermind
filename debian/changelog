@@ -1,3 +1,9 @@
+libmastermind (8.31.1) lucid; urgency=low
+
+  * MDS-729: Handler get_cached_keys is used to obtain cached keys
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Wed, 10 Jun 2015 10:49:19 +0300
+
 libmastermind (8.30.2) lucid; urgency=low
 
   * Misprints in log was fixed
