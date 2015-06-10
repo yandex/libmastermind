@@ -1,3 +1,9 @@
+libmastermind (8.31.2) lucid; urgency=low
+
+  * Support gcc 4.8
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Wed, 10 Jun 2015 11:46:00 +0300
+
 libmastermind (8.31.1) lucid; urgency=low
 
   * MDS-729: Handler get_cached_keys is used to obtain cached keys
