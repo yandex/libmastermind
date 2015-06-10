@@ -335,24 +335,9 @@ std::vector<int> mastermind_t::get_all_groups() {
 }
 
 std::vector<int> mastermind_t::get_cache_groups(const std::string &key) {
-	try {
-		auto cache = m_data->cache_groups.copy();
-
-		if (cache.is_expired()) {
-			return std::vector<int>();
-		}
-
-		auto it = cache.get_value().find(key);
-		if (it != cache.get_value().end())
-			return it->second;
-		return std::vector<int>();
-	} catch(const std::system_error &ex) {
-		COCAINE_LOG_ERROR(
-			m_data->m_logger,
-			"libmastermind: get_cache_groups: key = %s; \"%s\"",
-			key.c_str(), ex.code().message().c_str());
-		throw;
-	}
+	COCAINE_LOG_ERROR(m_data-> m_logger
+			, "libmastermind: get_cache_groups: using of obsolete method");
+	return {};
 }
 
 std::vector<namespace_settings_t> mastermind_t::get_namespaces_settings() {
@@ -446,6 +431,12 @@ mastermind_t::get_namespace_state(const std::string &name) const {
 	return namespace_state_init_t(data);
 }
 
+groups_t
+mastermind_t::get_cached_groups(const std::string &elliptics_id, group_t couple_id) const {
+	auto cache = m_data->cached_keys.copy();
+	return cache.get_value().get(elliptics_id, couple_id);
+}
+
 std::string mastermind_t::json_group_weights() {
 	auto cache = m_data->namespaces_states.copy();
 
@@ -507,36 +498,10 @@ std::string mastermind_t::json_bad_groups() {
 }
 
 std::string mastermind_t::json_cache_groups() {
-	auto cache = m_data->cache_groups.copy();
+	auto cache = m_data->cached_keys.copy();
+	const auto &dynamic = cache.get_raw_value();
 
-	std::ostringstream oss;
-	oss << "{" << std::endl;
-
-	if (cache.is_expired()) {
-		oss << "}";
-		return oss.str();
-	}
-
-	auto ite = cache.get_value().end();
-	if (cache.get_value().begin() != cache.get_value().end()) --ite;
-	for (auto it = cache.get_value().begin(); it != cache.get_value().end(); ++it) {
-		oss << "\t\"" << it->first << "\" : [";
-		for (auto it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-			if (it2 != it->second.begin()) {
-				oss << ", ";
-			}
-			oss << *it2;
-		}
-
-		oss << "]";
-		if (it != ite) {
-			oss << ',';
-		}
-		oss << std::endl;
-	}
-	oss << "}";
-
-	return oss.str();
+	return kora::to_pretty_json(dynamic);
 }
 
 std::string mastermind_t::json_metabalancer_info() {
