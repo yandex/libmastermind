@@ -36,10 +36,10 @@ memory_comparator(const couple_info_t &lhs, const couple_info_t &rhs) {
 }
 
 weights_t::weights_t(const kora::config_t &config
-		, size_t groups_count_)
+		, size_t groups_count_, bool ns_is_static_)
 	try
 	: groups_count(groups_count_)
-	, couples_info(create(config, groups_count))
+	, couples_info(create(config, groups_count, ns_is_static_))
 {
 } catch (const std::exception &ex) {
 	throw std::runtime_error(std::string("cannot create weights-state: ") + ex.what());
@@ -53,38 +53,47 @@ weights_t::weights_t(weights_t &&other)
 
 couples_info_t
 weights_t::create(
-		const kora::config_t &config, size_t groups_count) {
-	const auto &couples = config.at(boost::lexical_cast<std::string>(groups_count))
-		.underlying_object().as_array();
+		const kora::config_t &config, size_t groups_count, bool ns_is_static) {
+	const auto key = boost::lexical_cast<std::string>(groups_count);
 
+	const auto &object = config.underlying_object().as_object();
+	auto it = object.find(key);
+
+	if (object.end() == it) {
+		// TODO: log
+		return {};
+	}
+
+	if (!it->second.is_array()) {
+		// TODO: log
+		return {};
+	}
+
+	const auto &couples = it->second.as_array();
 	couples_info_t couples_info;
 
 	for (auto it = couples.begin(), end = couples.end(); it != end; ++it) {
-		const auto &couple = it->as_array();
-		couple_info_t couple_info;
+		try {
+			const auto &couple = it->as_array();
+			couple_info_t couple_info;
 
-		{
-			const auto &dynamic_groups = couple[0].as_array();
+			{
+				const auto &dynamic_groups = couple[0].as_array();
 
-			for (auto it = dynamic_groups.begin(), end = dynamic_groups.end();
-					it != end; ++it) {
-				couple_info.groups.emplace_back(it->to<group_t>());
+				for (auto it = dynamic_groups.begin(), end = dynamic_groups.end();
+						it != end; ++it) {
+					couple_info.groups.emplace_back(it->to<group_t>());
+				}
 			}
+
+			couple_info.weight = couple[1].to<uint64_t>();
+			couple_info.memory = couple[2].to<uint64_t>();
+			couple_info.id = *std::min_element(couple_info.groups.begin(), couple_info.groups.end());
+
+			couples_info.emplace_back(std::move(couple_info));
+		} catch (const std::exception &ex) {
+			// TODO: log
 		}
-
-		if (couple_info.groups.size() != groups_count) {
-			std::ostringstream oss;
-			oss
-				<< "groups.size is not equeal for groups_count(" << groups_count
-				<< "), groups=" << couple_info.groups;
-			throw std::runtime_error(oss.str());
-		}
-
-		couple_info.weight = couple[1].to<uint64_t>();
-		couple_info.memory = couple[2].to<uint64_t>();
-		couple_info.id = *std::min_element(couple_info.groups.begin(), couple_info.groups.end());
-
-		couples_info.emplace_back(std::move(couple_info));
 	}
 
 	std::sort(couples_info.begin(), couples_info.end(), memory_comparator);

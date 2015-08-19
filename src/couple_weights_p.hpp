@@ -34,6 +34,7 @@
 
 namespace mastermind {
 namespace ns_state {
+
 namespace weight {
 
 class couple_info_t {
@@ -89,7 +90,7 @@ private:
 typedef std::vector<weighted_couple_info_t> weighted_couples_info_t;
 
 struct weights_t {
-	weights_t(const kora::config_t &config, size_t groups_count_);
+	weights_t(const kora::config_t &config, size_t groups_count_, bool ns_is_static_);
 
 	weights_t(weights_t &&other);
 
@@ -111,7 +112,7 @@ private:
 
 	static
 	couples_info_t
-	create(const kora::config_t &config, size_t groups_count);
+	create(const kora::config_t &config, size_t groups_count, bool ns_is_static);
 
 	const size_t groups_count;
 	couples_info_t couples_info;

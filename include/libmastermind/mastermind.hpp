@@ -142,11 +142,25 @@ public:
 		const namespace_state_t &namespace_state;
 	};
 
+	class statistics_t {
+	public:
+		bool
+		ns_is_full();
+	private:
+		friend class namespace_state_t;
+
+		statistics_t(const namespace_state_t &namespace_state_);
+
+		const namespace_state_t &namespace_state;
+	};
+
 	settings_t settings() const;
 
 	couples_t couples() const;
 
 	weights_t weights() const;
+
+	statistics_t statistics() const;
 
 	const std::string &name() const;
 
@@ -212,6 +226,9 @@ public:
 	bool
 	is_running() const;
 
+	bool
+	is_valid() const;
+
 	std::vector<int> get_metabalancer_groups(uint64_t count = 0, const std::string &name_space = std::string("default"), uint64_t size = 0);
 	group_info_response_t get_metabalancer_group_info(int group);
 	std::map<int, std::vector<int>> get_symmetric_groups();
@@ -229,6 +246,9 @@ public:
 
 	namespace_state_t
 	get_namespace_state(const std::string &name) const;
+
+	groups_t
+	get_cached_groups(const std::string &elliptics_id, group_t couple_id) const;
 
 	std::string json_group_weights();
 	std::string json_symmetric_groups();

@@ -50,6 +50,8 @@ public:
 			std::string write;
 		} auth_keys;
 
+		groups_t static_groups;
+
 		user_settings_ptr_t user_settings_ptr;
 	};
 
@@ -99,6 +101,12 @@ public:
 
 	struct statistics_t {
 		statistics_t(const kora::config_t &config);
+
+		bool
+		ns_is_full() const;
+
+	private:
+		bool is_full;
 	};
 
 	/*struct weights_t {

@@ -23,6 +23,14 @@ mastermind::namespace_state_t::data_t::settings_t::settings_t(const std::string 
 		auth_keys.read = auth_keys_state.at<std::string>("write", "");
 	}
 
+	if (state.has("static-couple")) {
+		const auto &static_couple_config = state.at("static-couple");
+
+		for (size_t index = 0, size = static_couple_config.size(); index != size; ++index) {
+			static_groups.emplace_back(static_couple_config.at<group_t>(index));
+		}
+	}
+
 	if (factory) {
 		user_settings_ptr = factory(name, state);
 	}
@@ -122,11 +130,18 @@ mastermind::namespace_state_t::data_t::couples_t::couples_t(couples_t &&other)
 {
 }
 
-mastermind::namespace_state_t::data_t::statistics_t::statistics_t(const kora::config_t &state)
+mastermind::namespace_state_t::data_t::statistics_t::statistics_t(const kora::config_t &config)
 	try
+	: is_full(config.at("is_full", false))
 {
+	// TODO: log whether is_full is provided by mastermind
 } catch (const std::exception &ex) {
 	throw std::runtime_error(std::string("cannot create statistics-state: ") + ex.what());
+}
+
+bool
+mastermind::namespace_state_t::data_t::statistics_t::ns_is_full() const {
+	return is_full;
 }
 
 mastermind::namespace_state_t::data_t::data_t(std::string name_, const kora::config_t &config
@@ -135,7 +150,7 @@ mastermind::namespace_state_t::data_t::data_t(std::string name_, const kora::con
 	: name(std::move(name_))
 	, settings(name, config.at("settings"), factory)
 	, couples(config.at("couples"))
-	, weights(config.at("weights"), settings.groups_count)
+	, weights(config.at("weights"), settings.groups_count, !settings.static_groups.empty())
 	, statistics(config.at("statistics"))
 {
 	check_consistency();
@@ -183,6 +198,14 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 				auto couple_it = couples.couple_info_map.cend();
 				const auto &groups = it->groups;
 
+				if (groups.size() != settings.groups_count) {
+					std::ostringstream oss;
+					oss
+						<< "groups.size is not equal to groups_count(" << settings.groups_count
+						<< "), groups=" << groups;
+					throw std::runtime_error(oss.str());
+				}
+
 				for (auto git = groups.begin(), gend = groups.end(); git != gend; ++git) {
 					auto group_info_it = couples.group_info_map.find(*git);
 
@@ -210,11 +233,27 @@ mastermind::namespace_state_t::data_t::check_consistency() {
 			}
 		}
 
-		if (nonzero_weights == 0) {
-			throw std::runtime_error("no weighted coulples were obtained from mastermind");
+		bool is_static = false;
+
+		if (nonzero_weights == 0 && !statistics.ns_is_full()) {
+			if (settings.static_groups.empty()) {
+				throw std::runtime_error("no weighted couples were obtained from mastermind");
+			} else {
+				// Because namespace has static couple
+				nonzero_weights = 1;
+				is_static = true;
+			}
 		}
 
 		oss << " couples-for-write=" << nonzero_weights;
+
+		if (is_static) {
+			oss << " [static]";
+		}
+
+		if (statistics.ns_is_full()) {
+			oss << " [full]";
+		}
 	}
 
 	oss << " couples=" << couples.couple_info_map.size();

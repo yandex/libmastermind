@@ -35,7 +35,7 @@ make_error_condition(mastermind::mastermind_errc e) {
 
 namespace mastermind {
 
-const char *libmastermind_category_impl::name() const {
+const char *libmastermind_category_impl::name() const noexcept {
 	return "libmastermind";
 }
 
@@ -65,7 +65,7 @@ class mastermind_category_t
 	: public std::error_category
 {
 public:
-	const char *name() const {
+	const char *name() const noexcept {
 		return "mastermind category";
 	}
 

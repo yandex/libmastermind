@@ -24,6 +24,7 @@
 #include "utils.hpp"
 #include "cache_p.hpp"
 #include "namespace_state_p.hpp"
+#include "cached_keys.hpp"
 
 #include <thread>
 #include <condition_variable>
@@ -64,6 +65,9 @@ struct mastermind_t::data {
 	bool
 	is_running() const;
 
+	bool
+	is_valid() const;
+
 	void reconnect();
 
 	template <typename T>
@@ -86,7 +90,7 @@ struct mastermind_t::data {
 	void
 	collect_namespaces_states();
 
-	bool collect_cache_groups();
+	bool collect_cached_keys();
 	bool collect_elliptics_remotes();
 
 	void collect_info_loop_impl();
@@ -112,8 +116,8 @@ struct mastermind_t::data {
 	namespace_state_init_t::data_t
 	create_namespaces_states(const std::string &name, const kora::dynamic_t &raw_value);
 
-	std::map<std::string, groups_t>
-	create_cache_groups(const std::string &name, const kora::dynamic_t &raw_value);
+	cached_keys_t
+	create_cached_keys(const std::string &name, const kora::dynamic_t &raw_value);
 
 	std::vector<std::string>
 	create_elliptics_remotes(const std::string &name, const kora::dynamic_t &raw_value);
@@ -146,11 +150,10 @@ struct mastermind_t::data {
 
 
 	typedef synchronized_cache_map_t<namespace_state_init_t::data_t> namespaces_states_t;
-	typedef synchronized_cache_t<std::map<std::string, groups_t>> cache_groups_t;
 	typedef synchronized_cache_t<std::vector<std::string>> elliptics_remotes_t;
 
 	namespaces_states_t namespaces_states;
-	cache_groups_t cache_groups;
+	synchronized_cache_t<cached_keys_t> cached_keys;
 	elliptics_remotes_t elliptics_remotes;
 
 	synchronized_cache_t<std::vector<namespace_settings_t>> namespaces_settings;
