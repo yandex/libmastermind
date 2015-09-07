@@ -78,6 +78,8 @@ public:
 			return "update loop already stopped";
 		case mastermind_errc::unknown_feedback:
 			return "unknown feedback";
+		case mastermind_errc::namespace_state_not_found:
+			return "namespace state not found";
 		default:
 			return "unknown mastermind error";
 		}
@@ -155,6 +157,11 @@ int
 unknown_feedback::feedback() const {
 	return m_feedback;
 }
+
+namespace_state_not_found_error::namespace_state_not_found_error()
+	: mastermind_error(std::make_error_code(
+				mastermind::mastermind_errc::namespace_state_not_found))
+{}
 
 } // namespace mastermind
 

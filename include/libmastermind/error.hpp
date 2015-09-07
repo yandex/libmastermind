@@ -90,6 +90,7 @@ enum class mastermind_errc {
 	  update_loop_already_started = 1
 	, update_loop_already_stopped
 	, unknown_feedback
+	, namespace_state_not_found
 };
 
 const std::error_category &
@@ -157,6 +158,12 @@ public:
 private:
 	group_t m_couple_id;
 	int m_feedback;
+};
+
+class namespace_state_not_found_error : public mastermind_error
+{
+public:
+	namespace_state_not_found_error();
 };
 
 } // namespace mastermind

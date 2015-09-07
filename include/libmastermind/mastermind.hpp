@@ -247,6 +247,9 @@ public:
 	namespace_state_t
 	get_namespace_state(const std::string &name) const;
 
+	namespace_state_t
+	find_namespace_state(group_t group) const;
+
 	groups_t
 	get_cached_groups(const std::string &elliptics_id, group_t couple_id) const;
 

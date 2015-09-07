@@ -431,6 +431,18 @@ mastermind_t::get_namespace_state(const std::string &name) const {
 	return namespace_state_init_t(data);
 }
 
+namespace_state_t
+mastermind_t::find_namespace_state(group_t group) const {
+	auto cache = m_data->fake_groups_info.copy();
+	auto it = cache.get_value().find(group);
+
+	if (it == cache.get_value().end()) {
+		throw namespace_state_not_found_error{};
+	}
+
+	return get_namespace_state(it->second.ns);
+}
+
 groups_t
 mastermind_t::get_cached_groups(const std::string &elliptics_id, group_t couple_id) const {
 	auto cache = m_data->cached_keys.copy();
