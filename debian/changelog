@@ -1,3 +1,10 @@
+libmastermind (8.32.1) trusty; urgency=medium
+
+  * MDS-1418: Method find_namespace_state was added
+    The method can be used to find namespace_state by any group
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Wed, 09 Sep 2015 15:33:08 +0300
+
 libmastermind (8.31.2) lucid; urgency=low
 
   * Support gcc 4.8
