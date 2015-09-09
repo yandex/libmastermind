@@ -1,4 +1,6 @@
 cmake_minimum_required( VERSION 2.6 ) 
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
  
 set(LIB mastermind)
 project(${LIB})
@@ -41,7 +43,7 @@ set_target_properties(${LIB} PROPERTIES
 target_link_libraries(${LIB}
 	${REQUIRED_LIBRARIES})
 
-#add_subdirectory(bindings)
+add_subdirectory(bindings)
 
 install(TARGETS ${LIB}
 	RUNTIME DESTINATION bin COMPONENT runtime

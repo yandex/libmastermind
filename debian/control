@@ -28,3 +28,8 @@ Architecture: any
 Depends: libmastermind (= ${Source-Version}), libkora-util-dev (= 1.1.0-rc1)
 Description: Client for Mastermind service (developer files)
 
+Package: mastermind-cache
+Architecture: any
+Depends: libmastermind (= ${Source-Version})
+Description: Client for Mastermind service (python binding)
+
