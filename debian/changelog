@@ -1,3 +1,9 @@
+libmastermind (8.32.2) trusty; urgency=medium
+
+  * MDS-1418: Python binding for mastermind_t was implemented
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 10 Sep 2015 00:36:50 +0300
+
 libmastermind (8.32.1) trusty; urgency=medium
 
   * MDS-1418: Method find_namespace_state was added
