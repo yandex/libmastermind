@@ -76,6 +76,17 @@ mastermind::namespace_state_t::couples_t::free_effective_space(group_t group) co
 	return it->second.couple_info_map_iterator->second.free_effective_space;
 }
 
+kora::dynamic_t
+mastermind::namespace_state_t::couples_t::hosts(group_t group) const {
+	auto it = namespace_state.data->couples.group_info_map.find(group);
+
+	if (it == namespace_state.data->couples.group_info_map.end()) {
+		throw unknown_group_error{group};
+	}
+
+	return it->second.couple_info_map_iterator->second.hosts;
+}
+
 mastermind::namespace_state_t::couples_t::couples_t(const namespace_state_t &namespace_state_)
 	: namespace_state(namespace_state_)
 {
