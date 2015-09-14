@@ -80,6 +80,8 @@ public:
 			return "unknown feedback";
 		case mastermind_errc::namespace_state_not_found:
 			return "namespace state not found";
+		case mastermind_errc::unknown_group:
+			return "unknown group";
 		default:
 			return "unknown mastermind error";
 		}
@@ -162,6 +164,16 @@ namespace_state_not_found_error::namespace_state_not_found_error()
 	: mastermind_error(std::make_error_code(
 				mastermind::mastermind_errc::namespace_state_not_found))
 {}
+
+unknown_group_error::unknown_group_error(int group_)
+	: mastermind_error(std::make_error_code(mastermind::mastermind_errc::unknown_group))
+	, m_group(group_)
+{}
+
+int
+unknown_group_error::group() const {
+	return m_group;
+}
 
 } // namespace mastermind
 

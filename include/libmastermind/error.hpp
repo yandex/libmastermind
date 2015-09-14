@@ -91,6 +91,7 @@ enum class mastermind_errc {
 	, update_loop_already_stopped
 	, unknown_feedback
 	, namespace_state_not_found
+	, unknown_group
 };
 
 const std::error_category &
@@ -164,6 +165,18 @@ class namespace_state_not_found_error : public mastermind_error
 {
 public:
 	namespace_state_not_found_error();
+};
+
+class unknown_group_error : public mastermind_error
+{
+public:
+	unknown_group_error(int group_);
+
+	int
+	group() const;
+
+private:
+	int m_group;
 };
 
 } // namespace mastermind

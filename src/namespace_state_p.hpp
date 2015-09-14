@@ -88,6 +88,8 @@ public:
 			status_tag status;
 			uint64_t free_effective_space;
 
+			kora::dynamic_t hosts;
+
 			std::vector<group_info_map_iterator_t> groups_info_map_iterator;
 		};
 

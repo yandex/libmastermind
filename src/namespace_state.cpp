@@ -87,6 +87,8 @@ mastermind::namespace_state_t::data_t::couples_t::couples_t(const kora::config_t
 
 		couple_info.free_effective_space = couple_info_state.at<uint64_t>("free_effective_space", 0);
 
+		couple_info.hosts = couple_info_state.at("hosts").underlying_object();
+
 		const auto &groups_info_state = couple_info_state.at("groups");
 
 		for (size_t index = 0, size = groups_info_state.size(); index != size; ++index) {

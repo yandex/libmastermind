@@ -92,6 +92,58 @@ private:
 	PyThreadState* save;
 };
 
+namespace detail {
+
+bp::object
+convert(const kora::dynamic_t &d, const gil_guard_t &gil_guard);
+
+bp::object
+convert(const kora::dynamic_t::array_t &v, const gil_guard_t &gil_guard) {
+	bp::list result;
+
+	for (auto it = v.begin(), end = v.end(); it != end; ++it) {
+		result.append(convert(*it, gil_guard));
+	}
+
+	return result;
+}
+
+bp::object
+convert(const kora::dynamic_t::object_t &v, const gil_guard_t &gil_guard) {
+	bp::dict result;
+
+	for (auto it = v.begin(), end = v.end(); it != end; ++it) {
+		result[it->first] = convert(it->second, gil_guard);
+	}
+
+	return result;
+}
+
+bp::object
+convert(const kora::dynamic_t &d, const gil_guard_t &gil_guard) {
+	if (d.is_null()) {
+		return bp::object{};
+	} else if (d.is_bool()) {
+		return bp::object{d.as_bool()};
+	} else if (d.is_int()) {
+		return bp::object{d.as_int()};
+	} else if (d.is_uint()) {
+		return bp::object{d.as_uint()};
+	} else if (d.is_double()) {
+		return bp::object{d.as_double()};
+	} else if (d.is_string()) {
+		return bp::object{d.as_string()};
+	} else if (d.is_array()) {
+		return convert(d.as_array(), gil_guard);
+	} else if (d.is_object()) {
+		return convert(d.as_object(), gil_guard);
+	}
+
+	return bp::object{};
+}
+
+} // namespace detail
+
 class logger_t : public cocaine::framework::logger_t {
 public:
 	typedef cocaine::logging::priorities verbosity_t;
@@ -190,6 +242,14 @@ public:
 			return result;
 		}
 
+		bp::object
+		hosts(int group) const {
+			auto hosts = impl.couples().hosts(group);
+
+			gil_guard_t gil_guard;
+			return detail::convert(hosts, gil_guard);
+		}
+
 	private:
 		mm::namespace_state_t impl;
 	};
@@ -249,58 +309,6 @@ struct remote_t : public mm::mastermind_t::remote_t {
 		second = port;
 	}
 };
-
-namespace detail {
-
-bp::object
-convert(const kora::dynamic_t &d, const gil_guard_t &gil_guard);
-
-bp::object
-convert(const kora::dynamic_t::array_t &v, const gil_guard_t &gil_guard) {
-	bp::list result;
-
-	for (auto it = v.begin(), end = v.end(); it != end; ++it) {
-		result.append(convert(*it, gil_guard));
-	}
-
-	return result;
-}
-
-bp::object
-convert(const kora::dynamic_t::object_t &v, const gil_guard_t &gil_guard) {
-	bp::dict result;
-
-	for (auto it = v.begin(), end = v.end(); it != end; ++it) {
-		result[it->first] = convert(it->second, gil_guard);
-	}
-
-	return result;
-}
-
-bp::object
-convert(const kora::dynamic_t &d, const gil_guard_t &gil_guard) {
-	if (d.is_null()) {
-		return bp::object{};
-	} else if (d.is_bool()) {
-		return bp::object{d.as_bool()};
-	} else if (d.is_int()) {
-		return bp::object{d.as_int()};
-	} else if (d.is_uint()) {
-		return bp::object{d.as_uint()};
-	} else if (d.is_double()) {
-		return bp::object{d.as_double()};
-	} else if (d.is_string()) {
-		return bp::object{d.as_string()};
-	} else if (d.is_array()) {
-		return convert(d.as_array(), gil_guard);
-	} else if (d.is_object()) {
-		return convert(d.as_object(), gil_guard);
-	}
-
-	return bp::object{};
-}
-
-} // namespace detail
 
 class mastermind_t {
 public:
@@ -430,6 +438,9 @@ BOOST_PYTHON_MODULE(mastermind_cache) {
 				, (bp::arg("group")))
 		.def("get_groups"
 				, &mb::namespace_state_t::couples_t::get_groups
+				, (bp::arg("group")))
+		.def("hosts"
+				, &mb::namespace_state_t::couples_t::hosts
 				, (bp::arg("group")))
 		;
 
