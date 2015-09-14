@@ -1,3 +1,9 @@
+libmastermind (8.32.3) trusty; urgency=medium
+
+  * MDS-1467: Method hosts was implemented
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 14 Sep 2015 13:09:40 +0300
+
 libmastermind (8.32.2) trusty; urgency=medium
 
   * MDS-1418: Python binding for mastermind_t was implemented
