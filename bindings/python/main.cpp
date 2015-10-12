@@ -19,8 +19,10 @@
 
 #include "libmastermind/mastermind.hpp"
 
+#include <boost/lexical_cast.hpp>
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+#include <boost/tokenizer.hpp>
 
 #include <memory>
 #include <iostream>
@@ -313,12 +315,12 @@ struct remote_t : public mm::mastermind_t::remote_t {
 class mastermind_t {
 public:
 	// the constructor is always called from python's thread only
-	mastermind_t(const bp::list &remotes, int update_period, std::string cache_path
+	mastermind_t(const std::string &remotes, int update_period, std::string cache_path
 			, int warning_time, int expire_time, std::string worker_name
 			, int enqueue_timeout, int reconnect_timeout)
 	{
 		gil_guard_t gil_guard;
-		auto native_remotes = parse_remotes(remotes, gil_guard);
+		auto native_remotes = parse_remotes(remotes);
 		auto logger = std::make_shared<logger_t>(gil_guard);
 		gil_guard.release();
 
@@ -382,14 +384,37 @@ public:
 private:
 	static
 	std::vector<mm::mastermind_t::remote_t>
-	parse_remotes(const bp::list &remotes, const gil_guard_t &) {
+	parse_remotes(const std::string &remotes) {
+		typedef boost::char_separator<char> separator_t;
+		typedef boost::tokenizer<separator_t> tokenizer_t;
+
 		std::vector<mm::mastermind_t::remote_t> result;
 
-		size_t size = bp::len(remotes);
-		result.reserve(size);
+		separator_t sep1(",");
+		tokenizer_t tok1(remotes, sep1);
 
-		for (size_t index = 0; index != size; ++index) {
-			result.emplace_back(bp::extract<remote_t>(remotes[index]));
+		separator_t sep2(":");
+
+		for (auto it = tok1.begin(), end = tok1.end(); it != end; ++it) {
+			tokenizer_t tok2(*it, sep2);
+			auto jt = tok2.begin();
+
+			if (tok2.end() == jt) {
+				throw std::runtime_error("remotes are malformed");
+			}
+
+			auto host = *jt++;
+			uint16_t port = 10053;
+
+			if (tok2.end() != jt) {
+				port = boost::lexical_cast<uint16_t>(*jt++);
+			}
+
+			if (tok2.end() != jt) {
+				throw std::runtime_error("remotes are malformed");
+			}
+
+			result.emplace_back(std::make_pair(std::move(host), port));
 		}
 
 		return result;
@@ -470,7 +495,7 @@ BOOST_PYTHON_MODULE(mastermind_cache) {
 		;
 
 	bp::class_<mb::mastermind_t>("MastermindCache"
-			, bp::init<const bp::list &, int, std::string, int, int, std::string, int, int>(
+			, bp::init<const std::string &, int, std::string, int, int, std::string, int, int>(
 				(bp::arg("remotes"), bp::arg("update_period") = 60
 				 , bp::arg("cache_path") = std::string{}
 				 , bp::arg("warning_time") = std::numeric_limits<int>::max()
