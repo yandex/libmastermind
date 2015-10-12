@@ -310,11 +310,12 @@ public:
 	// the constructor is always called from python's thread only
 	mastermind_t(const std::string &remotes, int update_period, std::string cache_path
 			, int warning_time, int expire_time, std::string worker_name
-			, int enqueue_timeout, int reconnect_timeout)
+			, int enqueue_timeout, int reconnect_timeout, bp::object ns_filter_)
 	{
 		gil_guard_t gil_guard;
 		auto native_remotes = parse_remotes(remotes);
 		auto logger = std::make_shared<logger_t>(gil_guard);
+		set_ns_filter(std::move(ns_filter_));
 		gil_guard.release();
 
 		py_allow_threads_scoped gil_release;
@@ -480,7 +481,8 @@ BOOST_PYTHON_MODULE(mastermind_cache) {
 		;
 
 	bp::class_<mb::mastermind_t>("MastermindCache"
-			, bp::init<const std::string &, int, std::string, int, int, std::string, int, int>(
+			, bp::init<const std::string &, int, std::string, int, int, std::string, int, int
+				, bp::object>(
 				(bp::arg("remotes"), bp::arg("update_period") = 60
 				 , bp::arg("cache_path") = std::string{}
 				 , bp::arg("warning_time") = std::numeric_limits<int>::max()
@@ -488,6 +490,7 @@ BOOST_PYTHON_MODULE(mastermind_cache) {
 				 , bp::arg("worker_name") = std::string{"mastermind2.26"}
 				 , bp::arg("enqueue_timeout") = 4000
 				 , bp::arg("reconnect_timeout") = 4000
+				 , bp::arg("ns_filter") = bp::object()
 				 )))
 		.def("start", &mb::mastermind_t::start)
 		.def("stop", &mb::mastermind_t::stop)
