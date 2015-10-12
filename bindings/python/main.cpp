@@ -305,13 +305,6 @@ private:
 	mm::namespace_state_t impl;
 };
 
-struct remote_t : public mm::mastermind_t::remote_t {
-	remote_t(std::string host, uint16_t port) {
-		first = host;
-		second = port;
-	}
-};
-
 class mastermind_t {
 public:
 	// the constructor is always called from python's thread only
@@ -484,14 +477,6 @@ BOOST_PYTHON_MODULE(mastermind_cache) {
 		.def("settings", &mb::namespace_state_t::settings)
 		.def("name", bp::make_function(&mb::namespace_state_t::name
 					, bp::return_value_policy<bp::copy_const_reference>()))
-		;
-
-	bp::class_<mb::remote_t>("Remote"
-			, bp::init<std::string, uint16_t>(
-				(bp::arg("host") = "", bp::arg("port") = 10053)
-				))
-		.def_readwrite("host", &mb::remote_t::first)
-		.def_readwrite("post", &mb::remote_t::second)
 		;
 
 	bp::class_<mb::mastermind_t>("MastermindCache"
