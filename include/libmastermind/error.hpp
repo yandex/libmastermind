@@ -92,6 +92,7 @@ enum class mastermind_errc {
 	, unknown_feedback
 	, namespace_state_not_found
 	, unknown_group
+	, remotes_empty
 };
 
 const std::error_category &
@@ -177,6 +178,12 @@ public:
 
 private:
 	int m_group;
+};
+
+class remotes_empty_error : public mastermind_error
+{
+public:
+	remotes_empty_error();
 };
 
 } // namespace mastermind

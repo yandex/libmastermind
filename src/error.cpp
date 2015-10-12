@@ -82,6 +82,8 @@ public:
 			return "namespace state not found";
 		case mastermind_errc::unknown_group:
 			return "unknown group";
+		case mastermind_errc::remotes_empty:
+			return "remotes list is empty";
 		default:
 			return "unknown mastermind error";
 		}
@@ -174,6 +176,10 @@ int
 unknown_group_error::group() const {
 	return m_group;
 }
+
+remotes_empty_error::remotes_empty_error()
+	: mastermind_error(std::make_error_code(mastermind::mastermind_errc::remotes_empty))
+{}
 
 } // namespace mastermind
 

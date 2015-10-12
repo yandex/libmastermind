@@ -59,6 +59,10 @@ mastermind_t::data::data(
 	, user_settings_factory(std::move(user_settings_factory_))
 	, cache_is_expired(false)
 {
+	if (remotes.empty()) {
+		throw remotes_empty_error();
+	}
+
 	if (auto_start) {
 		start();
 	}
