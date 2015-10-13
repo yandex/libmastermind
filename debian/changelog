@@ -1,3 +1,17 @@
+libmastermind (8.33.1) trusty; urgency=medium
+
+  * MDS-1513: refine python binding
+    Parse remotes as a string: host ':' port (',' host ':' port)+
+    Remove unused class Remote
+    Add argument ns_filter to constructor
+    Add argument auto_start to constructor
+    Add prefix python- to python binding package
+    Add exception hierarchy
+  * Add a check remotes list is not empty
+    Using empty remotes list led to SIGSERV.
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Tue, 13 Oct 2015 21:47:38 +0300
+
 libmastermind (8.32.3) trusty; urgency=medium
 
   * MDS-1467: Method hosts was implemented
