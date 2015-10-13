@@ -28,6 +28,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <limits>
+#include <sstream>
 
 namespace bp = boost::python;
 namespace mm = mastermind;
@@ -452,6 +453,103 @@ private:
 	bp::object ns_filter;
 };
 
+namespace exception {
+
+PyObject *
+make_exception_class(const std::string &class_name, PyObject *base_type = PyExc_Exception) {
+	std::string scope_name = bp::extract<std::string>(bp::scope().attr("__name__"));
+	auto full_name = scope_name + '.' + class_name;
+	char *raw_full_name = &full_name.front();
+
+	auto *exception_type = PyErr_NewException(raw_full_name, base_type, 0);
+
+	if (!exception_type) {
+		bp::throw_error_already_set();
+	}
+
+	// bp::scope().attr(class_name) = bp::handle<>(bp::borrowed(exception_type));
+	bp::scope().attr(class_name.c_str()) = bp::handle<>(exception_type);
+	return exception_type;
+}
+
+namespace detail {
+
+template <typename Ex>
+std::string
+exception_message(const Ex &ex) {
+	return ex.what();
+}
+
+template <>
+std::string
+exception_message<mm::unknown_feedback>(const mm::unknown_feedback &ex) {
+	std::ostringstream oss;
+	oss << ex.what() << ": couple_id=" << ex.couple_id() << "; feedback=" << ex.feedback();
+	return oss.str();
+}
+
+template <>
+std::string
+exception_message<mm::unknown_group_error>(const mm::unknown_group_error &ex) {
+	std::ostringstream oss;
+	oss << ex.what() << ": group=" << ex.group();
+	return oss.str();
+}
+
+} // namespace detail
+
+template <typename Ex>
+void
+register_exception_translator(const std::string &class_name, PyObject *base_type) {
+	auto *exception_class = make_exception_class(class_name, base_type);
+
+	auto translate = [exception_class] (const Ex &ex) {
+		// PyErr_SetString(exception_class, ex.what());
+		PyErr_SetString(exception_class, detail::exception_message(ex).c_str());
+	};
+
+	bp::register_exception_translator<Ex>(std::move(translate));
+}
+
+} // namespace exception
+
+void
+init_exception_translator() {
+	auto *mastermind_cache_error
+		= exception::make_exception_class("MastermindCacheError");
+
+	exception::register_exception_translator<mm::couple_not_found_error>(
+			"CoupleNotFoundError", mastermind_cache_error);
+
+	exception::register_exception_translator<mm::not_enough_memory_error>(
+			"NotEnoughMemoryError", mastermind_cache_error);
+
+	exception::register_exception_translator<mm::unknown_namespace_error>(
+			"UnknownNamespaceError", mastermind_cache_error);
+
+	exception::register_exception_translator<mm::invalid_groups_count_error>(
+			"InvalidGroupsCountError", mastermind_cache_error);
+
+	exception::register_exception_translator<mm::cache_is_expired_error>(
+			"CacheIsExpiredError", mastermind_cache_error);
+
+	exception::register_exception_translator<mm::update_loop_already_started>(
+			"UpdateLoopAlreadyStartedError", mastermind_cache_error);
+
+	exception::register_exception_translator<mm::update_loop_already_stopped>(
+			"UpdateLoopAlreadyStopped", mastermind_cache_error);
+
+	exception::register_exception_translator<mm::unknown_feedback>(
+			"UnknownFeedback", mastermind_cache_error);
+
+	exception::register_exception_translator<mm::unknown_group_error>(
+			"UnknownGroupError", mastermind_cache_error);
+
+	exception::register_exception_translator<mm::remotes_empty_error>(
+			"RemotesEmptyError", mastermind_cache_error);
+
+}
+
 } // namespace binding
 } // namespace mastermind
 
@@ -459,6 +557,8 @@ namespace mb = mastermind::binding;
 
 BOOST_PYTHON_MODULE(mastermind_cache) {
 	PyEval_InitThreads();
+
+	mb::init_exception_translator();
 
 	bp::class_<mb::namespace_state_t::couples_t>("Couples", bp::no_init)
 		.def("get_couple_groups"
