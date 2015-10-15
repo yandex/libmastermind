@@ -192,10 +192,13 @@ public:
 
 	void
 	set(cache_type cache_) {
-		std::lock_guard<std::mutex> lock_guard(mutex);
-		(void) lock_guard;
+		std::unique_lock<std::mutex> lock(mutex);
 
+		// Cache object should be destoryed when mutex is unlocked to prevent deadlocks
+		auto local_cache = std::move(cache);
 		cache = std::move(cache_);
+
+		lock.unlock();
 	}
 
 	cache_type
@@ -224,13 +227,22 @@ public:
 
 	void
 	set(const std::string &key, cache_type cache) {
-		std::lock_guard<std::mutex> lock_guard(mutex);
-		(void) lock_guard;
+		std::unique_lock<std::mutex> lock(mutex);
 
 		auto insert_result = cache_map.insert(std::make_pair(key, cache));
-		if (!std::get<1>(insert_result)) {
-			std::get<0>(insert_result)->second = std::move(cache);
+
+		if (std::get<1>(insert_result)) {
+			// That was a new key, nothing to do anymore
+			return;
 		}
+
+		auto it = std::get<0>(insert_result);
+
+		// Cache object should be destoryed when mutex is unlocked to prevent deadlocks
+		auto local_cache = std::move(it->second);
+		it->second = std::move(cache);
+
+		lock.unlock();
 	}
 
 	cache_map_t
@@ -257,8 +269,20 @@ public:
 
 	bool
 	remove(const std::string &key) {
-		std::lock_guard<std::mutex> lock_guard(mutex);
-		return cache_map.erase(key);
+		std::unique_lock<std::mutex> lock(mutex);
+
+		auto it = cache_map.find(key);
+
+		if (cache_map.end() == it) {
+			return false;
+		}
+
+		// Cache object should be destoryed when mutex is unlocked to prevent deadlocks
+		auto local_cache = std::move(it->second);
+		cache_map.erase(it);
+
+		lock.unlock();
+		return true;
 	}
 
 
