@@ -1,3 +1,9 @@
+libmastermind (8.32.4) trusty; urgency=medium
+
+  * MDS-1678: Unlock a mutex before destorying cache object
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Thu, 15 Oct 2015 16:40:21 +0300
+
 libmastermind (8.32.3) trusty; urgency=medium
 
   * MDS-1467: Method hosts was implemented
