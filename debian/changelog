@@ -1,3 +1,9 @@
+libmastermind (8.33.3) trusty; urgency=medium
+
+  * Add replace, provide and conflict of mastermind-cache
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Fri, 16 Oct 2015 13:51:59 +0300
+
 libmastermind (8.33.2) trusty; urgency=medium
 
   * MDS-1678: Unlock a mutex before destorying cache object
