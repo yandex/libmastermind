@@ -32,4 +32,7 @@ Package: python-mastermind-cache
 Architecture: any
 Depends: libmastermind (= ${Source-Version})
 Description: Client for Mastermind service (python binding)
+Replaces: mastermind-cache
+Provides: mastermind-cache
+Conflicts: mastermind-cache
 
