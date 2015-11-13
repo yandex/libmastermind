@@ -1,3 +1,9 @@
+libmastermind (8.34.1) trusty; urgency=medium
+
+  * MDS-1857: Add method namespace_state_t::couples_t::free_reserved_space
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Fri, 13 Nov 2015 14:16:05 +0300
+
 libmastermind (8.33.3) trusty; urgency=medium
 
   * Add replace, provide and conflict of mastermind-cache
