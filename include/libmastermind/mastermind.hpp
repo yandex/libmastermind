@@ -113,6 +113,7 @@ public:
 		groups_t get_groups(group_t group) const;
 
 		uint64_t free_effective_space(group_t group) const;
+		uint64_t free_reserved_space(group_t group) const;
 		kora::dynamic_t hosts(group_t group) const;
 	private:
 		friend class namespace_state_t;

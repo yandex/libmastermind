@@ -87,6 +87,7 @@ public:
 			groups_t groups;
 			status_tag status;
 			uint64_t free_effective_space;
+			uint64_t free_reserved_space;
 
 			kora::dynamic_t hosts;
 

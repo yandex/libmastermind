@@ -86,6 +86,7 @@ mastermind::namespace_state_t::data_t::couples_t::couples_t(const kora::config_t
 		}
 
 		couple_info.free_effective_space = couple_info_state.at<uint64_t>("free_effective_space", 0);
+		couple_info.free_reserved_space = couple_info_state.at<uint64_t>("free_reserved_space", 0);
 
 		couple_info.hosts = couple_info_state.at("hosts").underlying_object();
 
