@@ -1,3 +1,11 @@
+libmastermind (8.35.1) trusty; urgency=medium
+
+  * Reimplement enqueue method
+    Add suffix 'old' and comment 'deprecated' to deprecated enqueue method.
+    Add support for gzip requests.
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Tue, 08 Dec 2015 17:42:20 +0300
+
 libmastermind (8.34.1) trusty; urgency=medium
 
   * MDS-1857: Add method namespace_state_t::couples_t::free_reserved_space
