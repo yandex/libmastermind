@@ -226,10 +226,60 @@ mastermind_t::data::enqueue(const std::string &event) {
 	return enqueue(event, "");
 }
 
+kora::dynamic_t
+mastermind_t::data::enqueue_gzip(const std::string &event) {
+	kora::dynamic_t args = kora::dynamic_t::empty_object;
+	args.as_object()["gzip"] = true;
+
+	return enqueue(event, std::move(args));
+}
+
+kora::dynamic_t
+mastermind_t::data::enqueue(const std::string &event, kora::dynamic_t args) {
+	auto need_ungzip = [&]() {
+		if (!args.is_object()) {
+			return false;
+		}
+
+		auto it = args.as_object().find("gzip");
+
+		if (args.as_object().end() != it) {
+			if (it->second.to<bool>()) {
+				return true;
+			}
+		}
+
+		return false;
+	}();
+
+	auto raw_result = enqueue_with_reconnect(event, std::move(args));
+
+	auto result = [&]() -> kora::dynamic_t {
+		msgpack::unpacked unpacked;
+		msgpack::unpack(&unpacked, raw_result.data(), raw_result.size());
+		auto object = unpacked.get();
+
+		if (need_ungzip) {
+			std::string gzip_result;
+			cocaine::io::type_traits<std::string>::unpack(object, gzip_result);
+
+			auto ungzip_result = ungzip(gzip_result);
+			std::istringstream iss(ungzip_result);
+			return kora::dynamic::read_json(iss);
+		} else {
+			kora::dynamic_t result;
+			cocaine::io::type_traits<kora::dynamic_t>::unpack(object, result);
+			return result;
+		}
+	}();
+
+	return result;
+}
+
 void
 mastermind_t::data::collect_namespaces_states() {
 	try {
-		auto dynamic_namespaces_states = enqueue("get_namespaces_states").as_object();
+		auto dynamic_namespaces_states = enqueue_gzip("get_namespaces_states").as_object();
 
 		for (auto it = dynamic_namespaces_states.begin(), end = dynamic_namespaces_states.end();
 				it != end; ++it) {
@@ -278,7 +328,7 @@ mastermind_t::data::collect_namespaces_states() {
 
 bool mastermind_t::data::collect_cached_keys() {
 	try {
-		auto raw = enqueue("get_cached_keys");
+		auto raw = enqueue_gzip("get_cached_keys");
 		auto cache = create_cached_keys("", raw);
 
 		cached_keys.set({std::move(cache), std::move(raw)});

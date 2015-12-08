@@ -26,9 +26,15 @@
 #include <boost/thread.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/stream.hpp>
+
 #include <map>
 #include <vector>
 #include <sstream>
+#include <iterator>
 
 namespace mastermind {
 
@@ -46,6 +52,21 @@ spent_time_printer_t::~spent_time_printer_t() {
 		, m_handler_name.c_str()
 		, static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(end_time - m_beg_time).count())
 		);
+}
+
+std::string
+ungzip(const std::string &gzip_string) {
+	namespace bi = boost::iostreams;
+
+	bi::filtering_streambuf<bi::input> input;
+	input.push(bi::gzip_decompressor());
+
+	std::istringstream iss(gzip_string);
+	input.push(iss);
+
+	std::ostringstream oss;
+	bi::copy(input, std::ostreambuf_iterator<char>(oss));
+	return oss.str();
 }
 
 } // namespace mastermind

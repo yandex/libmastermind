@@ -71,21 +71,29 @@ struct mastermind_t::data {
 	void reconnect();
 
 	template <typename T>
-	kora::dynamic_t
+	std::string
 	simple_enqueue(const std::string &event, const T &chunk);
 
+	// deprecated
 	template <typename R, typename T>
-	bool simple_enqueue(const std::string &event, const T &chunk, R &result);
+	bool simple_enqueue_old(const std::string &event, const T &chunk, R &result);
 
 	kora::dynamic_t
 	enqueue(const std::string &event);
 
-	template <typename T>
 	kora::dynamic_t
-	enqueue(const std::string &event, const T &chunk);
+	enqueue_gzip(const std::string &event);
 
+	kora::dynamic_t
+	enqueue(const std::string &event, kora::dynamic_t args);
+
+	template <typename T>
+	std::string
+	enqueue_with_reconnect(const std::string &event, const T &chunk);
+
+	// deprecated
 	template <typename R, typename T>
-	void enqueue(const std::string &event, const T &chunk, R &result);
+	void enqueue_old(const std::string &event, const T &chunk, R &result);
 
 	void
 	collect_namespaces_states();
@@ -185,7 +193,7 @@ struct mastermind_t::data {
 };
 
 template <typename T>
-kora::dynamic_t
+std::string
 mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk) {
 	try {
 		auto g = m_app->enqueue(event, chunk);
@@ -195,23 +203,14 @@ mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk) {
 			throw std::runtime_error("enqueue timeout");
 		}
 
-		auto chunk = g.next();
-		msgpack::unpacked unpacked;
-		msgpack::unpack(&unpacked, chunk.data(), chunk.size());
-		auto object = unpacked.get();
-
-		kora::dynamic_t result;
-
-		cocaine::io::type_traits<kora::dynamic_t>::unpack(object, result);
-
-		return result;
+		return g.next();
 	} catch (const std::exception &ex) {
 		throw std::runtime_error("cannot process event " + event + ": " + ex.what());
 	}
 }
 
 template <typename R, typename T>
-bool mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk, R &result) {
+bool mastermind_t::data::simple_enqueue_old(const std::string &event, const T &chunk, R &result) {
 	try {
 		auto g = m_app->enqueue(event, chunk);
 		g.wait_for(enqueue_timeout);
@@ -231,8 +230,8 @@ bool mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk
 }
 
 template <typename T>
-kora::dynamic_t
-mastermind_t::data::enqueue(const std::string &event, const T &chunk) {
+std::string
+mastermind_t::data::enqueue_with_reconnect(const std::string &event, const T &chunk) {
 	try {
 		bool tried_to_reconnect = false;
 
@@ -272,7 +271,7 @@ mastermind_t::data::enqueue(const std::string &event, const T &chunk) {
 }
 
 template <typename R, typename T>
-void mastermind_t::data::enqueue(const std::string &event, const T &chunk, R &result) {
+void mastermind_t::data::enqueue_old(const std::string &event, const T &chunk, R &result) {
 	bool tried_to_reconnect = false;
 	try {
 		if (!m_service_manager || !m_app || m_app->status() != cocaine::framework::service_status::connected) {
@@ -281,7 +280,7 @@ void mastermind_t::data::enqueue(const std::string &event, const T &chunk, R &re
 			reconnect();
 		}
 
-		if (simple_enqueue(event, chunk, result)) {
+		if (simple_enqueue_old(event, chunk, result)) {
 			return;
 		}
 
@@ -291,7 +290,7 @@ void mastermind_t::data::enqueue(const std::string &event, const T &chunk, R &re
 
 		reconnect();
 
-		if (simple_enqueue(event, chunk, result)) {
+		if (simple_enqueue_old(event, chunk, result)) {
 			return;
 		}
 

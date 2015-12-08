@@ -18,6 +18,7 @@ set(REQUIRED_LIBRARIES
 	cocaine-framework
 	boost_thread
 	boost_system
+	boost_iostreams
 	jsoncpp
 	kora-util
 	)

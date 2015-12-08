@@ -64,6 +64,9 @@ enum GROUP_INFO_STATUS {
   GROUP_INFO_STATUS_COUPLED
 };
 
+std::string
+ungzip(const std::string &gzip_string);
+
 } // namespace mastermind
 
 template <typename T>
