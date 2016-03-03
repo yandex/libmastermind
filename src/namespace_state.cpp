@@ -20,7 +20,7 @@ mastermind::namespace_state_t::data_t::settings_t::settings_t(const std::string 
 		const auto &auth_keys_state = state.at("auth-keys");
 
 		auth_keys.read = auth_keys_state.at<std::string>("read", "");
-		auth_keys.read = auth_keys_state.at<std::string>("write", "");
+		auth_keys.write = auth_keys_state.at<std::string>("write", "");
 	}
 
 	if (state.has("static-couple")) {
