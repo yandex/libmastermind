@@ -20,18 +20,20 @@
 #include "namespace_state_p.hpp"
 #include "couple_sequence_p.hpp"
 
+namespace mastermind {
+
 size_t
-mastermind::namespace_state_t::settings_t::groups_count() const {
+namespace_state_t::settings_t::groups_count() const {
 	return namespace_state.data->settings.groups_count;
 }
 
 const std::string &
-mastermind::namespace_state_t::settings_t::success_copies_num() const {
+namespace_state_t::settings_t::success_copies_num() const {
 	return namespace_state.data->settings.success_copies_num;
 }
 
-const mastermind::namespace_state_t::user_settings_t &
-mastermind::namespace_state_t::settings_t::user_settings() const {
+const namespace_state_t::user_settings_t &
+namespace_state_t::settings_t::user_settings() const {
 	if (!namespace_state.data->settings.user_settings_ptr) {
 		throw std::runtime_error("uninitialized user settings cannot be used");
 	}
@@ -39,13 +41,97 @@ mastermind::namespace_state_t::settings_t::user_settings() const {
 	return *namespace_state.data->settings.user_settings_ptr;
 }
 
-mastermind::namespace_state_t::settings_t::settings_t(const namespace_state_t &namespace_state_)
+namespace_state_t::settings_t::settings_t(const namespace_state_t &namespace_state_)
 	: namespace_state(namespace_state_)
 {
 }
 
-mastermind::groups_t
-mastermind::namespace_state_t::couples_t::get_couple_groups(group_t group) const {
+struct namespace_state_t::groupset_t::data_t : public namespace_state_t::data_t::couples_t::groupset_info_t
+{
+};
+
+namespace_state_t::groupset_t::groupset_t(const data_t &data_)
+	: data(data_)
+{
+}
+
+uint64_t
+namespace_state_t::groupset_t::free_effective_space() const {
+	return data.free_effective_space;
+}
+
+uint64_t
+namespace_state_t::groupset_t::free_reserved_space() const {
+	return data.free_reserved_space;
+}
+
+std::string
+namespace_state_t::groupset_t::type() const {
+	if (data.type == namespace_state_t::data_t::couples_t::groupset_info_t::type_tag::LRC) {
+		return "lrc";
+	}
+	return "UNKNOWN";
+}
+
+std::string
+namespace_state_t::groupset_t::status() const {
+	if (data.status == namespace_state_t::data_t::couples_t::groupset_info_t::status_tag::BAD) {
+		return "BAD";
+	}
+	return "UNKNOWN";
+}
+
+std::string
+namespace_state_t::groupset_t::id() const {
+	return data.id;
+}
+
+const std::vector<int> &
+namespace_state_t::groupset_t::group_ids() const {
+	return data.groups;
+}
+
+const kora::dynamic_t &
+namespace_state_t::groupset_t::hosts() const {
+	return data.hosts;
+}
+
+const kora::dynamic_t &
+namespace_state_t::groupset_t::settings() const {
+	return data.settings;
+}
+
+std::vector<std::string>
+namespace_state_t::couples_t::get_couple_read_preference(group_t group) const {
+	auto it = namespace_state.data->couples.group_info_map.find(group);
+
+	if (it == namespace_state.data->couples.group_info_map.end() ||
+		it->second.couple_info_map_iterator->second.read_preference.empty()) {
+		return {"replicas"};
+	}
+
+	return it->second.couple_info_map_iterator->second.read_preference;
+}
+
+namespace_state_t::groupset_t
+namespace_state_t::couples_t::get_couple_groupset(group_t group, const std::string &groupset) const {
+	auto cit = namespace_state.data->couples.group_info_map.find(group);
+
+	if (cit == namespace_state.data->couples.group_info_map.end()) {
+		throw unknown_group_error{group};
+	}
+
+	const auto & map = cit->second.couple_info_map_iterator->second.groupset_info_map;
+	auto pit = map.find(groupset);
+	if (pit == map.end()) {
+		throw unknown_groupset_error{groupset};
+	}
+
+	return groupset_t(static_cast<const mastermind::namespace_state_t::groupset_t::data_t&>(pit->second));
+}
+
+groups_t
+namespace_state_t::couples_t::get_couple_groups(group_t group) const {
 	auto it = namespace_state.data->couples.group_info_map.find(group);
 
 	if (it == namespace_state.data->couples.group_info_map.end()) {
@@ -55,8 +141,8 @@ mastermind::namespace_state_t::couples_t::get_couple_groups(group_t group) const
 	return it->second.couple_info_map_iterator->second.groups;
 }
 
-mastermind::groups_t
-mastermind::namespace_state_t::couples_t::get_groups(group_t group) const {
+groups_t
+namespace_state_t::couples_t::get_groups(group_t group) const {
 	auto groups = get_couple_groups(group);
 
 	if (groups.empty()) {
@@ -66,7 +152,7 @@ mastermind::namespace_state_t::couples_t::get_groups(group_t group) const {
 }
 
 uint64_t
-mastermind::namespace_state_t::couples_t::free_effective_space(group_t group) const {
+namespace_state_t::couples_t::free_effective_space(group_t group) const {
 	auto it = namespace_state.data->couples.group_info_map.find(group);
 
 	if (it == namespace_state.data->couples.group_info_map.end()) {
@@ -77,7 +163,7 @@ mastermind::namespace_state_t::couples_t::free_effective_space(group_t group) co
 }
 
 uint64_t
-mastermind::namespace_state_t::couples_t::free_reserved_space(group_t group) const {
+namespace_state_t::couples_t::free_reserved_space(group_t group) const {
 	auto it = namespace_state.data->couples.group_info_map.find(group);
 
 	if (it == namespace_state.data->couples.group_info_map.end()) {
@@ -88,7 +174,7 @@ mastermind::namespace_state_t::couples_t::free_reserved_space(group_t group) con
 }
 
 kora::dynamic_t
-mastermind::namespace_state_t::couples_t::hosts(group_t group) const {
+namespace_state_t::couples_t::hosts(group_t group) const {
 	auto it = namespace_state.data->couples.group_info_map.find(group);
 
 	if (it == namespace_state.data->couples.group_info_map.end()) {
@@ -98,25 +184,25 @@ mastermind::namespace_state_t::couples_t::hosts(group_t group) const {
 	return it->second.couple_info_map_iterator->second.hosts;
 }
 
-mastermind::namespace_state_t::couples_t::couples_t(const namespace_state_t &namespace_state_)
+namespace_state_t::couples_t::couples_t(const namespace_state_t &namespace_state_)
 	: namespace_state(namespace_state_)
 {
 }
 
-mastermind::groups_t
-mastermind::namespace_state_t::weights_t::groups(uint64_t size) const {
+groups_t
+namespace_state_t::weights_t::groups(uint64_t size) const {
 	return namespace_state.data->weights.get(size).groups;
 }
 
-mastermind::couple_sequence_t
-mastermind::namespace_state_t::weights_t::couple_sequence(uint64_t size) const {
+couple_sequence_t
+namespace_state_t::weights_t::couple_sequence(uint64_t size) const {
 	auto data = std::make_shared<couple_sequence_init_t::data_t>(
 			namespace_state.data->weights.get_all(size));
 	return couple_sequence_init_t(std::move(data));
 }
 
 void
-mastermind::namespace_state_t::weights_t::set_feedback(group_t couple_id
+namespace_state_t::weights_t::set_feedback(group_t couple_id
 		, feedback_tag feedback) {
 	switch (feedback) {
 	case feedback_tag::available:
@@ -137,46 +223,47 @@ mastermind::namespace_state_t::weights_t::set_feedback(group_t couple_id
 
 }
 
-mastermind::namespace_state_t::weights_t::weights_t(const namespace_state_t &namespace_state_)
+namespace_state_t::weights_t::weights_t(const namespace_state_t &namespace_state_)
 	: namespace_state(namespace_state_)
 {
 }
 
 bool
-mastermind::namespace_state_t::statistics_t::ns_is_full() {
+namespace_state_t::statistics_t::ns_is_full() {
 	return namespace_state.data->statistics.ns_is_full();
 }
 
-mastermind::namespace_state_t::statistics_t::statistics_t(const namespace_state_t &namespace_state_)
+namespace_state_t::statistics_t::statistics_t(const namespace_state_t &namespace_state_)
 	: namespace_state(namespace_state_)
 {
 }
 
-mastermind::namespace_state_t::settings_t
-mastermind::namespace_state_t::settings() const {
+namespace_state_t::settings_t
+namespace_state_t::settings() const {
 	return settings_t(*this);
 }
 
-mastermind::namespace_state_t::couples_t
-mastermind::namespace_state_t::couples() const {
+namespace_state_t::couples_t
+namespace_state_t::couples() const {
 	return couples_t(*this);
 }
 
-mastermind::namespace_state_t::weights_t
-mastermind::namespace_state_t::weights() const {
+namespace_state_t::weights_t
+namespace_state_t::weights() const {
 	return weights_t(*this);
 }
 
-mastermind::namespace_state_t::statistics_t
-mastermind::namespace_state_t::statistics() const {
+namespace_state_t::statistics_t
+namespace_state_t::statistics() const {
 	return statistics_t(*this);
 }
 
-const std::string &mastermind::namespace_state_t::name() const {
+const std::string &namespace_state_t::name() const {
 	return data->name;
 }
 
-mastermind::namespace_state_t::operator bool() const {
+namespace_state_t::operator bool() const {
 	return static_cast<bool>(data);
 }
 
+} // namespace mastermind

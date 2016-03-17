@@ -57,12 +57,15 @@ public:
 
 	struct couples_t {
 		struct group_info_t;
+		struct groupset_info_t;
 		struct couple_info_t;
 
 		typedef std::map<int, group_info_t> group_info_map_t;
+		typedef std::map<std::string, groupset_info_t> groupset_info_map_t;
 		typedef std::map<std::string, couple_info_t> couple_info_map_t;
 
 		typedef group_info_map_t::const_iterator group_info_map_iterator_t;
+		typedef groupset_info_map_t::const_iterator groupset_map_iterator_t;
 		typedef couple_info_map_t::const_iterator couple_info_map_iterator_t;
 
 		struct group_info_t {
@@ -75,6 +78,27 @@ public:
 			status_tag status;
 
 			couple_info_map_iterator_t couple_info_map_iterator;
+		};
+
+		struct groupset_info_t {
+			enum class type_tag {
+				UNKNOWN, LRC
+			};
+
+			enum class status_tag {
+				UNKNOWN, BAD
+			};
+
+			std::string id;
+
+			groups_t groups;
+			type_tag type;
+			status_tag status;
+			uint64_t free_effective_space;
+			uint64_t free_reserved_space;
+
+			kora::dynamic_t hosts;
+			kora::dynamic_t settings;
 		};
 
 		struct couple_info_t {
@@ -92,6 +116,9 @@ public:
 			kora::dynamic_t hosts;
 
 			std::vector<group_info_map_iterator_t> groups_info_map_iterator;
+
+			groupset_info_map_t groupset_info_map;
+			std::vector<std::string> read_preference;
 		};
 
 		couples_t(const kora::config_t &config);
