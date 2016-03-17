@@ -92,6 +92,7 @@ enum class mastermind_errc {
 	, unknown_feedback
 	, namespace_state_not_found
 	, unknown_group
+	, unknown_groupset
 	, remotes_empty
 };
 
@@ -178,6 +179,18 @@ public:
 
 private:
 	int m_group;
+};
+
+class unknown_groupset_error : public mastermind_error
+{
+public:
+	unknown_groupset_error(std::string groupset_);
+
+	const std::string &
+	groupset() const;
+
+private:
+	std::string m_groupset;
 };
 
 class remotes_empty_error : public mastermind_error

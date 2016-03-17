@@ -122,6 +122,48 @@ mastermind::namespace_state_t::data_t::couples_t::couples_t(const kora::config_t
 			group_info.couple_info_map_iterator = std::get<0>(ci_insert_result);
 			couple_info.groups_info_map_iterator.emplace_back(std::get<0>(gi_insert_result));
 		}
+
+		if (couple_info_state.has("groupsets")) {
+			const auto &groupsets_state = couple_info_state.at("groupsets").underlying_object().as_object();
+			for (auto it = groupsets_state.begin(); it != groupsets_state.end(); ++it) {
+				const auto & groupset_info_state = it->second.as_object();
+				auto & groupset_info = couple_info.groupset_info_map[it->first];
+
+				groupset_info.id = groupset_info_state["id"].as_string();
+
+				const auto & groups_state = groupset_info_state["group_ids"].as_array();
+				groupset_info.groups.resize(groups_state.size());
+				std::transform(groups_state.begin(), groups_state.end(), groupset_info.groups.begin(),
+					[] (const kora::dynamic_t & num) { return num.as_uint(); });
+
+				auto type = groupset_info_state.at("type", "UNKNOWN").as_string();
+				if (type == "lrc") {
+					groupset_info.type = groupset_info_t::type_tag::LRC;
+				} else {
+					groupset_info.type = groupset_info_t::type_tag::UNKNOWN;
+				}
+
+				auto status = groupset_info_state.at("status", "BAD").as_string();
+				if (status == "BAD") {
+					groupset_info.status = groupset_info_t::status_tag::BAD;
+				} else {
+					groupset_info.status = groupset_info_t::status_tag::UNKNOWN;
+				}
+
+				groupset_info.free_effective_space = groupset_info_state.at("free_effective_space", 0).as_uint();
+				groupset_info.free_reserved_space = groupset_info_state.at("free_reserved_space", 0).as_uint();
+
+				groupset_info.hosts = groupset_info_state.at("hosts").as_object();
+				groupset_info.settings = groupset_info_state.at("settings").as_object();
+			}
+
+			if (!groupsets_state.empty()) {
+				const auto &readpref_state = couple_info_state.at("read_preference").underlying_object().as_array();
+				couple_info.read_preference.resize(readpref_state.size());
+				std::transform(readpref_state.begin(), readpref_state.end(), couple_info.read_preference.begin(),
+					[] (const kora::dynamic_t & pref) { return pref.as_string(); });
+			}
+		}
 	}
 } catch (const std::exception &ex) {
 	throw std::runtime_error(std::string("cannot create couples-state: ") + ex.what());

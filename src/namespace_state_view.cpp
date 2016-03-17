@@ -46,6 +46,90 @@ namespace_state_t::settings_t::settings_t(const namespace_state_t &namespace_sta
 {
 }
 
+struct namespace_state_t::groupset_t::data_t : public namespace_state_t::data_t::couples_t::groupset_info_t
+{
+};
+
+namespace_state_t::groupset_t::groupset_t(const data_t &data_)
+	: data(data_)
+{
+}
+
+uint64_t
+namespace_state_t::groupset_t::free_effective_space() const {
+	return data.free_effective_space;
+}
+
+uint64_t
+namespace_state_t::groupset_t::free_reserved_space() const {
+	return data.free_reserved_space;
+}
+
+std::string
+namespace_state_t::groupset_t::type() const {
+	if (data.type == namespace_state_t::data_t::couples_t::groupset_info_t::type_tag::LRC) {
+		return "lrc";
+	}
+	return "UNKNOWN";
+}
+
+std::string
+namespace_state_t::groupset_t::status() const {
+	if (data.status == namespace_state_t::data_t::couples_t::groupset_info_t::status_tag::BAD) {
+		return "BAD";
+	}
+	return "UNKNOWN";
+}
+
+std::string
+namespace_state_t::groupset_t::id() const {
+	return data.id;
+}
+
+const std::vector<int> &
+namespace_state_t::groupset_t::group_ids() const {
+	return data.groups;
+}
+
+const kora::dynamic_t &
+namespace_state_t::groupset_t::hosts() const {
+	return data.hosts;
+}
+
+const kora::dynamic_t &
+namespace_state_t::groupset_t::settings() const {
+	return data.settings;
+}
+
+std::vector<std::string>
+namespace_state_t::couples_t::get_couple_read_preference(group_t group) const {
+	auto it = namespace_state.data->couples.group_info_map.find(group);
+
+	if (it == namespace_state.data->couples.group_info_map.end() ||
+		it->second.couple_info_map_iterator->second.read_preference.empty()) {
+		return {"replicas"};
+	}
+
+	return it->second.couple_info_map_iterator->second.read_preference;
+}
+
+namespace_state_t::groupset_t
+namespace_state_t::couples_t::get_couple_groupset(group_t group, const std::string &groupset) const {
+	auto cit = namespace_state.data->couples.group_info_map.find(group);
+
+	if (cit == namespace_state.data->couples.group_info_map.end()) {
+		throw unknown_group_error{group};
+	}
+
+	const auto & map = cit->second.couple_info_map_iterator->second.groupset_info_map;
+	auto pit = map.find(groupset);
+	if (pit == map.end()) {
+		throw unknown_groupset_error{groupset};
+	}
+
+	return groupset_t(static_cast<const mastermind::namespace_state_t::groupset_t::data_t&>(pit->second));
+}
+
 groups_t
 namespace_state_t::couples_t::get_couple_groups(group_t group) const {
 	auto it = namespace_state.data->couples.group_info_map.find(group);
