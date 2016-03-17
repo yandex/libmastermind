@@ -217,6 +217,46 @@ public:
 			: impl(std::move(impl_))
 		{}
 
+		bp::list
+		get_couple_read_preference(int group) const {
+			auto pref = impl.couples().get_couple_read_preference(group);
+
+			bp::list result;
+
+			for (auto it = pref.begin(), end = pref.end(); it != end; ++it) {
+				result.append(*it);
+			}
+
+			return result;
+		}
+
+		bp::dict
+		get_couple_groupset(int group, const std::string &groupset_id) const {
+			auto groupset = impl.couples().get_couple_groupset(group, groupset_id);
+
+			bp::dict result;
+
+			result["free_effective_space"] = groupset.free_effective_space();
+			result["free_reserved_space"] = groupset.free_reserved_space();
+
+			result["type"] = groupset.type();
+			result["status"] = groupset.status();
+			result["id"] = groupset.id();
+
+			bp::list group_ids;
+			for (int g : groupset.group_ids()) {
+				group_ids.append(g);
+			}
+
+			result["group_ids"] = group_ids;
+
+			gil_guard_t gil_guard;
+			result["hosts"] = detail::convert(groupset.hosts(), gil_guard);
+			result["settings"] = detail::convert(groupset.settings(), gil_guard);
+
+			return result;
+		}
+
 		// the method is always called from python's thread only
 		bp::list
 		get_couple_groups(int group) const {
@@ -496,6 +536,14 @@ exception_message<mm::unknown_group_error>(const mm::unknown_group_error &ex) {
 	return oss.str();
 }
 
+template <>
+std::string
+exception_message<mm::unknown_groupset_error>(const mm::unknown_groupset_error &ex) {
+	std::ostringstream oss;
+	oss << ex.what() << ": groupset=" << ex.groupset();
+	return oss.str();
+}
+
 } // namespace detail
 
 template <typename Ex>
@@ -545,6 +593,9 @@ init_exception_translator() {
 	exception::register_exception_translator<mm::unknown_group_error>(
 			"UnknownGroupError", mastermind_cache_error);
 
+	exception::register_exception_translator<mm::unknown_groupset_error>(
+			"UnknownGroupsetError", mastermind_cache_error);
+
 	exception::register_exception_translator<mm::remotes_empty_error>(
 			"RemotesEmptyError", mastermind_cache_error);
 
@@ -561,6 +612,12 @@ BOOST_PYTHON_MODULE(mastermind_cache) {
 	mb::init_exception_translator();
 
 	bp::class_<mb::namespace_state_t::couples_t>("Couples", bp::no_init)
+		.def("get_couple_read_preference"
+				, &mb::namespace_state_t::couples_t::get_couple_read_preference
+				, (bp::arg("group")))
+		.def("get_couple_groupset"
+				, &mb::namespace_state_t::couples_t::get_couple_groupset
+				, (bp::arg("group"), bp::arg("groupset")))
 		.def("get_couple_groups"
 				, &mb::namespace_state_t::couples_t::get_couple_groups
 				, (bp::arg("group")))
