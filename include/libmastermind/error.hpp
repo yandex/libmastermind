@@ -51,6 +51,9 @@ const std::error_category &libmastermind_category();
 std::error_code make_error_code(libmastermind_error::libmastermind_error_t e);
 std::error_condition make_error_condition(libmastermind_error::libmastermind_error_t e);
 
+//IMPORTANT: ensure that the following exception list is in sync with
+// the exception list in bindings/python/main.cpp:init_exception_translator()
+
 class couple_not_found_error
 	: public std::system_error
 {

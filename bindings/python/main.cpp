@@ -34,7 +34,7 @@ namespace bp = boost::python;
 namespace mm = mastermind;
 
 namespace mastermind {
-namespace binding { 
+namespace binding {
 
 class gil_guard_t {
 public:
@@ -566,6 +566,9 @@ init_exception_translator() {
 	auto *mastermind_cache_error
 		= exception::make_exception_class("MastermindCacheError");
 
+	//IMPORTANT: ensure that the following exception list is in sync with
+	// the exception list in include/libmastermind/error.hpp
+
 	exception::register_exception_translator<mm::couple_not_found_error>(
 			"CoupleNotFoundError", mastermind_cache_error);
 
@@ -595,6 +598,9 @@ init_exception_translator() {
 
 	exception::register_exception_translator<mm::unknown_groupset_error>(
 			"UnknownGroupsetError", mastermind_cache_error);
+
+	exception::register_exception_translator<mm::namespace_state_not_found_error>(
+			"NamespaceNotFoundError", mastermind_cache_error);
 
 	exception::register_exception_translator<mm::remotes_empty_error>(
 			"RemotesEmptyError", mastermind_cache_error);
