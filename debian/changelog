@@ -1,3 +1,9 @@
+libmastermind (8.36.2) trusty; urgency=medium
+
+  * Fix libkora dependencies
+
+ -- Andrey Vasilenkov <indigo@yandex-team.ru>  Thu, 24 Mar 2016 21:08:51 +0300
+
 libmastermind (8.36.1) trusty; urgency=medium
 
   * Add C++ API for groupsets
