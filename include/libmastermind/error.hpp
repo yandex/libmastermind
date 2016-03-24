@@ -188,6 +188,7 @@ class unknown_groupset_error : public mastermind_error
 {
 public:
 	unknown_groupset_error(std::string groupset_);
+	~unknown_groupset_error() noexcept {}
 
 	const std::string &
 	groupset() const;
