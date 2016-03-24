@@ -21,7 +21,11 @@ Standards-Version: 3.9.1
 
 Package: libmastermind
 Architecture: any
-Depends: ${shlibs:Depends}, cocaine-framework-native (>= 0.11.1), cocaine-framework-native (<< 0.12), libcocaine-core2 (>= 0.11), libcocaine-core2 (<< 0.12)
+Depends:
+ ${shlibs:Depends},
+ cocaine-framework-native (>= 0.11.1), cocaine-framework-native (<< 0.12),
+ libcocaine-core2 (>= 0.11), libcocaine-core2 (<< 0.12),
+ libkora-util1 (= 1.1.0-rc1),
 Description: Client for Mastermind service
 
 Package: libmastermind-dev
