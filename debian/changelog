@@ -1,3 +1,11 @@
+libmastermind (8.36.1) trusty; urgency=medium
+
+  * Add C++ API for groupsets
+  * Add groupset support in Python binding
+  * python: fix missed translation for exception
+
+ -- Andrey Vasilenkov <indigo@yandex-team.ru>  Thu, 24 Mar 2016 20:57:07 +0300
+
 libmastermind (8.35.1) trusty; urgency=medium
 
   * Reimplement enqueue method
