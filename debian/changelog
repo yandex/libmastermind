@@ -1,3 +1,9 @@
+libmastermind (8.36.3) trusty; urgency=medium
+
+  * Version bump
+
+ -- Andrey Vasilenkov <indigo@yandex-team.ru>  Fri, 25 Mar 2016 12:32:27 +0300
+
 libmastermind (8.36.2) trusty; urgency=medium
 
   * Fix libkora dependencies
