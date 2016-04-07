@@ -134,7 +134,9 @@ public:
 	class couples_t {
 	public:
 		std::vector<std::string> get_couple_read_preference(group_t group) const;
-		groupset_t get_couple_groupset(group_t group, const std::string &groupset) const;
+		groupset_t get_couple_groupset(group_t group, const std::string &groupset_id) const;
+
+		std::vector<std::string> get_couple_groupset_ids(group_t group) const;
 
 		groups_t get_couple_groups(group_t group) const;
 		groups_t get_groups(group_t group) const;
