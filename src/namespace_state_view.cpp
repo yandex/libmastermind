@@ -114,7 +114,7 @@ namespace_state_t::couples_t::get_couple_read_preference(group_t group) const {
 }
 
 namespace_state_t::groupset_t
-namespace_state_t::couples_t::get_couple_groupset(group_t group, const std::string &groupset) const {
+namespace_state_t::couples_t::get_couple_groupset(group_t group, const std::string &groupset_id) const {
 	auto cit = namespace_state.data->couples.group_info_map.find(group);
 
 	if (cit == namespace_state.data->couples.group_info_map.end()) {
@@ -122,12 +122,39 @@ namespace_state_t::couples_t::get_couple_groupset(group_t group, const std::stri
 	}
 
 	const auto & map = cit->second.couple_info_map_iterator->second.groupset_info_map;
-	auto pit = map.find(groupset);
+	auto pit = map.find(groupset_id);
 	if (pit == map.end()) {
-		throw unknown_groupset_error{groupset};
+		throw unknown_groupset_error{groupset_id};
 	}
 
 	return groupset_t(static_cast<const mastermind::namespace_state_t::groupset_t::data_t&>(pit->second));
+}
+
+std::vector<std::string>
+namespace_state_t::couples_t::get_couple_groupset_ids(group_t group) const {
+	auto cit = namespace_state.data->couples.group_info_map.find(group);
+
+	if (cit == namespace_state.data->couples.group_info_map.end()) {
+		throw unknown_group_error{group};
+	}
+
+	const auto & map = cit->second.couple_info_map_iterator->second.groupset_info_map;
+
+	std::vector<std::string> groupset_ids;
+
+	for (auto it = map.begin(); it != map.end(); it++) {
+		groupset_ids.emplace_back(it->first);
+	}
+
+	// TODO: remove when "replicas" becomes a separate groupset in 'groupset_info_map'
+	{
+		auto it = find(groupset_ids.begin(), groupset_ids.end(), "replicas");
+		if (it == groupset_ids.end()) {
+			groupset_ids.emplace_back("replicas");
+		}
+	}
+
+	return groupset_ids;
 }
 
 groups_t
