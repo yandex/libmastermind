@@ -257,6 +257,19 @@ public:
 			return result;
 		}
 
+		bp::list
+		get_couple_groupset_ids(int group) const {
+			auto groupset_ids = impl.couples().get_couple_groupset_ids(group);
+
+			bp::list result;
+
+			for (auto it = groupset_ids.begin(), end = groupset_ids.end(); it != end; ++it) {
+				result.append(*it);
+			}
+
+			return result;
+		}
+
 		// the method is always called from python's thread only
 		bp::list
 		get_couple_groups(int group) const {
@@ -624,6 +637,9 @@ BOOST_PYTHON_MODULE(mastermind_cache) {
 		.def("get_couple_groupset"
 				, &mb::namespace_state_t::couples_t::get_couple_groupset
 				, (bp::arg("group"), bp::arg("groupset")))
+		.def("get_couple_groupset_ids"
+				, &mb::namespace_state_t::couples_t::get_couple_groupset_ids
+				, (bp::arg("group")))
 		.def("get_couple_groups"
 				, &mb::namespace_state_t::couples_t::get_couple_groups
 				, (bp::arg("group")))

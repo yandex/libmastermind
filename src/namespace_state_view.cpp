@@ -130,6 +130,33 @@ namespace_state_t::couples_t::get_couple_groupset(group_t group, const std::stri
 	return groupset_t(static_cast<const mastermind::namespace_state_t::groupset_t::data_t&>(pit->second));
 }
 
+std::vector<std::string>
+namespace_state_t::couples_t::get_couple_groupset_ids(group_t group) const {
+	auto cit = namespace_state.data->couples.group_info_map.find(group);
+
+	if (cit == namespace_state.data->couples.group_info_map.end()) {
+		throw unknown_group_error{group};
+	}
+
+	const auto & map = cit->second.couple_info_map_iterator->second.groupset_info_map;
+
+	std::vector<std::string> groupset_ids;
+
+	for (auto it = map.begin(); it != map.end(); it++) {
+		groupset_ids.emplace_back(it->first);
+	}
+
+	// TODO: remove when "replicas" becomes a separate groupset in 'groupset_info_map'
+	{
+		auto it = find(groupset_ids.begin(), groupset_ids.end(), "replicas");
+		if (it == groupset_ids.end()) {
+			groupset_ids.emplace_back("replicas");
+		}
+	}
+
+	return groupset_ids;
+}
+
 groups_t
 namespace_state_t::couples_t::get_couple_groups(group_t group) const {
 	auto it = namespace_state.data->couples.group_info_map.find(group);
