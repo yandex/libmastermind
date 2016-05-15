@@ -1,3 +1,22 @@
+mastermind-cache (9.0.0) trusty; urgency=medium
+
+  * Update to cocaine-framework-native v12
+    - update build specs and debian dependencies to cocaine-v12
+    - refine build and debian specs
+    - add major version to binary package name
+    - drop jsoncpp dependency as unnecessary
+    - replace old connect and enqueue code with a new one
+    - (libcocaine-framework-native required a small fix in its `future`s)
+    - replace old logger with a blackhole one everywhere: type, logging macros,
+      format specs, adapter to python logger etc.
+    - normalize log messages in some places
+    - cleanup utils.*
+    - drop long deprecated mastermind_t::get_metabalancer_group_info()
+  * Version 9.0.0
+  * Rename libmastermind to mastermind-cache
+
+ -- Ivan Chelubeev <ijon@yandex-team.ru>  Sun, 15 May 2016 20:54:30 +0300
+
 libmastermind (8.35.1) trusty; urgency=medium
 
   * Reimplement enqueue method
