@@ -17,23 +17,20 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "libmastermind/mastermind.hpp"
-
-#include "mastermind_impl.hpp"
-
-#include <jsoncpp/json.hpp>
-
-#include <boost/lexical_cast.hpp>
-
 #include <algorithm>
 #include <limits>
 #include <sstream>
+
+#include <boost/lexical_cast.hpp>
+
+#include "libmastermind/mastermind.hpp"
+#include "mastermind_impl.hpp"
 
 namespace mastermind {
 
 mastermind_t::mastermind_t(
 		const remotes_t &remotes,
-		const std::shared_ptr<cocaine::framework::logger_t> &logger,
+		const std::shared_ptr<blackhole::logger_t> &logger,
 		int group_info_update_period
 		)
 	: m_data(new data(remotes, logger, group_info_update_period,
@@ -46,7 +43,7 @@ mastermind_t::mastermind_t(
 mastermind_t::mastermind_t(
 		const std::string &host,
 		uint16_t port,
-		const std::shared_ptr<cocaine::framework::logger_t> &logger,
+		const std::shared_ptr<blackhole::logger_t> &logger,
 		int group_info_update_period
 		)
 	: m_data(new data(remotes_t{std::make_pair(host, port)},
@@ -58,7 +55,7 @@ mastermind_t::mastermind_t(
 
 mastermind_t::mastermind_t(
 		const remotes_t &remotes,
-		const std::shared_ptr<cocaine::framework::logger_t> &logger,
+		const std::shared_ptr<blackhole::logger_t> &logger,
 		int group_info_update_period,
 		std::string cache_path,
 		int expired_time,
@@ -71,7 +68,7 @@ mastermind_t::mastermind_t(
 }
 
 mastermind_t::mastermind_t(const remotes_t &remotes,
-		const std::shared_ptr<cocaine::framework::logger_t> &logger,
+		const std::shared_ptr<blackhole::logger_t> &logger,
 		int group_info_update_period, std::string cache_path,
 		int warning_time, int expire_time,
 		std::string worker_name,
@@ -85,7 +82,7 @@ mastermind_t::mastermind_t(const remotes_t &remotes,
 }
 
 mastermind_t::mastermind_t(const remotes_t &remotes,
-		const std::shared_ptr<cocaine::framework::logger_t> &logger,
+		const std::shared_ptr<blackhole::logger_t> &logger,
 		int group_info_update_period, std::string cache_path,
 		int warning_time, int expire_time,
 		std::string worker_name,
@@ -101,7 +98,7 @@ mastermind_t::mastermind_t(const remotes_t &remotes,
 }
 
 mastermind_t::mastermind_t(const remotes_t &remotes,
-		const std::shared_ptr<cocaine::framework::logger_t> &logger,
+		const std::shared_ptr<blackhole::logger_t> &logger,
 		int group_info_update_period, std::string cache_path,
 		int warning_time, int expire_time,
 		std::string worker_name,
@@ -153,56 +150,43 @@ std::vector<int> mastermind_t::get_metabalancer_groups(uint64_t count, const std
 
 		auto couple = cache.get_value().weights.get(size);
 
-		{
-			std::ostringstream oss;
-			oss
-				<< "libmastermind: get_metabalancer_groups: request={group-count=" << count
-				<< ", namespace=" << name_space << ", size=" << size
-				<< "}; response={"
-				<< "couple=[";
-			{
-				auto &&groups = couple.groups;
-				for (auto beg = groups.begin(), it = beg, end = groups.end(); it != end; ++it) {
-					if (beg != it) oss << ", ";
-					oss << *it;
-				}
-			}
-			oss << "], weight=" << couple.weight << ", free-space=" << couple.memory
-				<< "};";
-
-			auto msg = oss.str();
-			COCAINE_LOG_INFO(m_data->m_logger, "%s", msg.c_str());
-		}
+		MM_LOG_INFO(m_data->m_logger, "libmastermind: {}: request={{group-count={}, namespace={}, size={}}}; response={{couple={}, weight={}, free-space={}}};",
+			__func__,
+			count,
+			name_space,
+			size,
+			couple.groups,
+			couple.weight,
+			couple.memory
+		);
 
 		return couple.groups;
-	} catch(const std::system_error &ex) {
-		COCAINE_LOG_ERROR(
-			m_data->m_logger,
-			"libmastermind: cannot obtain couple for: count = %llu; namespace = %s; size = %llu; \"%s\"",
-			count, name_space.c_str(), size, ex.code().message().c_str());
+
+	} catch(const std::system_error &e) {
+		MM_LOG_ERROR(m_data->m_logger, "libmastermind: {}: request={{group-count={}, namespace={}, size={}}}: cannot obtain couple: \"{}\"",
+			__func__, count, name_space, size, e.code().message()
+		);
 		throw;
 	}
 }
 
-group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
-	try {
-		group_info_response_t resp;
+// group_info_response_t mastermind_t::get_metabalancer_group_info(int group) {
+// 	try {
+// 		group_info_response_t resp;
 
-		{
-			std::lock_guard<std::mutex> lock(m_data->m_mutex);
-			(void) lock;
+// 		{
+// 			std::lock_guard<std::mutex> lock(m_data->m_mutex);
+// 			(void) lock;
 
-			m_data->enqueue_old("get_group_info", group, resp);
-		}
-		return resp;
-	} catch(const std::system_error &ex) {
-		COCAINE_LOG_ERROR(
-			m_data->m_logger,
-			"libmastermind: get_metabalancer_group_info: group = %d; \"%s\"",
-			group, ex.code().message().c_str());
-		throw;
-	}
-}
+// 			m_data->enqueue_old("get_group_info", group, resp);
+// 		}
+// 		return resp;
+
+// 	} catch(const std::system_error &e) {
+// 		MM_LOG_ERROR(m_data->m_logger, "libmastermind: {}: group={}: \"{}\"", __func__, group, e.code().message());
+// 		throw;
+// 	}
+// }
 
 std::map<int, std::vector<int>> mastermind_t::get_symmetric_groups() {
 	try {
@@ -216,8 +200,9 @@ std::map<int, std::vector<int>> mastermind_t::get_symmetric_groups() {
 		}
 
 		return result;
-	} catch(const std::system_error &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_symmetric_groups: \"%s\"", ex.code().message().c_str());
+
+	} catch(const std::system_error &e) {
+		MM_LOG_ERROR(m_data->m_logger, "libmastermind: {}: \"{}\"", __func__, e.code().message());
 		throw;
 	}
 }
@@ -229,24 +214,7 @@ std::vector<int> mastermind_t::get_symmetric_groups(int group) {
 		result = {group};
 	}
 
-	if (m_data->m_logger->verbosity() >= cocaine::logging::debug) {
-		std::ostringstream oss;
-		oss
-			<< "libmastermind: get_symmetric_groups: request={group=" << group
-			<< "}; response={"
-			<< "couple=[";
-		{
-			auto &&groups = result;
-			for (auto beg = groups.begin(), it = beg, end = groups.end(); it != end; ++it) {
-				if (beg != it) oss << ", ";
-				oss << *it;
-			}
-		}
-		oss << "]};";
-
-		auto msg = oss.str();
-		COCAINE_LOG_DEBUG(m_data->m_logger, "%s", msg.c_str());
-	}
+	MM_LOG_DEBUG(m_data->m_logger, "libmastermind: {}: request={{{}}}; response={{couple={}}};", __func__, group, result);
 
 	return result;
 }
@@ -255,70 +223,54 @@ std::vector<int> mastermind_t::get_couple_by_group(int group) {
 	auto cache = m_data->fake_groups_info.copy();
 	std::vector<int> result;
 
-	auto git = cache.get_value().find(group);
-
-	if (git != cache.get_value().end()) {
-		result = git->second.groups;
+	auto found = cache.get_value().find(group);
+	if (found != cache.get_value().end()) {
+		result = found->second.groups;
 	}
+
+	MM_LOG_DEBUG(m_data->m_logger, "libmastermind: {}: request={{{}}}; response={{couple={}}};", __func__, group, result);
 
 	return result;
 }
 
 std::vector<int> mastermind_t::get_couple(int couple_id, const std::string &ns) {
-	COCAINE_LOG_INFO(m_data->m_logger, "libmastermind: get_couple: couple_id=%d ns=%s"
-			, couple_id, ns);
+	MM_LOG_INFO(m_data->m_logger, "libmastermind: {}: request={{couple_id={}, ns={}}}", __func__, couple_id, ns);
 
 	auto cache = m_data->fake_groups_info.copy();
 	std::vector<int> result;
 
-	auto git = cache.get_value().find(couple_id);
+	auto found = cache.get_value().find(couple_id);
 
-	if (git == cache.get_value().end()) {
-		COCAINE_LOG_ERROR(m_data->m_logger
-				, "libmastermind: get_couple: cannot find couple by the couple_id");
+	if (found == cache.get_value().end()) {
+		MM_LOG_ERROR(m_data->m_logger, "libmastermind: {}: request={{couple_id={}, ns={}}}: couple not found", __func__, couple_id, ns);
 		return std::vector<int>();
 	}
 
-	if (git->second.group_status !=
+	const auto &couple = found->second;
+
+	if (couple.group_status !=
 			namespace_state_init_t::data_t::couples_t::group_info_t::status_tag::COUPLED) {
-		COCAINE_LOG_ERROR(m_data->m_logger
-				, "libmastermind: get_couple: couple status is not COUPLED: %d"
-				, static_cast<int>(git->second.group_status));
+		MM_LOG_ERROR(m_data->m_logger, "libmastermind: {}: request={{couple_id={}, ns={}}}: couple status is not COUPLED: status={}", __func__, couple_id, ns, static_cast<int>(couple.group_status));
+		return {};
+	}
+
+	if (couple.ns != ns) {
+		MM_LOG_ERROR(m_data->m_logger, "libmastermind: {}: request={{couple_id={}, ns={}}}: couple belongs to another namespace: {}", __func__, couple_id, ns, couple.ns);
 		return std::vector<int>();
 	}
 
-	if (git->second.ns != ns) {
-		COCAINE_LOG_ERROR(m_data->m_logger
-				, "libmastermind: get_couple: couple belongs to another namespace: %s"
-				, git->second.ns);
-		return std::vector<int>();
-	}
+	MM_LOG_INFO(m_data->m_logger, "libmastermind: {}: request={{couple_id={}, ns={}}}: couple found: {}", __func__, couple_id, ns, couple.groups);
 
-	{
-		std::ostringstream oss;
-		oss << "libmastermind: get_couple: couple was found: [";
-		{
-			const auto &couple = git->second.groups;
-			for (auto beg = couple.begin(), it = beg, end = couple.end(); it != end; ++it) {
-				if (beg != it) oss << ", ";
-				oss << *it;
-			}
-		}
-		oss << "]};";
-
-		auto msg = oss.str();
-		COCAINE_LOG_INFO(m_data->m_logger, "%s", msg.c_str());
-	}
-
-	return git->second.groups;
+	return couple.groups;
 }
 
 std::vector<std::vector<int> > mastermind_t::get_bad_groups() {
 	try {
 		auto cache = m_data->bad_groups.copy();
 		return cache.get_value();
-	} catch(const std::system_error &ex) {
-		COCAINE_LOG_ERROR(m_data->m_logger, "libmastermind: get_bad_groups: \"%s\"", ex.code().message().c_str());
+
+	} catch(const std::system_error &e) {
+		MM_LOG_ERROR(m_data->m_logger, "libmastermind: {}: \"{}\"", __func__, e.code().message());
 		throw;
 	}
 }
@@ -335,8 +287,7 @@ std::vector<int> mastermind_t::get_all_groups() {
 }
 
 std::vector<int> mastermind_t::get_cache_groups(const std::string &key) {
-	COCAINE_LOG_ERROR(m_data-> m_logger
-			, "libmastermind: get_cache_groups: using of obsolete method");
+	MM_LOG_ERROR(m_data->m_logger, "libmastermind: {}: using of obsolete method", __func__);
 	return {};
 }
 
@@ -344,11 +295,9 @@ std::vector<namespace_settings_t> mastermind_t::get_namespaces_settings() {
 	try {
 		auto cache = m_data->namespaces_settings.copy();
 		return cache.get_value();
-	} catch(const std::system_error &ex) {
-		COCAINE_LOG_ERROR(
-			m_data->m_logger,
-			"libmastermind: get_namespaces_settings; \"%s\"",
-			ex.code().message().c_str());
+
+	} catch(const std::system_error &e) {
+		MM_LOG_ERROR(m_data->m_logger, "libmastermind: {}: \"{}\"",	__func__, e.code().message());
 		throw;
 	}
 }
@@ -357,7 +306,7 @@ std::vector<std::string> mastermind_t::get_elliptics_remotes() {
 	auto cache = m_data->elliptics_remotes.copy();
 
 	if (cache.is_expired()) {
-		return std::vector<std::string>();
+		return {};
 	}
 
 	return cache.get_value();

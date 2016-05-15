@@ -20,19 +20,14 @@
 #ifndef SRC__UTILS_HPP
 #define SRC__UTILS_HPP
 
-#include "libmastermind/mastermind.hpp"
-#include "namespace_state_p.hpp"
-
-#include <cocaine/framework/logging.hpp>
-
 #include <string>
-#include <tuple>
-#include <functional>
 #include <chrono>
 #include <vector>
 #include <ostream>
 
 namespace mastermind {
+
+struct group_info_response_t;
 
 typedef std::chrono::system_clock clock_type;
 typedef clock_type::duration duration_type;
@@ -40,22 +35,14 @@ typedef clock_type::time_point time_point_type;
 
 class spent_time_printer_t {
 public:
-	spent_time_printer_t(const std::string &handler_name, std::shared_ptr<cocaine::framework::logger_t> &logger);
+	spent_time_printer_t(const std::string &handler_name, const std::shared_ptr<blackhole::logger_t> &logger);
 
 	~spent_time_printer_t();
 
 private:
 	std::string m_handler_name;
-	std::shared_ptr<cocaine::framework::logger_t> &m_logger;
-	std::chrono::system_clock::time_point m_beg_time;
-};
-
-struct fake_group_info_t {
-	group_t id;
-	groups_t groups;
-	uint64_t free_effective_space;
-	std::string ns;
-	namespace_state_init_t::data_t::couples_t::group_info_t::status_tag group_status;
+	const std::shared_ptr<blackhole::logger_t> &m_logger;
+	std::chrono::system_clock::time_point m_start_time;
 };
 
 enum GROUP_INFO_STATUS {

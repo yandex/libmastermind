@@ -1,15 +1,15 @@
 #!/usr/bin/make -f
 
+DEB_CMAKE_EXTRA_FLAGS := -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_SKIP_RPATH=OFF
+
 include /usr/share/cdbs/1/class/cmake.mk
 include /usr/share/cdbs/1/rules/debhelper.mk
 
-MASTERMIND_VERSION := "$(shell dpkg-parsechangelog | sed -n -r -e 's/^Version: ([^.]+\.[^.]+).*/\1/p')"
+# python-mastermind-cache contain python extention module and not a library
+# for common use, and it should be excluded from general routine of dh_makeshlibs
+# inserting calls to ldconfig to package postinst and postrm scripts.
+# It is actually kind of debhelper bug that it tries to use ldconfig
+# on libraries that are not in /usr/lib or other common place.
+DEB_DH_MAKESHLIBS_ARGS_python-mastermind-cache := --no-act
 
-DEB_DH_MAKESHLIBS_ARGS := -V "libmastermind (>= $(MASTERMIND_VERSION))"
-
-DEB_CMAKE_EXTRA_FLAGS := -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_SKIP_RPATH=OFF
-
-DEB_DH_STRIP_ARGS := --dbg-package=libmastermind
-
-#DEB_MAKE_CHECK_TARGET := test ARGS="-V"
-
+#TODO: DEB_MAKE_CHECK_TARGET := test ARGS="-V"

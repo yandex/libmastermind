@@ -17,18 +17,31 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "mastermind_impl.hpp"
-#include "namespace_p.hpp"
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include "mastermind_impl.hpp"
+#include "namespace_p.hpp"
+
+namespace {
+
+std::ostream& operator<<(std::ostream &ostream, const mastermind::mastermind_t::remote_t &remote) {
+	if (remote.first.empty()) {
+		ostream << "none";
+	} else {
+		ostream << remote.first << ':' << remote.second;
+	}
+	return ostream;
+}
+
+}
 
 namespace mastermind {
 
 mastermind_t::data::data(
 		const remotes_t &remotes,
-		const std::shared_ptr<cocaine::framework::logger_t> &logger,
+		const std::shared_ptr<blackhole::logger_t> &logger,
 		int group_info_update_period,
 		std::string cache_path,
 		int warning_time_,
@@ -82,9 +95,9 @@ mastermind_t::data::get_namespace_state(const std::string &name) const {
 		}
 
 		return result;
-	} catch (const std::exception &ex) {
-		COCAINE_LOG_INFO(m_logger, "cannot obtain namespace_state for %s: %s"
-				, name.c_str(), ex.what());
+
+	} catch (const std::exception &e) {
+		MM_LOG_INFO(m_logger, "libmastermind: {}: cannot obtain namespace_state for {}: {}", __func__, name, e.what());
 	}
 
 	return std::shared_ptr<namespace_state_init_t::data_t>();
@@ -166,64 +179,69 @@ void mastermind_t::data::reconnect() {
 	do {
 		auto &remote = m_remotes[index];
 		try {
-			COCAINE_LOG_INFO(m_logger,
-					"libmastermind: reconnect: try to connect to locator %s:%d",
-					remote.first.c_str(), static_cast<int>(remote.second));
+			using cocaine::framework::service_manager_t;
 
-			m_app.reset();
-			m_service_manager = cocaine::framework::service_manager_t::create(
-				cocaine::framework::service_manager_t::endpoint_t(remote.first, remote.second));
+			MM_LOG_INFO(m_logger, "libmastermind: {}: try to connect to locator {}", __func__, remote);
 
-			COCAINE_LOG_INFO(m_logger,
-					"libmastermind: reconnect: connected to locator, getting mastermind service");
+			//FIXME: make manager's thread count configurable?
+			auto manager = std::unique_ptr<service_manager_t>(new service_manager_t({remote}, 1));
 
-			auto g = m_service_manager->get_service_async<cocaine::framework::app_service_t>(m_worker_name);
-			g.wait_for(reconnect_timeout);
-			if (g.ready() == false){
-				COCAINE_LOG_ERROR(
-					m_logger,
-					"libmastermind: reconnect: cannot get mastermind-service in %d milliseconds from %s:%d",
-					static_cast<int>(reconnect_timeout.count()),
-					remote.first.c_str(), static_cast<int>(remote.second));
-				g = decltype(g)();
-				m_service_manager.reset();
-				index = (index + 1) % size;
-				continue;
+			//XXX: service_manager_t does not try to connect to locators on construction,
+			// so this message is not actually correct
+			MM_LOG_INFO(m_logger, "libmastermind: {}: connected to locator, getting mastermind service", __func__);
+
+			auto mastermind = manager->create<cocaine::io::app_tag>(m_worker_name);
+
+			{
+				auto g = mastermind.connect();
+				g.wait_for<>(reconnect_timeout);
+				if (g.ready()) {
+					// throws exception in case of connection error
+					g.get();
+
+				} else {
+					MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot get mastermind-service in {} milliseconds from {}",
+						__func__,
+						static_cast<int>(reconnect_timeout.count()),
+						remote
+					);
+					index = (index + 1) % size;
+					continue;
+				}
 			}
-			m_app = g.get();
 
-			COCAINE_LOG_INFO(m_logger,
-					"libmastermind: reconnect: connected to mastermind via locator %s:%d"
-					, remote.first.c_str(), static_cast<int>(remote.second));
+			MM_LOG_INFO(m_logger, "libmastermind: {}: connected to mastermind via locator {}", __func__, remote);
 
 			m_current_remote = remote;
 			m_next_remote = (index + 1) % size;
+
+			m_app.reset(new cocaine::framework::service<cocaine::io::app_tag>(std::move(mastermind)));
+			m_service_manager = std::move(manager);
 			return;
-		} catch (const cocaine::framework::service_error_t &ex) {
-			COCAINE_LOG_ERROR(
-				m_logger,
-				"libmastermind: reconnect: service_error: %s; host: %s:%d",
-				ex.what(), remote.first.c_str(), static_cast<int>(remote.second));
-		} catch (const std::exception &ex) {
-			COCAINE_LOG_ERROR(
-				m_logger,
-				"libmastermind: reconnect: %s; host: %s:%d",
-				ex.what(), remote.first.c_str(), static_cast<int>(remote.second));
+
+		} catch (const cocaine::framework::error_t &e) {
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: framework error: {}, {}; host: {}", __func__, e.code(), e.code().message(), remote);
+		} catch (const std::system_error &e) {
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: system error: {}, {}; host: {}", __func__, e.code(), e.code().message(), remote);
+		} catch (const std::exception &e) {
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: unexpected error: {}; host: {}", __func__, e.what(), remote);
 		}
 
 		index = (index + 1) % size;
+
 	} while (index != end);
 
 	m_current_remote = remote_t();
 	m_app.reset();
 	m_service_manager.reset();
-	COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: cannot recconect to any host");
-	throw std::runtime_error("reconnect error: cannot reconnect to any host");
+
+	MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot reconnect to any host, stopping", __func__);
+	throw std::runtime_error("reconnect error");
 }
 
 kora::dynamic_t
 mastermind_t::data::enqueue(const std::string &event) {
-	return enqueue(event, "");
+	return enqueue(event, kora::dynamic_t::empty_string);
 }
 
 kora::dynamic_t
@@ -252,7 +270,19 @@ mastermind_t::data::enqueue(const std::string &event, kora::dynamic_t args) {
 		return false;
 	}();
 
-	auto raw_result = enqueue_with_reconnect(event, std::move(args));
+	// cocaine protocol is used as a mere transport,
+	// so explicit packing (and unpacking) is required
+
+	auto raw_args = [&]() -> std::string {
+		std::ostringstream packed;
+		{
+			msgpack::packer<std::ostringstream> packer(packed);
+			cocaine::io::type_traits<kora::dynamic_t>::pack(packer, args);
+		}
+		return std::move(packed.str());
+	}();
+
+	auto raw_result = enqueue_with_reconnect(event, raw_args);
 
 	auto result = [&]() -> kora::dynamic_t {
 		msgpack::unpacked unpacked;
@@ -287,18 +317,11 @@ mastermind_t::data::collect_namespaces_states() {
 
 			try {
 				if (namespace_state_is_deleted(it->second)) {
-					std::ostringstream oss;
-					oss << "libmastermind: namespace \"" << name
-						<< "\" was detected as deleted ";
-
-					if (namespaces_states.remove(name)) {
-						oss << "and was removed from the cache";
-					} else {
-						oss << "but it is not already in the cache";
-					}
-
-					auto msg = oss.str();
-					COCAINE_LOG_INFO(m_logger, "%s", msg.c_str());
+					bool removed = namespaces_states.remove(name);
+					MM_LOG_INFO(m_logger, "libmastermind: namespace \"{}\" was detected as deleted {}",
+						name,
+						(removed ? "and was removed from the cache" : "but it is already not in the cache")
+					);
 					continue;
 				}
 
@@ -312,17 +335,14 @@ mastermind_t::data::collect_namespaces_states() {
 				// 	throw std::runtime_error("old namespace_state is better than the new one");
 				// }
 				namespaces_states.set(name, {std::move(ns_state), std::move(it->second), name});
-			} catch (const std::exception &ex) {
-				COCAINE_LOG_ERROR(m_logger
-						, "libmastermind: cannot update namespace_state for %s: %s"
-						, name.c_str(), ex.what());
+
+			} catch (const std::exception &e) {
+				MM_LOG_ERROR(m_logger, "libmastermind: cannot update namespace_state for {}: {}", name, e.what());
 			}
 		}
 
-	} catch (const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger
-				, "libmastermind: cannot process collect_namespaces_states: %s"
-				, ex.what());
+	} catch (const std::exception &e) {
+		MM_LOG_ERROR(m_logger, "libmastermind: {}: {}", __func__, e.what());
 	}
 }
 
@@ -332,11 +352,11 @@ bool mastermind_t::data::collect_cached_keys() {
 		auto cache = create_cached_keys("", raw);
 
 		cached_keys.set({std::move(cache), std::move(raw)});
+
 		return true;
-	} catch(const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger
-				, "libmastermind: cannot process collect_cached_keys: %s"
-				, ex.what());
+
+	} catch(const std::exception &e) {
+		MM_LOG_ERROR(m_logger, "libmastermind: {}: {}", __func__, e.what());
 	}
 	return false;
 }
@@ -346,28 +366,18 @@ bool mastermind_t::data::collect_elliptics_remotes() {
 		auto raw_elliptics_remotes = enqueue("get_config_remotes");
 		auto cache = create_elliptics_remotes("", raw_elliptics_remotes);
 		elliptics_remotes.set({std::move(cache), std::move(raw_elliptics_remotes)});
-	} catch (const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger
-				, "libmastermind: cannot process collect_elliptics_remotes: %s"
-				, ex.what());
+		return true;
+
+	} catch (const std::exception &e) {
+		MM_LOG_ERROR(m_logger, "libmastermind: {}: {}", __func__, e.what());
 	}
 	return false;
 }
 
 void mastermind_t::data::collect_info_loop_impl() {
-	if (m_logger->verbosity() >= cocaine::logging::info) {
-		auto current_remote = m_current_remote;
-		std::ostringstream oss;
-		oss << "libmastermind: collect_info_loop: begin; current host: ";
-		if (current_remote.first.empty()) {
-			oss << "none";
-		} else {
-			oss << current_remote.first << ':' << m_current_remote.second;
-		}
-		COCAINE_LOG_INFO(m_logger, "%s", oss.str().c_str());
-	}
+	MM_LOG_INFO(m_logger, "libmastermind: collect_info_loop: begin; current host: {}", m_current_remote);
 
-	auto beg_time = std::chrono::system_clock::now();
+	auto start_time = std::chrono::system_clock::now();
 
 	{
 		spent_time_printer_t helper("collect_namespaces_states", m_logger);
@@ -386,37 +396,29 @@ void mastermind_t::data::collect_info_loop_impl() {
 	generate_fake_caches();
 	serialize();
 
-	auto end_time = std::chrono::system_clock::now();
+	auto elapsed = std::chrono::system_clock::now() - start_time;
 
-	if (m_logger->verbosity() >= cocaine::logging::info) {
-		auto current_remote = m_current_remote;
-		std::ostringstream oss;
-		oss << "libmastermind: collect_info_loop: end; current host: ";
-		if (current_remote.first.empty()) {
-			oss << "none";
-		} else {
-			oss << current_remote.first << ':' << m_current_remote.second;
-		}
-		oss
-			<< "; spent time: "
-			<< std::chrono::duration_cast<std::chrono::milliseconds>(end_time - beg_time).count()
-			<< " milliseconds";
-		COCAINE_LOG_INFO(m_logger, "%s", oss.str().c_str());
-	}
+	MM_LOG_INFO(m_logger, "libmastermind: collect_info_loop: end; current host: {}; spent time: {} milliseconds",
+		m_current_remote,
+		std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count()
+	);
 }
 
 void mastermind_t::data::collect_info_loop() {
 	std::unique_lock<std::mutex> lock(m_mutex);
 
 	if (m_done) {
-		COCAINE_LOG_INFO(m_logger, "libmastermind: have to stop immediately");
+		MM_LOG_INFO(m_logger, "libmastermind: have to stop immediately");
 		return;
 	}
 
 	try {
 		reconnect();
-	} catch (const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: reconnect: %s", ex.what());
+
+	} catch (const std::runtime_error &e) {
+		// failed to connect
+	} catch (const std::exception &e) {
+		MM_LOG_ERROR(m_logger, "libmastermind: collect_info_loop: unexpected error: {}", e.what());
 	}
 
 #if __GNUC_MINOR__ >= 6
@@ -428,7 +430,8 @@ void mastermind_t::data::collect_info_loop() {
 	bool timeout = false;
 	bool tm = timeout;
 #endif
-	COCAINE_LOG_INFO(m_logger, "libmastermind: collect_info_loop: update period is %d", static_cast<int>(m_group_info_update_period));
+	MM_LOG_INFO(m_logger, "libmastermind: collect_info_loop: update period is {}", m_group_info_update_period);
+	const auto update_period = std::chrono::seconds(m_group_info_update_period);
 	do {
 		collect_info_loop_impl();
 
@@ -436,9 +439,7 @@ void mastermind_t::data::collect_info_loop() {
 
 		tm = timeout;
 		do {
-			tm = m_weight_cache_condition_variable.wait_for(lock,
-															std::chrono::seconds(
-																m_group_info_update_period));
+			tm = m_weight_cache_condition_variable.wait_for(lock, update_period);
 		} while(tm == no_timeout && m_done == false);
 	} while(m_done == false);
 }
@@ -571,9 +572,12 @@ void mastermind_t::data::serialize() {
 
 	cocaine::io::type_traits<kora::dynamic_t>::pack(packer, raw_cache);
 
-	std::ofstream output(m_cache_path.c_str());
-	std::copy(sbuffer.data(), sbuffer.data() + sbuffer.size()
-			, std::ostreambuf_iterator<char>(output));
+	{
+		std::ofstream output(m_cache_path.c_str());
+		std::copy(sbuffer.data(), sbuffer.data() + sbuffer.size(), std::ostreambuf_iterator<char>(output));
+	}
+
+	MM_LOG_INFO(m_logger, "libmastermind: {}: cache saved to '{}'", __func__, m_cache_path);
 }
 
 bool
@@ -608,7 +612,7 @@ mastermind_t::data::create_namespaces_states(const std::string &name
 		, const kora::dynamic_t &raw_value) {
 	namespace_state_init_t::data_t ns_state{name
 		, kora::config_t(name, raw_value), user_settings_factory};
-	COCAINE_LOG_INFO(m_logger, "libmastermind: namespace_state: %s", ns_state.extract.c_str());
+	MM_LOG_INFO(m_logger, "libmastermind: namespace_state: {}", ns_state.extract);
 	return ns_state;
 }
 
@@ -738,9 +742,8 @@ void mastermind_t::data::deserialize() {
 							, std::bind(&data::create_##cache, this \
 								, std::placeholders::_1, std::placeholders::_2) \
 							, #cache)); \
-			} catch (const std::exception &ex) { \
-				COCAINE_LOG_ERROR(m_logger, "libmastermind: cannot deserialize cache %s: %s" \
-						, #cache, ex.what()); \
+			} catch (const std::exception &e) { \
+				MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot deserialize {}: {}", __func__, #cache, e.what()); \
 			} \
 		} while (false)
 
@@ -750,9 +753,8 @@ void mastermind_t::data::deserialize() {
 						, std::bind(&data::create_cached_keys, this
 							, std::placeholders::_1, std::placeholders::_2)
 						, "cached_keys"));
-		} catch (const std::exception &ex) {
-			COCAINE_LOG_ERROR(m_logger, "libmastermind: cannot deserialize cache cached_keys: %s"
-					, ex.what());
+		} catch (const std::exception &e) {
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot deserialize cached_keys: {}", __func__, e.what());
 		}
 
 		TRY_UNPACK_CACHE(elliptics_remotes);
@@ -774,23 +776,21 @@ void mastermind_t::data::deserialize() {
 								, std::bind(&data::create_namespaces_states, this
 									, std::placeholders::_1, std::placeholders::_2)
 								, name));
-				} catch (const std::exception &ex) {
-					COCAINE_LOG_ERROR(m_logger
-							, "libmastermind: cannot update namespace_state for %s: %s"
-							, name.c_str(), ex.what());
+				} catch (const std::exception &e) {
+					MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot update namespace_state for {}: {}", name, e.what());
 				}
 			}
 		}
 
 		cache_expire();
 		generate_fake_caches();
-	} catch (const std::exception &ex) {
-		COCAINE_LOG_WARNING(m_logger
-				, "libmastermind: cannot deserialize libmastermind cache: %s"
-				, ex.what());
+
+		MM_LOG_INFO(m_logger, "libmastermind: {}: cache restored from '{}'", __func__, m_cache_path);
+
+	} catch (const std::exception &e) {
+		MM_LOG_WARNING(m_logger, "libmastermind: {}: cannot restore cache from '{}': {}", __func__, m_cache_path, e.what());
 	} catch (...) {
-		COCAINE_LOG_WARNING(m_logger
-				, "libmastermind: cannot deserialize libmastermind cache");
+		MM_LOG_WARNING(m_logger, "libmastermind: {}: cannot restore cache from '{}': unknown error", __func__, m_cache_path);
 	}
 }
 

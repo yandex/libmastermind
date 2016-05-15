@@ -23,8 +23,6 @@
 #include "cocaine/traits/dynamic.hpp"
 #include "utils.hpp"
 
-#include <cocaine/framework/logging.hpp>
-
 #include <msgpack.hpp>
 
 #include <tuple>
@@ -277,7 +275,7 @@ public:
 			return false;
 		}
 
-		// Cache object should be destoryed when mutex is unlocked to prevent deadlocks
+		// Cache object should be destroyed when mutex is unlocked to prevent deadlocks
 		auto local_cache = std::move(it->second);
 		cache_map.erase(it);
 

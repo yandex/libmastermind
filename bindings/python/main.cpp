@@ -17,18 +17,28 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "libmastermind/mastermind.hpp"
+#include <memory>
+#include <iostream>
+#include <cstdlib>
+#include <limits>
+#include <sstream>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <boost/tokenizer.hpp>
 
-#include <memory>
-#include <iostream>
-#include <cstdlib>
-#include <limits>
-#include <sstream>
+#include <boost/thread/tss.hpp>
+#include <blackhole/attribute.hpp>
+#include <blackhole/logger.hpp>
+#include <blackhole/record.hpp>
+#include <blackhole/formatter.hpp>
+#include <blackhole/formatter/string.hpp>
+#include <blackhole/scope/watcher.hpp>
+#include <blackhole/scope/manager.hpp>
+#include <blackhole/extensions/writer.hpp>
+
+#include "libmastermind/mastermind.hpp"
 
 namespace bp = boost::python;
 namespace mm = mastermind;
@@ -147,52 +157,121 @@ convert(const kora::dynamic_t &d, const gil_guard_t &gil_guard) {
 
 } // namespace detail
 
-class logger_t : public cocaine::framework::logger_t {
+namespace {
+
+using namespace blackhole;
+
+/// `python_logger_wrapper` wraps python logger into blackhole-v1.0 logger interface.
+///
+
+/// Scope manager.
+//
+//XXX: pristine copy from blackhole/root.cpp,
+// We're forced to use it because blackhole requires manager_t to remember
+// sequence of watcher_t object, dummy implementation without memory
+// will break assertion in ~watcher_t()
+//
+class thread_manager_t : public scope::manager_t {
+	boost::thread_specific_ptr<scope::watcher_t> inner;
+
 public:
-	typedef cocaine::logging::priorities verbosity_t;
+	thread_manager_t() : inner([](scope::watcher_t*) {}) {}
 
-	logger_t(const gil_guard_t &)
-		: logging(new bp::object{bp::import("logging")})
-		, logger(new bp::object{logging->attr("getLogger")("mastermind_cache")})
-	{
+	auto get() const -> scope::watcher_t* {
+		return inner.get();
 	}
 
-	void emit(verbosity_t priority, const std::string& message) {
-		gil_guard_t gil_guard;
-		logger->attr(get_name(priority))("%s", message.c_str());
+	auto reset(scope::watcher_t* value) -> void {
+		inner.reset(value);
 	}
-
-	verbosity_t verbosity() const {
-		return verbosity_t::debug;
-	}
-
-	~logger_t() {
-		gil_guard_t gil_guard;
-		logger.reset();
-		logging.reset();
-	}
-
-private:
-	static
-	const char *
-	get_name(verbosity_t priority) {
-		switch (priority) {
-		case verbosity_t::debug:
-			return "debug";
-		case verbosity_t::info:
-			return "info";
-		case verbosity_t::warning:
-			return "warning";
-		case verbosity_t::error:
-			return "error";
-		default:
-			return "unknown";
-		}
-	}
-
-	std::unique_ptr<bp::object> logging;
-	std::unique_ptr<bp::object> logger;
 };
+
+class python_logger_wrapper : public logger_t
+{
+	bp::object python_logger;
+	thread_manager_t scope_manager;
+
+	// Assuming logger configuration will not be changing at runtime,
+	// cache
+	int effective_level;
+	bool disabled;
+
+	// See logging.hpp for our definition of severity values.
+	// See https://docs.python.org/2/library/logging.html#levels
+	// for predefined python logging levels.
+	// It is possible to change those python loglevels into something
+	// different or completely new, but that ability is very rarely used.
+	// Here we assume to be working with standard python level names
+	// and numeric values.
+	auto map_severity_to_python_loglevel(severity_t severity) -> int {
+		return (severity + 1) * 10;
+	}
+
+public:
+	python_logger_wrapper(const gil_guard_t &)
+		: python_logger(bp::import("logging").attr("getLogger")("mastermind_cache"))
+		, effective_level(bp::extract<int>(python_logger.attr("getEffectiveLevel")()))
+		, disabled(bp::extract<bool>(python_logger.attr("disabled")))
+	{}
+
+	/// blackhole::logger_t interface
+
+	virtual ~python_logger_wrapper() = default;
+
+	/// Logs the given message with the specified severity level.
+	virtual auto log(severity_t severity, const message_t& message) -> void {
+		attribute_pack pack;
+		log(severity, {message, [&message]() { return message; }}, pack);
+	}
+
+	/// Logs the given message with the specified severity level and attributes pack attached.
+	virtual auto log(severity_t severity, const message_t& message, attribute_pack& pack) -> void {
+		log(severity, {message, [&message]() { return message; }}, pack);
+	}
+
+	/// Logs a message which is only to be constructed if the result record passes filtering with
+	/// the specified severity and including the attributes pack provided.
+	virtual auto log(severity_t severity, const lazy_message_t& message, attribute_pack& pack) -> void {
+		const int level = map_severity_to_python_loglevel(severity);
+
+		// skip all processing if its not needed
+		if (!disabled && level < effective_level) {
+			return;
+		}
+
+		//XXX: not taking into account the possibility of filters
+
+		if (scope_manager.get()) {
+			scope_manager.get()->collect(pack);
+		}
+
+		auto instantiated = message.supplier();
+		record_t record(severity, instantiated, pack);
+		writer_t writer;
+		if (pack.empty()) {
+			formatter::string_t("{message}").format(record, writer);
+		} else {
+			formatter::string_t("{message}, attrs: [{...}]").format(record, writer);
+		}
+
+		auto formatted = writer.result().to_string();
+		gil_guard_t gil_guard;
+		python_logger.attr("log")(level, formatted);
+	}
+
+	/// Returns a scoped attributes manager reference.
+	///
+	/// Returned manager allows the external tools to attach scoped attributes to the current logger
+	/// instance, making every further log event to contain them until the registered scoped guard
+	/// keeped alive.
+	///
+	/// \returns a scoped attributes manager.
+	virtual auto manager() -> scope::manager_t& {
+		return scope_manager;
+	}
+};
+
+} // anonymous namespace
 
 class namespace_state_t {
 public:
@@ -368,15 +447,24 @@ public:
 	{
 		gil_guard_t gil_guard;
 		auto native_remotes = parse_remotes(remotes);
-		auto logger = std::make_shared<logger_t>(gil_guard);
+		auto logger = std::make_shared<python_logger_wrapper>(gil_guard);
 		set_ns_filter(std::move(ns_filter_));
 		gil_guard.release();
 
 		py_allow_threads_scoped gil_release;
 		impl = std::make_shared<mm::mastermind_t>(
-				native_remotes, logger, update_period, std::move(cache_path)
-				, warning_time, expire_time, std::move(worker_name)
-				, enqueue_timeout, reconnect_timeout, false);
+				native_remotes,
+				logger,
+				update_period,
+				std::move(cache_path),
+				warning_time,
+				expire_time,
+				std::move(worker_name),
+				enqueue_timeout,
+				reconnect_timeout,
+				// turn off built-in auto start, we'll start it manually a moment later
+				false
+		);
 
 		impl->set_user_settings_factory([this] (const std::string &name
 					, const kora::config_t &config) {
@@ -502,6 +590,12 @@ private:
 		impl->start();
 	}
 
+	//XXX: boost.python does object copying at some point but can't cope with unique_ptr
+	// and it's move semantic (not until boost 1.55 anyway).
+	// Here:
+	// - member object can not be used (mm::mastermind_t holds unique_ptr to implementation object),
+	// - unique_ptr to mm::mastermind_t doesn't work either
+	// So we forced to use shared_ptr.
 	std::shared_ptr<mm::mastermind_t> impl;
 	bp::object ns_filter;
 };
@@ -669,18 +763,19 @@ BOOST_PYTHON_MODULE(mastermind_cache) {
 		;
 
 	bp::class_<mb::mastermind_t>("MastermindCache"
-			, bp::init<const std::string &, int, std::string, int, int, std::string, int, int
-				, bp::object, bool>(
-				(bp::arg("remotes"), bp::arg("update_period") = 60
-				 , bp::arg("cache_path") = std::string{}
-				 , bp::arg("warning_time") = std::numeric_limits<int>::max()
-				 , bp::arg("expire_time") = std::numeric_limits<int>::max()
-				 , bp::arg("worker_name") = std::string{"mastermind2.26"}
-				 , bp::arg("enqueue_timeout") = 4000
-				 , bp::arg("reconnect_timeout") = 4000
-				 , bp::arg("ns_filter") = bp::object()
-				 , bp::arg("auto_start") = true
-				 )))
+			, bp::init<const std::string &, int, std::string, int, int, std::string, int, int, bp::object, bool>((
+				bp::arg("remotes")
+				, bp::arg("update_period") = 60
+				, bp::arg("cache_path") = std::string{}
+				, bp::arg("warning_time") = std::numeric_limits<int>::max()
+				, bp::arg("expire_time") = std::numeric_limits<int>::max()
+				, bp::arg("worker_name") = std::string{"mastermind2.26"}
+				, bp::arg("enqueue_timeout") = 4000
+				, bp::arg("reconnect_timeout") = 4000
+				, bp::arg("ns_filter") = bp::object()
+				, bp::arg("auto_start") = true
+			))
+		)
 		.def("start", &mb::mastermind_t::start)
 		.def("stop", &mb::mastermind_t::stop)
 		.def("is_running", &mb::mastermind_t::is_running)
@@ -692,4 +787,3 @@ BOOST_PYTHON_MODULE(mastermind_cache) {
 		.def("set_ns_filter", &mb::mastermind_t::set_ns_filter, (bp::arg("ns_filter")))
 		;
 }
-

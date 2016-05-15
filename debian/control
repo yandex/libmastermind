@@ -9,31 +9,52 @@ Build-Depends: debhelper (>= 5),
  libboost-python-dev,
  libboost-thread-dev,
  libboost-iostreams-dev,
- cocaine-framework-native (>= 0.11.1), cocaine-framework-native (<< 0.12),
- cocaine-framework-native-dev (>= 0.11.1), cocaine-framework-native-dev (<< 0.12),
- libcocaine-core2 (>= 0.11), libcocaine-core2 (<< 0.12),
- libcocaine-dev (>= 0.11), libcocaine-dev (<< 0.12),
- libmsgpack-dev,
  libboost-system-dev,
- libjsoncpp-dev,
- libkora-util-dev (= 1.1.0-rc1)
-Standards-Version: 3.9.1
+ libcocaine-framework-native-dev (>= 0.12.8-10), libcocaine-framework-native-dev (<< 0.13),
+ libcocaine-plugin-node-dev (>= 0.12.8.24), libcocaine-plugin-node-dev (<< 0.13),
+ libmsgpack-dev,
+ libkora-util-dev (= 1.1.0-rc1),
+ blackhole-dev (>= 1.0)
+Standards-Version: 3.9.5
 
-Package: libmastermind
+Package: libmastermind9
 Architecture: any
-Depends: ${shlibs:Depends}, cocaine-framework-native (>= 0.11.1), cocaine-framework-native (<< 0.12), libcocaine-core2 (>= 0.11), libcocaine-core2 (<< 0.12)
-Description: Client for Mastermind service
+Depends: ${shlibs:Depends}, ${misc:Depends},
+ libcocaine-framework-native1 (>= 0.12.8-10), libcocaine-framework-native1 (<< 0.13),
+ libcocaine-io-util3 (>= 0.12.8.12), libcocaine-io-util3 (<< 0.13),
+ libmsgpack3,
+ libkora-util1 (= 1.1.0-rc1),
+ libblackhole1 (>= 1.0)
+Replaces: libmastermind
+Provides: libmastermind
+Conflicts: libmastermind
+Description: Client cache for Mastermind data (C++) - Runtime Library
+ In-process cache for Mastermind data for C++ clients.
 
 Package: libmastermind-dev
 Architecture: any
-Depends: libmastermind (= ${Source-Version}), libkora-util-dev (= 1.1.0-rc1)
-Description: Client for Mastermind service (developer files)
+Section: libdevel
+Depends: libmastermind9 (= ${binary:Version}), ${misc:Depends},
+ libkora-util-dev (= 1.1.0-rc1),
+ blackhole-dev (>= 1.0)
+Description: Client cache for Mastermind data (C++) - Development Files
+ In-process cache for Mastermind data for C++ clients, development files.
 
 Package: python-mastermind-cache
 Architecture: any
-Depends: libmastermind (= ${Source-Version})
-Description: Client for Mastermind service (python binding)
+Section: python
+Depends: libmastermind9 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Replaces: mastermind-cache
 Provides: mastermind-cache
 Conflicts: mastermind-cache
+Description: Client cache for Mastermind data (C++) - Python Binding
+ In-process cache for Mastermind data for C++ clients, python binding.
+
+Package: libmastermind-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: libmastermind9 (= ${binary:Version}), ${misc:Depends}
+Description: Client cache for Mastermind data (C++) - Debug Files
+ In-process cache for Mastermind data for C++ clients, debug files and symbols.
 

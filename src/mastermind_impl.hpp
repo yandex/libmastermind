@@ -20,12 +20,6 @@
 #ifndef SRC__MASTERMIND_IMPL_HPP
 #define SRC__MASTERMIND_IMPL_HPP
 
-#include "libmastermind/mastermind.hpp"
-#include "utils.hpp"
-#include "cache_p.hpp"
-#include "namespace_state_p.hpp"
-#include "cached_keys.hpp"
-
 #include <thread>
 #include <condition_variable>
 #include <mutex>
@@ -34,19 +28,33 @@
 #include <functional>
 #include <utility>
 
-#include <cocaine/framework/service.hpp>
-#include <cocaine/framework/services/app.hpp>
-#include <cocaine/framework/common.hpp>
-#include <cocaine/traits/tuple.hpp>
-
-#include <kora/dynamic.hpp>
-
 #include <boost/lexical_cast.hpp>
+
+#include <cocaine/traits/dynamic.hpp>
+#include <cocaine/framework/manager.hpp>
+#include <cocaine/framework/service.hpp>
+#include <cocaine/idl/node.hpp> // for app protocol spec, from node service
+
+#include "libmastermind/mastermind.hpp"
+#include "logging.hpp"
+#include "utils.hpp"
+#include "cache_p.hpp"
+#include "namespace_state_p.hpp"
+#include "cached_keys.hpp"
+
 
 namespace mastermind {
 
+struct fake_group_info_t {
+	group_t id;
+	groups_t groups;
+	uint64_t free_effective_space;
+	std::string ns;
+	namespace_state_init_t::data_t::couples_t::group_info_t::status_tag group_status;
+};
+
 struct mastermind_t::data {
-	data(const remotes_t &remotes, const std::shared_ptr<cocaine::framework::logger_t> &logger,
+	data(const remotes_t &remotes, const std::shared_ptr<blackhole::logger_t> &logger,
 			int group_info_update_period, std::string cache_path,
 			int warning_time_, int expire_time_, std::string worker_name,
 			int enqueue_timeout_, int reconnect_timeout_,
@@ -74,9 +82,9 @@ struct mastermind_t::data {
 	std::string
 	simple_enqueue(const std::string &event, const T &chunk);
 
-	// deprecated
-	template <typename R, typename T>
-	bool simple_enqueue_old(const std::string &event, const T &chunk, R &result);
+	// // deprecated
+	// template <typename R, typename T>
+	// bool simple_enqueue_old(const std::string &event, const T &chunk, R &result);
 
 	kora::dynamic_t
 	enqueue(const std::string &event);
@@ -91,9 +99,9 @@ struct mastermind_t::data {
 	std::string
 	enqueue_with_reconnect(const std::string &event, const T &chunk);
 
-	// deprecated
-	template <typename R, typename T>
-	void enqueue_old(const std::string &event, const T &chunk, R &result);
+	// // deprecated
+	// template <typename R, typename T>
+	// void enqueue_old(const std::string &event, const T &chunk, R &result);
 
 	void
 	collect_namespaces_states();
@@ -145,7 +153,7 @@ struct mastermind_t::data {
 	void
 	process_callbacks();
 
-	std::shared_ptr<cocaine::framework::logger_t> m_logger;
+	std::shared_ptr<blackhole::logger_t> m_logger;
 
 	remotes_t                                          m_remotes;
 	remote_t                                           m_current_remote;
@@ -188,46 +196,122 @@ struct mastermind_t::data {
 	// m_cache_update_callback with cache expiration info
 	std::function<void (bool)> cache_update_ext1_callback;
 
-	std::shared_ptr<cocaine::framework::app_service_t> m_app;
-	std::shared_ptr<cocaine::framework::service_manager_t> m_service_manager;
+	std::unique_ptr<cocaine::framework::service_manager_t> m_service_manager;
+	std::unique_ptr<cocaine::framework::service<cocaine::io::app_tag>> m_app;
 };
+
+namespace {
+
+using namespace cocaine;
+using namespace cocaine::framework;
+
+struct app_request {
+
+	typedef channel<io::app::enqueue>::sender_type sender_type;
+	typedef channel<io::app::enqueue>::receiver_type receiver_type;
+
+	typedef io::protocol<io::app::enqueue::dispatch_type>::scope::chunk chunk_verb;
+
+	typedef task<channel<io::app::enqueue>>::future_move_type invoke_future_type;
+	typedef task<sender_type>::future_move_type send_future_type;
+	typedef boost::optional<std::string> result_type;
+	typedef task<result_type>::future_type result_future_type;
+	typedef task<result_type>::future_move_type result_future_move_type;
+	typedef task<void>::future_type aggregate_future_type;
+
+	aggregate_future_type aggregate_future;
+	result_type result;
+	//FIXME: forced to use pointer here because receiver can't be empty constructed
+	// check with cocaine guys if its feasible to add an empty constructor to receiver_type
+	std::unique_ptr<receiver_type> rx;
+
+	template<typename T>
+	app_request(service<io::app_tag> *app, const std::string &event, const T &data) {
+		aggregate_future = app->invoke<io::app::enqueue>(event)
+			.then(std::bind(&app_request::on_invoke<T>, this, std::placeholders::_1, data))
+			;
+	}
+
+	template<typename T>
+	aggregate_future_type
+	on_invoke(invoke_future_type future, const T &chunk) {
+		auto channel = future.get();
+		auto tx = std::move(channel.tx);
+		rx.reset(new receiver_type(std::move(channel.rx)));
+		return tx.send<chunk_verb>(chunk)
+			.then(std::bind(&app_request::on_send, this, std::placeholders::_1))
+			.then(std::bind(&app_request::on_chunk, this, std::placeholders::_1))
+			.then(std::bind(&app_request::on_choke, this, std::placeholders::_1))
+			;
+	}
+	result_future_type
+	on_send(send_future_type future) {
+		future.get();
+		return rx->recv();
+	}
+	result_future_type
+	on_chunk(result_future_move_type future) {
+		result = std::move(future.get());
+		return rx->recv();
+	}
+	void
+	on_choke(result_future_move_type future) {
+		future.get();
+	}
+};
+
+}
 
 template <typename T>
 std::string
 mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk) {
 	try {
-		auto g = m_app->enqueue(event, chunk);
-		g.wait_for(enqueue_timeout);
-
-		if (g.ready() == false) {
+		app_request request(m_app.get(), event, chunk);
+		request.aggregate_future.wait_for(enqueue_timeout);
+		if (!request.aggregate_future.ready()) {
 			throw std::runtime_error("enqueue timeout");
 		}
 
-		return g.next();
-	} catch (const std::exception &ex) {
-		throw std::runtime_error("cannot process event " + event + ": " + ex.what());
-	}
-}
-
-template <typename R, typename T>
-bool mastermind_t::data::simple_enqueue_old(const std::string &event, const T &chunk, R &result) {
-	try {
-		auto g = m_app->enqueue(event, chunk);
-		g.wait_for(enqueue_timeout);
-
-		if (g.ready() == false) {
-			return false;
+		if (!request.result) {
+			throw std::runtime_error("absent response");
 		}
 
-		auto chunk = g.next();
+		return request.result.get();
 
-		result = cocaine::framework::unpack<R>(chunk);
-		return true;
-	} catch (const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: enqueue_impl: %s", ex.what());
+	} catch (const std::exception &e) {
+		MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot process event '{}': {}", __func__, event, e.what());
+		throw std::runtime_error("cannot process event '" + event + "': " + e.what());
 	}
-	return false;
 }
+
+// template <typename R, typename T>
+// bool mastermind_t::data::simple_enqueue_old(const std::string &event, const T &chunk, R &result) {
+// 	try {
+// 		// auto request = app_request::start(m_app, event, chunk);
+// 		// request.aggregate_future.wait_for(enqueue_timeout);
+// 		// if (request.aggregate_future.ready() == false) {
+// 		//  return false;
+// 		// }
+
+// 		// result = cocaine::framework::unpack<R>(request.result);
+
+// 		// auto g = m_app->invoke<cocain::io::app::enqueue>(event, chunk);
+// 		// g.wait_for(enqueue_timeout);
+
+// 		// if (g.ready() == false) {
+// 		//  return false;
+// 		// }
+
+// 		// auto chunk = g.next();
+
+// 		// result = cocaine::framework::unpack<R>(chunk);
+// 		return true;
+
+// 	} catch (const std::exception &e) {
+// 		MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot process event '{}': {}", __func__, event, e.what());
+// 		return false;
+// 	}
+// }
 
 template <typename T>
 std::string
@@ -235,19 +319,17 @@ mastermind_t::data::enqueue_with_reconnect(const std::string &event, const T &ch
 	try {
 		bool tried_to_reconnect = false;
 
-		if (!m_service_manager || !m_app
-				|| m_app->status() != cocaine::framework::service_status::connected) {
-			COCAINE_LOG_INFO(m_logger, "libmastermind: enqueue: preconnect");
+		if (!m_service_manager || !m_app) {
+			MM_LOG_INFO(m_logger, "libmastermind: {}: preconnect", __func__);
 			tried_to_reconnect = true;
 			reconnect();
 		}
 
 		try {
 			return simple_enqueue(event, chunk);
-		} catch (const std::exception &ex) {
-			COCAINE_LOG_ERROR(m_logger
-					, "libmastermind: cannot process enqueue (1st try): %s"
-					, ex.what());
+
+		} catch (const std::exception &e) {
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: (1st try): {}", e.what());
 		}
 
 		if (tried_to_reconnect) {
@@ -258,51 +340,53 @@ mastermind_t::data::enqueue_with_reconnect(const std::string &event, const T &ch
 
 		try {
 			return simple_enqueue(event, chunk);
-		} catch (const std::exception &ex) {
-			COCAINE_LOG_ERROR(m_logger
-					, "libmastermind: cannot process enqueue (2nd try): %s"
-					, ex.what());
+
+		} catch (const std::exception &e) {
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: (2nd try): {}", __func__, e.what());
 		}
 
 		throw std::runtime_error("bad connection");
-	} catch (const std::exception &ex) {
-		throw std::runtime_error(std::string("cannot process enqueue: ") + ex.what());
+
+	} catch (const std::exception &e) {
+		MM_LOG_ERROR(m_logger, "libmastermind: {}: {}", __func__, e.what());
+		throw std::runtime_error(std::string("cannot process enqueue: ") + e.what());
 	}
 }
 
-template <typename R, typename T>
-void mastermind_t::data::enqueue_old(const std::string &event, const T &chunk, R &result) {
-	bool tried_to_reconnect = false;
-	try {
-		if (!m_service_manager || !m_app || m_app->status() != cocaine::framework::service_status::connected) {
-			COCAINE_LOG_INFO(m_logger, "libmastermind: enqueue: preconnect");
-			tried_to_reconnect = true;
-			reconnect();
-		}
+// template <typename R, typename T>
+// void mastermind_t::data::enqueue_old(const std::string &event, const T &chunk, R &result) {
+// 	bool tried_to_reconnect = false;
+// 	try {
+// 		if (!m_service_manager || !m_app) {
+// 			MM_LOG_INFO(m_logger, "libmastermind: {}: preconnect", __func__);
+// 			tried_to_reconnect = true;
+// 			reconnect();
+// 		}
 
-		if (simple_enqueue_old(event, chunk, result)) {
-			return;
-		}
+// 		if (simple_enqueue_old(event, chunk, result)) {
+// 			return;
+// 		}
 
-		if (tried_to_reconnect) {
-			throw std::runtime_error("cannot process enqueue");
-		}
+// 		if (tried_to_reconnect) {
+// 			throw std::runtime_error("cannot process enqueue");
+// 		}
 
-		reconnect();
+// 		reconnect();
 
-		if (simple_enqueue_old(event, chunk, result)) {
-			return;
-		}
+// 		if (simple_enqueue_old(event, chunk, result)) {
+// 			return;
+// 		}
 
-		throw std::runtime_error("cannot reprocess enqueue");
-	} catch (const cocaine::framework::service_error_t &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: enqueue: %s", ex.what());
-		throw;
-	} catch (const std::exception &ex) {
-		COCAINE_LOG_ERROR(m_logger, "libmastermind: enqueue: %s", ex.what());
-		throw;
-	}
-}
+// 		throw std::runtime_error("cannot reprocess enqueue");
+
+// 	} catch (const cocaine::framework::error_t &e) {
+// 		MM_LOG_ERROR(m_logger, "libmastermind: {}: {}", __func__, e.what());
+// 		throw;
+// 	} catch (const std::exception &e) {
+// 		MM_LOG_ERROR(m_logger, "libmastermind: {}: {}", __func__, e.what());
+// 		throw;
+// 	}
+// }
 
 template <typename T>
 bool
@@ -315,18 +399,18 @@ mastermind_t::data::check_cache_for_expire(const std::string &title, const cache
 			clock_type::now() - cache.get_last_update_time());
 
 	if (expire_time <= life_time) {
-		COCAINE_LOG_ERROR(m_logger
-				, "cache \"%s\" has been expired; life-time=%ds"
-				, title.c_str(), static_cast<int>(life_time.count()));
+		MM_LOG_ERROR(m_logger, "cache \"{}\" has been expired; life-time={}s",
+			title, static_cast<int>(life_time.count())
+		);
 		is_expired = true;
 	} else if (warning_time <= life_time) {
-		COCAINE_LOG_ERROR(m_logger
-				, "cache \"%s\" will be expired soon; life-time=%ds"
-				, title.c_str(), static_cast<int>(life_time.count()));
+		MM_LOG_ERROR(m_logger, "cache \"{}\" will be expired soon; life-time={}s",
+			title, static_cast<int>(life_time.count())
+		);
 	} else if (preferable_life_time <= life_time) {
-		COCAINE_LOG_ERROR(m_logger
-				, "cache \"%s\" is too old; life-time=%ds"
-				, title.c_str(), static_cast<int>(life_time.count()));
+		MM_LOG_ERROR(m_logger, "cache \"{}\" is too old; life-time={}s",
+			title, static_cast<int>(life_time.count())
+		);
 	}
 
 	return is_expired;
