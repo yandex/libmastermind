@@ -1,0 +1,15 @@
+# python
+*.pyc
+*.pyo
+__pycache__/
+.cache
+
+# devenv
+.fuse_hidden*
+*.log
+
+# build
+.pybuild/
+*.egg
+*.egg-info/
+
