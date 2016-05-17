@@ -40,6 +40,7 @@ add_library(${LIB} SHARED ${SOURCES})
 set_target_properties(${LIB} PROPERTIES
 	VERSION "${MAJOR_VERSION}.${MINOR_VERSION}"
 	SOVERSION ${MAJOR_VERSION}
+	LINK_FLAGS -Wl,--version-script=${CMAKE_SOURCE_DIR}/libmastermind.version
 	)
 
 target_link_libraries(${LIB}

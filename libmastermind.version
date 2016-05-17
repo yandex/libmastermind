@@ -1,0 +1,4 @@
+{
+    global: _ZN10mastermind*; _ZTI*; _ZTS*; _ZTN*; _ZNK*; _ZTV*;
+    local: *;
+};
