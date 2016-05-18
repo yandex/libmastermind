@@ -194,7 +194,7 @@ void mastermind_t::data::reconnect() {
 
 			{
 				auto g = mastermind.connect();
-				g.wait_for<>(reconnect_timeout);
+				g.wait_for(reconnect_timeout);
 				if (g.ready()) {
 					// throws exception in case of connection error
 					g.get();
@@ -236,6 +236,7 @@ void mastermind_t::data::reconnect() {
 	m_service_manager.reset();
 
 	MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot reconnect to any host, stopping", __func__);
+
 	throw std::runtime_error("reconnect error");
 }
 

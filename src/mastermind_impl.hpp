@@ -221,9 +221,12 @@ struct app_request {
 
 	aggregate_future_type aggregate_future;
 	result_type result;
-	//FIXME: forced to use pointer here because receiver can't be empty constructed
+
+	//NOTE: 1) forced to use pointer here because receiver can't be empty constructed
 	// check with cocaine guys if its feasible to add an empty constructor to receiver_type
-	std::unique_ptr<receiver_type> rx;
+	//NOTE: 2) and we use strong-weak pointers to communicate cancel request
+	// into future chain.
+	std::shared_ptr<receiver_type> rx;
 
 	template<typename T>
 	app_request(service<io::app_tag> *app, const std::string &event, const T &data) {
@@ -238,21 +241,30 @@ struct app_request {
 		auto channel = future.get();
 		auto tx = std::move(channel.tx);
 		rx.reset(new receiver_type(std::move(channel.rx)));
+		auto weak_rx = std::weak_ptr<receiver_type>(rx);
 		return tx.send<chunk_verb>(chunk)
-			.then(std::bind(&app_request::on_send, this, std::placeholders::_1))
-			.then(std::bind(&app_request::on_chunk, this, std::placeholders::_1))
+			.then(std::bind(&app_request::on_send, this, std::placeholders::_1, weak_rx))
+			.then(std::bind(&app_request::on_chunk, this, std::placeholders::_1, weak_rx))
 			.then(std::bind(&app_request::on_choke, this, std::placeholders::_1))
 			;
 	}
 	result_future_type
-	on_send(send_future_type future) {
-		future.get();
-		return rx->recv();
+	on_send(send_future_type future, std::weak_ptr<receiver_type> weak_rx) {
+		if (auto rx = weak_rx.lock()) {
+			future.get();
+			return rx->recv();
+		} else {
+			throw std::runtime_error("cancelled");
+		}
 	}
 	result_future_type
-	on_chunk(result_future_move_type future) {
-		result = std::move(future.get());
-		return rx->recv();
+	on_chunk(result_future_move_type future, std::weak_ptr<receiver_type> weak_rx) {
+		if (auto rx = weak_rx.lock()) {
+			result = std::move(future.get());
+			return rx->recv();
+		} else {
+			throw std::runtime_error("cancelled");
+		}
 	}
 	void
 	on_choke(result_future_move_type future) {
@@ -265,53 +277,21 @@ struct app_request {
 template <typename T>
 std::string
 mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk) {
-	try {
-		app_request request(m_app.get(), event, chunk);
-		request.aggregate_future.wait_for(enqueue_timeout);
-		if (!request.aggregate_future.ready()) {
-			throw std::runtime_error("enqueue timeout");
-		}
+	app_request request(m_app.get(), event, chunk);
 
-		if (!request.result) {
-			throw std::runtime_error("absent response");
-		}
+	request.aggregate_future.wait_for(enqueue_timeout);
 
-		return request.result.get();
-
-	} catch (const std::exception &e) {
-		MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot process event '{}': {}", __func__, event, e.what());
-		throw std::runtime_error("cannot process event '" + event + "': " + e.what());
+	if (!request.aggregate_future.ready()) {
+		throw std::runtime_error("enqueue timeout");
 	}
+
+	if (!request.result) {
+		throw std::runtime_error("absent response");
+	}
+
+	// throws an exception on server side error
+	return request.result.get();
 }
-
-// template <typename R, typename T>
-// bool mastermind_t::data::simple_enqueue_old(const std::string &event, const T &chunk, R &result) {
-// 	try {
-// 		// auto request = app_request::start(m_app, event, chunk);
-// 		// request.aggregate_future.wait_for(enqueue_timeout);
-// 		// if (request.aggregate_future.ready() == false) {
-// 		//  return false;
-// 		// }
-
-// 		// result = cocaine::framework::unpack<R>(request.result);
-
-// 		// auto g = m_app->invoke<cocain::io::app::enqueue>(event, chunk);
-// 		// g.wait_for(enqueue_timeout);
-
-// 		// if (g.ready() == false) {
-// 		//  return false;
-// 		// }
-
-// 		// auto chunk = g.next();
-
-// 		// result = cocaine::framework::unpack<R>(chunk);
-// 		return true;
-
-// 	} catch (const std::exception &e) {
-// 		MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot process event '{}': {}", __func__, event, e.what());
-// 		return false;
-// 	}
-// }
 
 template <typename T>
 std::string
@@ -325,11 +305,13 @@ mastermind_t::data::enqueue_with_reconnect(const std::string &event, const T &ch
 			reconnect();
 		}
 
+		MM_LOG_DEBUG(m_logger, "libmastermind: {}: (1st try): sending event '{}'", __func__, event);
 		try {
 			return simple_enqueue(event, chunk);
+			MM_LOG_DEBUG(m_logger, "libmastermind: {}: (1st try): received response on event '{}'", __func__, event);
 
 		} catch (const std::exception &e) {
-			MM_LOG_ERROR(m_logger, "libmastermind: {}: (1st try): {}", e.what());
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: (1st try): error on event '{}': {}", __func__, event, e.what());
 		}
 
 		if (tried_to_reconnect) {
@@ -338,18 +320,21 @@ mastermind_t::data::enqueue_with_reconnect(const std::string &event, const T &ch
 
 		reconnect();
 
+		MM_LOG_DEBUG(m_logger, "libmastermind: {}: (2st try): sending event '{}'", __func__, event);
 		try {
 			return simple_enqueue(event, chunk);
+			MM_LOG_DEBUG(m_logger, "libmastermind: {}: (2st try): received response on event '{}'", __func__, event);
 
 		} catch (const std::exception &e) {
-			MM_LOG_ERROR(m_logger, "libmastermind: {}: (2nd try): {}", __func__, e.what());
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: (2st try): error on event '{}': {}", __func__, event, e.what());
 		}
 
 		throw std::runtime_error("bad connection");
 
 	} catch (const std::exception &e) {
-		MM_LOG_ERROR(m_logger, "libmastermind: {}: {}", __func__, e.what());
-		throw std::runtime_error(std::string("cannot process enqueue: ") + e.what());
+		MM_LOG_ERROR(m_logger, "libmastermind: {}: error on event '{}': {}", __func__, event, e.what());
+
+		throw std::runtime_error(std::string("error on event '") + event + "': " + e.what());
 	}
 }
 
