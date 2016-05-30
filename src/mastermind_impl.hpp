@@ -31,6 +31,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <cocaine/traits/dynamic.hpp>
+#include <cocaine/trace/trace.hpp>
 #include <cocaine/framework/manager.hpp>
 #include <cocaine/framework/service.hpp>
 #include <cocaine/idl/node.hpp> // for app protocol spec, from node service
@@ -231,7 +232,7 @@ struct app_request {
 	template<typename T>
 	app_request(service<io::app_tag> *app, const std::string &event, const T &data) {
 		aggregate_future = app->invoke<io::app::enqueue>(event)
-			.then(std::bind(&app_request::on_invoke<T>, this, std::placeholders::_1, data))
+			.then(trace_t::bind(&app_request::on_invoke<T>, this, std::placeholders::_1, data))
 			;
 	}
 
@@ -243,9 +244,9 @@ struct app_request {
 		rx.reset(new receiver_type(std::move(channel.rx)));
 		auto weak_rx = std::weak_ptr<receiver_type>(rx);
 		return tx.send<chunk_verb>(chunk)
-			.then(std::bind(&app_request::on_send, this, std::placeholders::_1, weak_rx))
-			.then(std::bind(&app_request::on_chunk, this, std::placeholders::_1, weak_rx))
-			.then(std::bind(&app_request::on_choke, this, std::placeholders::_1))
+			.then(trace_t::bind(&app_request::on_send, this, std::placeholders::_1, weak_rx))
+			.then(trace_t::bind(&app_request::on_chunk, this, std::placeholders::_1, weak_rx))
+			.then(trace_t::bind(&app_request::on_choke, this, std::placeholders::_1))
 			;
 	}
 	result_future_type
@@ -268,6 +269,7 @@ struct app_request {
 	}
 	void
 	on_choke(result_future_move_type future) {
+		// to extract possible exception from the future
 		future.get();
 	}
 };
@@ -299,19 +301,25 @@ mastermind_t::data::enqueue_with_reconnect(const std::string &event, const T &ch
 	try {
 		bool tried_to_reconnect = false;
 
+		trace_t::current() = trace_t::generate(event);
+		//FIXME: find a way to force blackhole to format trace attributes in hex,
+		// resorted to format it manually (and only trace_id) until then
+		// auto attrs = trace_t::current().attributes<blackhole::v1::attribute_list>();
+		auto trace_id = trace_t::current().get_trace_id();
+
 		if (!m_service_manager || !m_app) {
 			MM_LOG_INFO(m_logger, "libmastermind: {}: preconnect", __func__);
 			tried_to_reconnect = true;
 			reconnect();
 		}
 
-		MM_LOG_DEBUG(m_logger, "libmastermind: {}: (1st try): sending event '{}'", __func__, event);
+		MM_LOG_DEBUG(m_logger, "libmastermind: {}: (1st try): sending event '{}', trace_id {:016x}", __func__, event, trace_id);
 		try {
 			return simple_enqueue(event, chunk);
-			MM_LOG_DEBUG(m_logger, "libmastermind: {}: (1st try): received response on event '{}'", __func__, event);
+			MM_LOG_DEBUG(m_logger, "libmastermind: {}: (1st try): received response on event '{}', trace_id {:016x}", __func__, event, trace_id);
 
 		} catch (const std::exception &e) {
-			MM_LOG_ERROR(m_logger, "libmastermind: {}: (1st try): error on event '{}': {}", __func__, event, e.what());
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: (1st try): error on event '{}': {}, trace_id {:016x}", __func__, event, e.what(), trace_id);
 		}
 
 		if (tried_to_reconnect) {
@@ -320,13 +328,13 @@ mastermind_t::data::enqueue_with_reconnect(const std::string &event, const T &ch
 
 		reconnect();
 
-		MM_LOG_DEBUG(m_logger, "libmastermind: {}: (2st try): sending event '{}'", __func__, event);
+		MM_LOG_DEBUG(m_logger, "libmastermind: {}: (2st try): sending event '{}', trace_id {:016x}", __func__, event, trace_id);
 		try {
 			return simple_enqueue(event, chunk);
-			MM_LOG_DEBUG(m_logger, "libmastermind: {}: (2st try): received response on event '{}'", __func__, event);
+			MM_LOG_DEBUG(m_logger, "libmastermind: {}: (2st try): received response on event '{}', trace_id {:016x}", __func__, event, trace_id);
 
 		} catch (const std::exception &e) {
-			MM_LOG_ERROR(m_logger, "libmastermind: {}: (2st try): error on event '{}': {}", __func__, event, e.what());
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: (2st try): error on event '{}': {}, trace_id {:016x}", __func__, event, e.what(), trace_id);
 		}
 
 		throw std::runtime_error("bad connection");
