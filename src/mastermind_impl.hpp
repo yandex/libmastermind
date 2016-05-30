@@ -289,7 +289,7 @@ mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk) {
 		throw std::runtime_error("absent response");
 	}
 
-	// throws an exception on server side error
+	// this throws an exception on server side error
 	return request.result.get();
 }
 
@@ -384,16 +384,16 @@ mastermind_t::data::check_cache_for_expire(const std::string &title, const cache
 			clock_type::now() - cache.get_last_update_time());
 
 	if (expire_time <= life_time) {
-		MM_LOG_ERROR(m_logger, "cache \"{}\" has been expired; life-time={}s",
+		MM_LOG_WARNING(m_logger, "cache \"{}\" has been expired; life-time={}s",
 			title, static_cast<int>(life_time.count())
 		);
 		is_expired = true;
 	} else if (warning_time <= life_time) {
-		MM_LOG_ERROR(m_logger, "cache \"{}\" will be expired soon; life-time={}s",
+		MM_LOG_WARNING(m_logger, "cache \"{}\" will be expired soon; life-time={}s",
 			title, static_cast<int>(life_time.count())
 		);
 	} else if (preferable_life_time <= life_time) {
-		MM_LOG_ERROR(m_logger, "cache \"{}\" is too old; life-time={}s",
+		MM_LOG_WARNING(m_logger, "cache \"{}\" is too old; life-time={}s",
 			title, static_cast<int>(life_time.count())
 		);
 	}

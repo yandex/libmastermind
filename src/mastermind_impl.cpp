@@ -111,6 +111,8 @@ mastermind_t::data::start() {
 
 	deserialize();
 
+	MM_LOG_INFO(m_logger, "libmastermind: starting collect_info_loop thread");
+
 	m_done = false;
 	m_weight_cache_update_thread = std::thread(std::bind(
 				&mastermind_t::data::collect_info_loop, this));
@@ -181,7 +183,7 @@ void mastermind_t::data::reconnect() {
 		try {
 			using cocaine::framework::service_manager_t;
 
-			MM_LOG_INFO(m_logger, "libmastermind: {}: try to connect to locator {}", __func__, remote);
+			MM_LOG_INFO(m_logger, "libmastermind: {}: trying to connect to locator {}", __func__, remote);
 
 			//FIXME: make manager's thread count configurable?
 			auto manager = std::unique_ptr<service_manager_t>(new service_manager_t({remote}, 1));
@@ -319,9 +321,9 @@ mastermind_t::data::collect_namespaces_states() {
 			try {
 				if (namespace_state_is_deleted(it->second)) {
 					bool removed = namespaces_states.remove(name);
-					MM_LOG_INFO(m_logger, "libmastermind: namespace \"{}\" was detected as deleted {}",
+					MM_LOG_INFO(m_logger, "libmastermind: namespace \"{}\" marked as deleted: {}",
 						name,
-						(removed ? "and was removed from the cache" : "but it is already not in the cache")
+						(removed ? "found in cache, removing" : "not found in cache, skipping")
 					);
 					continue;
 				}
@@ -409,17 +411,21 @@ void mastermind_t::data::collect_info_loop() {
 	std::unique_lock<std::mutex> lock(m_mutex);
 
 	if (m_done) {
-		MM_LOG_INFO(m_logger, "libmastermind: have to stop immediately");
+		MM_LOG_INFO(m_logger, "libmastermind: collect_info_loop: have to stop immediately");
 		return;
 	}
 
+	MM_LOG_INFO(m_logger, "libmastermind: collect_info_loop: started, update period {} seconds", m_group_info_update_period);
+
 	try {
+		MM_LOG_INFO(m_logger, "libmastermind: collect_info_loop: mastermind connection warm up");
 		reconnect();
 
 	} catch (const std::runtime_error &e) {
 		// failed to connect
+		MM_LOG_WARNING(m_logger, "libmastermind: collect_info_loop: mastermind connection warm up failed, never mind, continuing");
 	} catch (const std::exception &e) {
-		MM_LOG_ERROR(m_logger, "libmastermind: collect_info_loop: unexpected error: {}", e.what());
+		MM_LOG_ERROR(m_logger, "libmastermind: collect_info_loop: mastermind connection warm up: unexpected error: {}", e.what());
 	}
 
 #if __GNUC_MINOR__ >= 6
@@ -431,12 +437,13 @@ void mastermind_t::data::collect_info_loop() {
 	bool timeout = false;
 	bool tm = timeout;
 #endif
-	MM_LOG_INFO(m_logger, "libmastermind: collect_info_loop: update period is {}", m_group_info_update_period);
 	const auto update_period = std::chrono::seconds(m_group_info_update_period);
 	do {
 		collect_info_loop_impl();
 
 		process_callbacks();
+
+		MM_LOG_INFO(m_logger, "libmastermind: collect_info_loop: next update in {} seconds", m_group_info_update_period);
 
 		tm = timeout;
 		do {
@@ -726,6 +733,8 @@ void mastermind_t::data::deserialize() {
 	}
 
 	try {
+		MM_LOG_INFO(m_logger, "libmastermind: {}: restoring cache from '{}'", __func__, m_cache_path);
+
 		msgpack::unpacked msg;
 		msgpack::unpack(&msg, file.data(), file.size());
 		msgpack::object object = msg.get();
