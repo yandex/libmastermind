@@ -2,7 +2,7 @@ cmake_minimum_required( VERSION 2.6 )
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
-set(LIB mastermind)
+set(LIB mastermind-cache)
 project(${LIB})
 
 FILE (READ "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog" DEBCHANGELOG)
@@ -40,7 +40,7 @@ add_library(${LIB} SHARED ${SOURCES})
 set_target_properties(${LIB} PROPERTIES
 	VERSION "${MAJOR_VERSION}.${MINOR_VERSION}"
 	SOVERSION ${MAJOR_VERSION}
-	LINK_FLAGS -Wl,--version-script=${CMAKE_SOURCE_DIR}/libmastermind.version
+	LINK_FLAGS -Wl,--version-script=${CMAKE_SOURCE_DIR}/libmastermind-cache.version
 	)
 
 target_link_libraries(${LIB}

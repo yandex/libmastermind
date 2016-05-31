@@ -17,8 +17,8 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef SRC__UTILS_HPP
-#define SRC__UTILS_HPP
+#ifndef SRC__UTILS__HPP
+#define SRC__UTILS__HPP
 
 #include <string>
 #include <chrono>
@@ -81,4 +81,4 @@ mastermind::group_info_response_t &operator >> (object o, mastermind::group_info
 
 } // namespace msgpack
 
-#endif /* SRC__UTILS_HPP */
+#endif /* SRC__UTILS__HPP */

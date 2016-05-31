@@ -17,10 +17,10 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef LIBMASTERMIND__INCLUDE__LIBMASTERMIND__COUPLE_SEQUENCE__HPP
-#define LIBMASTERMIND__INCLUDE__LIBMASTERMIND__COUPLE_SEQUENCE__HPP
+#ifndef MASTERMIND_CACHE__INCLUDE__COUPLE_SEQUENCE__HPP
+#define MASTERMIND_CACHE__INCLUDE__COUPLE_SEQUENCE__HPP
 
-#include <libmastermind/common.hpp>
+#include <mastermind-cache/common.hpp>
 
 #include <memory>
 #include <iterator>
@@ -94,5 +94,5 @@ protected:
 
 } // namespace mastermind
 
-#endif /* LIBMASTERMIND__INCLUDE__LIBMASTERMIND__COUPLE_SEQUENCE__HPP */
+#endif /* MASTERMIND_CACHE__INCLUDE__COUPLE_SEQUENCE__HPP */
 

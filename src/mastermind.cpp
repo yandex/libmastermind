@@ -23,7 +23,7 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "libmastermind/mastermind.hpp"
+#include "mastermind-cache/mastermind.hpp"
 #include "mastermind_impl.hpp"
 
 namespace mastermind {

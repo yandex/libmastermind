@@ -17,10 +17,10 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef LIBMASTERMIND__SRC__COUPLE_SEQUENCE_P__HPP
-#define LIBMASTERMIND__SRC__COUPLE_SEQUENCE_P__HPP
+#ifndef SRC__COUPLE_SEQUENCE_P__HPP
+#define SRC__COUPLE_SEQUENCE_P__HPP
 
-#include "libmastermind/couple_sequence.hpp"
+#include "mastermind-cache/couple_sequence.hpp"
 #include "couple_weights_p.hpp"
 
 #include <iostream>
@@ -87,5 +87,5 @@ INIT_CLASS(couple_sequence);
 
 } // namespace mastermind
 
-#endif /* LIBMASTERMIND__SRC__COUPLE_SEQUENCE_P__HPP */
+#endif /* SRC__COUPLE_SEQUENCE_P__HPP */
 

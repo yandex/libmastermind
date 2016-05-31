@@ -17,14 +17,14 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef SRC__LOGGING_HPP
-#define SRC__LOGGING_HPP
+#ifndef SRC__LOGGING__HPP
+#define SRC__LOGGING__HPP
 
 #include <blackhole/logger.hpp>
 #include <blackhole/attribute.hpp>
 #include <blackhole/extensions/facade.hpp>
 
-namespace libmastermind { namespace logging {
+namespace mastermind { namespace logging {
 
 enum severity: int {
     debug   =  0,
@@ -33,22 +33,22 @@ enum severity: int {
     error   =  3
 };
 
-}} // namespace libmastermind::logging
+}} // namespace mastermind::logging
 
 // Assume __log__ to be std::shared_ptr<blackhole::logger_t>
 #define MM_LOG(__log__, __severity__, ...) \
     blackhole::logger_facade<blackhole::logger_t>((*__log__.get())).log((__severity__), __VA_ARGS__)
 
 #define MM_LOG_DEBUG(__log__, ...) \
-    MM_LOG(__log__, ::libmastermind::logging::debug, __VA_ARGS__)
+    MM_LOG(__log__, ::mastermind::logging::debug, __VA_ARGS__)
 
 #define MM_LOG_INFO(__log__, ...) \
-    MM_LOG(__log__, ::libmastermind::logging::info, __VA_ARGS__)
+    MM_LOG(__log__, ::mastermind::logging::info, __VA_ARGS__)
 
 #define MM_LOG_WARNING(__log__, ...) \
-    MM_LOG(__log__, ::libmastermind::logging::warning, __VA_ARGS__)
+    MM_LOG(__log__, ::mastermind::logging::warning, __VA_ARGS__)
 
 #define MM_LOG_ERROR(__log__, ...) \
-    MM_LOG(__log__, ::libmastermind::logging::error, __VA_ARGS__)
+    MM_LOG(__log__, ::mastermind::logging::error, __VA_ARGS__)
 
-#endif /* SRC__LOGGING_HPP */
+#endif /* SRC__LOGGING__HPP */

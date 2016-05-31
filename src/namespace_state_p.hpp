@@ -20,7 +20,7 @@
 #ifndef SRC__NAMESPACE_STATE_P__HPP
 #define SRC__NAMESPACE_STATE_P__HPP
 
-#include "libmastermind/mastermind.hpp"
+#include "mastermind-cache/mastermind.hpp"
 #include "couple_weights_p.hpp"
 
 #include "cocaine/traits/dynamic.hpp"

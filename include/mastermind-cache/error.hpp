@@ -17,18 +17,18 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef INCLUDE__LIBMASTERMIND__ERROR_H
-#define INCLUDE__LIBMASTERMIND__ERROR_H
+#ifndef MASTERMIND_CACHE__INCLUDE__ERROR_H
+#define MASTERMIND_CACHE__INCLUDE__ERROR_H
 
-#include <libmastermind/common.hpp>
+#include <mastermind-cache/common.hpp>
 
 #include <system_error>
 
 namespace mastermind {
 
-namespace libmastermind_error {
+namespace mastermind_cache_error {
 
-enum libmastermind_error_t {
+enum mastermind_cache_error_t {
 	couple_not_found,
 	not_enough_memory,
 	unknown_namespace,
@@ -36,9 +36,9 @@ enum libmastermind_error_t {
 	cache_is_expired
 };
 
-} // namespace libmastermind_error
+} // namespace mastermind_cache_error
 
-class libmastermind_category_impl
+class mastermind_cache_category_impl
 	: public std::error_category
 {
 public:
@@ -46,10 +46,10 @@ public:
 	std::string message(int ev) const;
 };
 
-const std::error_category &libmastermind_category();
+const std::error_category &mastermind_cache_category();
 
-std::error_code make_error_code(libmastermind_error::libmastermind_error_t e);
-std::error_condition make_error_condition(libmastermind_error::libmastermind_error_t e);
+std::error_code make_error_code(mastermind_cache_error::mastermind_cache_error_t e);
+std::error_condition make_error_condition(mastermind_cache_error::mastermind_cache_error_t e);
 
 //IMPORTANT: ensure that the following exception list is in sync with
 // the exception list in bindings/python/main.cpp:init_exception_translator()
@@ -107,7 +107,7 @@ mastermind_category();
 namespace std {
 
 template<>
-struct is_error_code_enum<mastermind::libmastermind_error::libmastermind_error_t>
+struct is_error_code_enum<mastermind::mastermind_cache_error::mastermind_cache_error_t>
 	: public true_type
 {};
 
@@ -204,4 +204,4 @@ public:
 
 } // namespace mastermind
 
-#endif /* INCLUDE__LIBMASTERMIND__ERROR_H */
+#endif /* MASTERMIND_CACHE__INCLUDE__ERROR_H */

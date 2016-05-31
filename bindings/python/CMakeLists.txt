@@ -14,7 +14,7 @@ include_directories(${PYTHON_INCLUDE_DIRS})
 link_directories(${PYTHON_LIBRARIES})
 
 add_library(mastermind_cache SHARED main.cpp)
-target_link_libraries(mastermind_cache ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} mastermind)
+target_link_libraries(mastermind_cache ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} mastermind-cache)
 
 set_target_properties(mastermind_cache PROPERTIES
     PREFIX ""

@@ -38,7 +38,7 @@
 #include <blackhole/scope/manager.hpp>
 #include <blackhole/extensions/writer.hpp>
 
-#include "libmastermind/mastermind.hpp"
+#include "mastermind-cache/mastermind.hpp"
 
 namespace bp = boost::python;
 namespace mm = mastermind;
@@ -674,7 +674,7 @@ init_exception_translator() {
 		= exception::make_exception_class("MastermindCacheError");
 
 	//IMPORTANT: ensure that the following exception list is in sync with
-	// the exception list in include/libmastermind/error.hpp
+	// the exception list in include/mastermind-cache/error.hpp
 
 	exception::register_exception_translator<mm::couple_not_found_error>(
 			"CoupleNotFoundError", mastermind_cache_error);
@@ -700,14 +700,14 @@ init_exception_translator() {
 	exception::register_exception_translator<mm::unknown_feedback>(
 			"UnknownFeedback", mastermind_cache_error);
 
+	exception::register_exception_translator<mm::namespace_state_not_found_error>(
+			"NamespaceNotFoundError", mastermind_cache_error);
+
 	exception::register_exception_translator<mm::unknown_group_error>(
 			"UnknownGroupError", mastermind_cache_error);
 
 	exception::register_exception_translator<mm::unknown_groupset_error>(
 			"UnknownGroupsetError", mastermind_cache_error);
-
-	exception::register_exception_translator<mm::namespace_state_not_found_error>(
-			"NamespaceNotFoundError", mastermind_cache_error);
 
 	exception::register_exception_translator<mm::remotes_empty_error>(
 			"RemotesEmptyError", mastermind_cache_error);

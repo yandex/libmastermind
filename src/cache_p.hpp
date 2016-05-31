@@ -17,8 +17,8 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef LIBMASTERMIND__SRC__CACHE_P__HPP
-#define LIBMASTERMIND__SRC__CACHE_P__HPP
+#ifndef SRC__CACHE_P__HPP
+#define SRC__CACHE_P__HPP
 
 #include "cocaine/traits/dynamic.hpp"
 #include "utils.hpp"
@@ -291,5 +291,5 @@ private:
 
 } // namespace mastermind
 
-#endif /* LIBMASTERMIND__SRC__CACHE_P__HPP */
+#endif /* SRC__CACHE_P__HPP */
 

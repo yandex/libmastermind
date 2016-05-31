@@ -17,10 +17,10 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef LIBMASTERMIND__SRC__CACHED_KEY__HPP
-#define LIBMASTERMIND__SRC__CACHED_KEY__HPP
+#ifndef SRC__CACHED_KEY__HPP
+#define SRC__CACHED_KEY__HPP
 
-#include "libmastermind/common.hpp"
+#include "mastermind-cache/common.hpp"
 
 #include <kora/dynamic.hpp>
 
@@ -108,5 +108,5 @@ private:
 
 } // namespace mastermind
 
-#endif /* LIBMASTERMIND__SRC__CACHED_KEY__HPP */
+#endif /* SRC__CACHED_KEY__HPP */
 

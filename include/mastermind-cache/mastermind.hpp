@@ -17,8 +17,8 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef INCLUDE__LIBMASTERMIND__MASTERMIND_HPP
-#define INCLUDE__LIBMASTERMIND__MASTERMIND_HPP
+#ifndef MASTERMIND_CACHE__INCLUDE__MASTERMIND_HPP
+#define MASTERMIND_CACHE__INCLUDE__MASTERMIND_HPP
 
 #include <map>
 #include <string>
@@ -32,9 +32,9 @@
 #include <kora/dynamic.hpp>
 #include <kora/config.hpp>
 
-#include <libmastermind/common.hpp>
-#include <libmastermind/error.hpp>
-#include <libmastermind/couple_sequence.hpp>
+#include <mastermind-cache/common.hpp>
+#include <mastermind-cache/error.hpp>
+#include <mastermind-cache/couple_sequence.hpp>
 
 namespace mastermind {
 
@@ -306,5 +306,5 @@ private:
 
 } // namespace mastermind
 
-#endif /* INCLUDE__LIBMASTERMIND__MASTERMIND_HPP */
+#endif /* MASTERMIND_CACHE__INCLUDE__MASTERMIND_HPP */
 

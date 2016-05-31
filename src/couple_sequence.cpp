@@ -17,7 +17,7 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "libmastermind/couple_sequence.hpp"
+#include "mastermind-cache/couple_sequence.hpp"
 #include "couple_sequence_p.hpp"
 
 mastermind::couple_sequence_const_iterator_t::couple_sequence_const_iterator_t()

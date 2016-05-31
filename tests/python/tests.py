@@ -79,7 +79,7 @@ def create_mastermind_cache():
         auto_start=False,
         remotes='cloud01e.mdst.yandex.net', # cocaine-v12 endpoint
         # remotes='mmproxy01g.mdst.yandex.net', # cocaine-v11 endpoint
-        cache_path=os.path.join(THISDIR, 'libmastermind.test.cache'),
+        cache_path=os.path.join(THISDIR, 'mastermind-cache.test.data'),
     )
 
     log.debug('mastermind_cache: retrieving data...')

@@ -17,8 +17,8 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef SRC__MASTERMIND_IMPL_HPP
-#define SRC__MASTERMIND_IMPL_HPP
+#ifndef SRC__MASTERMIND_IMPL__HPP
+#define SRC__MASTERMIND_IMPL__HPP
 
 #include <thread>
 #include <condition_variable>
@@ -36,7 +36,7 @@
 #include <cocaine/framework/service.hpp>
 #include <cocaine/idl/node.hpp> // for app protocol spec, from node service
 
-#include "libmastermind/mastermind.hpp"
+#include "mastermind-cache/mastermind.hpp"
 #include "logging.hpp"
 #include "utils.hpp"
 #include "cache_p.hpp"
@@ -411,4 +411,4 @@ mastermind_t::data::check_cache_for_expire(const std::string &title, const cache
 
 } // namespace mastermind
 
-#endif /* SRC__MASTERMIND_IMPL_HPP */
+#endif /* SRC__MASTERMIND_IMPL__HPP */

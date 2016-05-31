@@ -17,8 +17,8 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef LIBMASTERMIND__INCLUDE__LIBMASTERMIND__COMMON__HPP
-#define LIBMASTERMIND__INCLUDE__LIBMASTERMIND__COMMON__HPP
+#ifndef MASTERMIND_CACHE__INCLUDE__COMMON__HPP
+#define MASTERMIND_CACHE__INCLUDE__COMMON__HPP
 
 #include <vector>
 
@@ -29,5 +29,5 @@ typedef std::vector<int> groups_t;
 
 } // namespace mastermind
 
-#endif /* LIBMASTERMIND__INCLUDE__LIBMASTERMIND__COMMON__HPP */
+#endif /* MASTERMIND_CACHE__INCLUDE__COMMON__HPP */
 

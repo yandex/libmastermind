@@ -17,10 +17,10 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef SRC__NAMESPACE_P_HPP
-#define SRC__NAMESPACE_P_HPP
+#ifndef SRC__NAMESPACE_P__HPP
+#define SRC__NAMESPACE_P__HPP
 
-#include "libmastermind/mastermind.hpp"
+#include "mastermind-cache/mastermind.hpp"
 
 namespace mastermind {
 
@@ -54,5 +54,5 @@ struct namespace_settings_t::data {
 
 } // mastermind
 
-#endif /* SRC__NAMESPACE_P_HPP */
+#endif /* SRC__NAMESPACE_P__HPP */
 

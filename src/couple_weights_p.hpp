@@ -17,11 +17,8 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "libmastermind/mastermind.hpp"
-
-#include "cocaine/traits/dynamic.hpp"
-
-#include <kora/config.hpp>
+#ifndef SRC__COUPLE_WEIGHTS_P__HPP
+#define SRC__COUPLE_WEIGHTS_P__HPP
 
 #include <tuple>
 #include <map>
@@ -29,8 +26,11 @@
 #include <functional>
 #include <mutex>
 
-#ifndef LIBMASTERMIND__SRC__COUPLE_WEIGHTS_P__HPP
-#define LIBMASTERMIND__SRC__COUPLE_WEIGHTS_P__HPP
+#include <kora/config.hpp>
+
+#include "cocaine/traits/dynamic.hpp"
+
+#include "mastermind-cache/mastermind.hpp"
 
 namespace mastermind {
 namespace ns_state {
@@ -123,5 +123,5 @@ private:
 } // namespace ns_state
 } // namespace mastermind
 
-#endif /* LIBMASTERMIND__SRC__COUPLE_WEIGHTS_P__HPP */
+#endif /* SRC__COUPLE_WEIGHTS_P__HPP */
 

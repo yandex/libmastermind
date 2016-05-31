@@ -1,4 +1,4 @@
-Source: libmastermind
+Source: mastermind-cache
 Section: net
 Priority: optional
 Maintainer: Anton Kortunov <toshik@yandex-team.ru>
@@ -18,7 +18,7 @@ Build-Depends: debhelper (>= 5),
  blackhole-dev (>= 1.0)
 Standards-Version: 3.9.5
 
-Package: libmastermind9
+Package: libmastermind-cache9
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
  libcocaine-framework-native1 (>= 0.12.8-10), libcocaine-framework-native1 (<< 0.13),
@@ -26,36 +26,36 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
  libmsgpack3,
  libkora-util1 (= 1.1.0-rc1),
  libblackhole1 (>= 1.0)
-Replaces: libmastermind
-Provides: libmastermind
-Conflicts: libmastermind
 Description: Client cache for Mastermind data (C++) - Runtime Library
  In-process cache for Mastermind data for C++ clients.
 
-Package: libmastermind-dev
+Package: libmastermind-cache-dev
 Architecture: any
 Section: libdevel
-Depends: libmastermind9 (= ${binary:Version}), ${misc:Depends},
+Depends: libmastermind-cache9 (= ${binary:Version}), ${misc:Depends},
  libkora-util-dev (= 1.1.0-rc1),
  blackhole-dev (>= 1.0)
+Replaces: libmastermind-dev
+Provides: libmastermind-dev
+Conflicts: libmastermind-dev
 Description: Client cache for Mastermind data (C++) - Development Files
  In-process cache for Mastermind data for C++ clients, development files.
 
 Package: python-mastermind-cache
 Architecture: any
 Section: python
-Depends: libmastermind9 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: libmastermind-cache9 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Replaces: mastermind-cache
 Provides: mastermind-cache
 Conflicts: mastermind-cache
 Description: Client cache for Mastermind data (C++) - Python Binding
  In-process cache for Mastermind data for C++ clients, python binding.
 
-Package: libmastermind-dbg
+Package: libmastermind-cache9-dbg
 Architecture: any
 Section: debug
 Priority: extra
-Depends: libmastermind9 (= ${binary:Version}), ${misc:Depends}
+Depends: libmastermind-cache9 (= ${binary:Version}), ${misc:Depends}
 Description: Client cache for Mastermind data (C++) - Debug Files
  In-process cache for Mastermind data for C++ clients, debug files and symbols.
 
