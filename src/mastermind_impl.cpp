@@ -193,6 +193,7 @@ void mastermind_t::data::reconnect() {
 			MM_LOG_INFO(m_logger, "libmastermind: {}: connected to locator, getting mastermind service", __func__);
 
 			auto mastermind = manager->create<cocaine::io::app_tag>(m_worker_name);
+			mastermind.hard_shutdown(true);
 
 			{
 				auto g = mastermind.connect();

@@ -27,7 +27,7 @@
 
 #include <boost/optional.hpp>
 
-#include <blackhole/logger.hpp>
+#include <blackhole/v1/logger.hpp>
 
 #include <kora/dynamic.hpp>
 #include <kora/config.hpp>

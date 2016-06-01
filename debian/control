@@ -11,7 +11,7 @@ Build-Depends: debhelper (>= 5),
  libboost-iostreams-dev,
  libboost-system-dev,
  libcocaine-dev (>= 0.12.8.14), libcocaine-dev (<< 0.13),
- libcocaine-framework-native-dev (>= 0.12.8-10), libcocaine-framework-native-dev (<< 0.13),
+ libcocaine-framework-native-dev (>= 0.12.8-12), libcocaine-framework-native-dev (<< 0.13),
  libcocaine-plugin-node-dev (>= 0.12.8.24), libcocaine-plugin-node-dev (<< 0.13),
  libmsgpack-dev,
  libkora-util-dev (= 1.1.0-rc1),
@@ -21,7 +21,7 @@ Standards-Version: 3.9.5
 Package: libmastermind-cache9
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
- libcocaine-framework-native1 (>= 0.12.8-10), libcocaine-framework-native1 (<< 0.13),
+ libcocaine-framework-native1 (>= 0.12.8-12), libcocaine-framework-native1 (<< 0.13),
  libcocaine-io-util3 (>= 0.12.8.14), libcocaine-io-util3 (<< 0.13),
  libmsgpack3,
  libkora-util1 (= 1.1.0-rc1),

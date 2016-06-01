@@ -220,57 +220,65 @@ struct app_request {
 	typedef task<result_type>::future_move_type result_future_move_type;
 	typedef task<void>::future_type aggregate_future_type;
 
-	aggregate_future_type aggregate_future;
-	result_type result;
+	struct state : std::enable_shared_from_this<state> {
+		aggregate_future_type aggregate_future;
+		result_type result;
 
-	//NOTE: 1) forced to use pointer here because receiver can't be empty constructed
-	// check with cocaine guys if its feasible to add an empty constructor to receiver_type
-	//NOTE: 2) and we use strong-weak pointers to communicate cancel request
-	// into future chain.
-	std::shared_ptr<receiver_type> rx;
+		template<typename T>
+		aggregate_future_type
+		on_invoke(invoke_future_type future, const T &data) {
+			auto channel = future.get();
+			auto tx = std::move(channel.tx);
+			auto rx = std::move(channel.rx);
+			return tx.send<chunk_verb>(data)
+				.then(trace_t::bind(&state::on_send, shared_from_this(), std::placeholders::_1, rx))
+				.then(trace_t::bind(&state::on_chunk, shared_from_this(), std::placeholders::_1, rx))
+				.then(trace_t::bind(&state::on_choke, std::placeholders::_1))
+				;
+		}
+		result_future_type
+		on_send(send_future_type future, receiver_type rx) {
+			future.get();
+			return rx.recv();
+		}
+		result_future_type
+		on_chunk(result_future_move_type future, receiver_type rx) {
+			result = std::move(future.get());
+			return rx.recv();
+		}
+		static
+		void
+		on_choke(result_future_move_type future) {
+			// to extract possible exception from the future
+			future.get();
+		}
+	};
+
+	std::shared_ptr<state> d;
 
 	template<typename T>
 	app_request(service<io::app_tag> *app, const std::string &event, const T &data) {
-		aggregate_future = app->invoke<io::app::enqueue>(event)
-			.then(trace_t::bind(&app_request::on_invoke<T>, this, std::placeholders::_1, data))
-			;
+		d = std::make_shared<state>();
+		d->aggregate_future = std::move(
+			app->invoke<io::app::enqueue>(event)
+				.then(trace_t::bind(&state::on_invoke<T>, d, std::placeholders::_1, data))
+		);
 	}
 
-	template<typename T>
-	aggregate_future_type
-	on_invoke(invoke_future_type future, const T &chunk) {
-		auto channel = future.get();
-		auto tx = std::move(channel.tx);
-		rx.reset(new receiver_type(std::move(channel.rx)));
-		auto weak_rx = std::weak_ptr<receiver_type>(rx);
-		return tx.send<chunk_verb>(chunk)
-			.then(trace_t::bind(&app_request::on_send, this, std::placeholders::_1, weak_rx))
-			.then(trace_t::bind(&app_request::on_chunk, this, std::placeholders::_1, weak_rx))
-			.then(trace_t::bind(&app_request::on_choke, this, std::placeholders::_1))
-			;
-	}
-	result_future_type
-	on_send(send_future_type future, std::weak_ptr<receiver_type> weak_rx) {
-		if (auto rx = weak_rx.lock()) {
-			future.get();
-			return rx->recv();
-		} else {
-			throw std::runtime_error("cancelled");
-		}
-	}
-	result_future_type
-	on_chunk(result_future_move_type future, std::weak_ptr<receiver_type> weak_rx) {
-		if (auto rx = weak_rx.lock()) {
-			result = std::move(future.get());
-			return rx->recv();
-		} else {
-			throw std::runtime_error("cancelled");
-		}
-	}
+	template<class Rep, class Period>
 	void
-	on_choke(result_future_move_type future) {
-		// to extract possible exception from the future
-		future.get();
+	wait_for(const std::chrono::duration<Rep, Period>& rel_time) const {
+		d->aggregate_future.wait_for(rel_time);
+	}
+
+	bool
+	ready() const {
+		return d->aggregate_future.ready();
+	}
+
+	const result_type&
+	get_result() const {
+		return d->result;
 	}
 };
 
@@ -281,18 +289,20 @@ std::string
 mastermind_t::data::simple_enqueue(const std::string &event, const T &chunk) {
 	app_request request(m_app.get(), event, chunk);
 
-	request.aggregate_future.wait_for(enqueue_timeout);
+	request.wait_for(enqueue_timeout);
 
-	if (!request.aggregate_future.ready()) {
+	if (!request.ready()) {
 		throw std::runtime_error("enqueue timeout");
 	}
 
-	if (!request.result) {
+	auto result = request.get_result();
+	if (!result) {
 		throw std::runtime_error("absent response");
 	}
 
 	// this throws an exception on server side error
-	return request.result.get();
+	return result.get();
+
 }
 
 template <typename T>
@@ -318,7 +328,7 @@ mastermind_t::data::enqueue_with_reconnect(const std::string &event, const T &ch
 			return simple_enqueue(event, chunk);
 			MM_LOG_DEBUG(m_logger, "libmastermind: {}: (1st try): received response on event '{}', trace_id {:016x}", __func__, event, trace_id);
 
-		} catch (const std::exception &e) {
+		} catch (const std::runtime_error &e) {
 			MM_LOG_ERROR(m_logger, "libmastermind: {}: (1st try): error on event '{}': {}, trace_id {:016x}", __func__, event, e.what(), trace_id);
 		}
 
@@ -333,7 +343,7 @@ mastermind_t::data::enqueue_with_reconnect(const std::string &event, const T &ch
 			return simple_enqueue(event, chunk);
 			MM_LOG_DEBUG(m_logger, "libmastermind: {}: (2st try): received response on event '{}', trace_id {:016x}", __func__, event, trace_id);
 
-		} catch (const std::exception &e) {
+		} catch (const std::runtime_error &e) {
 			MM_LOG_ERROR(m_logger, "libmastermind: {}: (2st try): error on event '{}': {}, trace_id {:016x}", __func__, event, e.what(), trace_id);
 		}
 

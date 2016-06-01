@@ -53,6 +53,7 @@ logging_config = dict(
     root={
         # 'handlers': ['defaultlog_file'],
         'handlers': ['console'],
+        'level': 'DEBUG',
     },
 
     loggers={
@@ -61,6 +62,7 @@ logging_config = dict(
             # 'handlers': ['console'],
             # do not pass access messages beyond this logger
             'propagate': False,
+            'level': 'DEBUG',
         },
     },
 )
@@ -74,12 +76,13 @@ log = logging.getLogger('testing')
 import time
 import pytest
 
-def create_mastermind_cache():
+def create_mastermind_cache(**kw):
     obj = mastermind_cache.MastermindCache(
         auto_start=False,
         remotes='cloud01e.mdst.yandex.net', # cocaine-v12 endpoint
         # remotes='mmproxy01g.mdst.yandex.net', # cocaine-v11 endpoint
         cache_path=os.path.join(THISDIR, 'mastermind-cache.test.data'),
+        **kw
     )
 
     log.debug('mastermind_cache: retrieving data...')
@@ -103,3 +106,8 @@ def test_aaa():
     ns = mc.find_namespace_state(5)
     assert ns.name() == "default"
     print ns.name(), ns.couples().get_groups(5)
+
+def test_wait():
+    mc = create_mastermind_cache(enqueue_timeout=70)
+
+    time.sleep(300)
