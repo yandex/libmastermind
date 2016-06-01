@@ -1,3 +1,9 @@
+mastermind-cache (9.0.1) unstable; urgency=medium
+
+  * Fix reconnect delay issue
+
+ -- Ivan Chelubeev <ijon@yandex-team.ru>  Thu, 02 Jun 2016 01:14:03 +0300
+
 mastermind-cache (9.0.0) trusty; urgency=medium
 
   * Update to cocaine-framework-native v12
