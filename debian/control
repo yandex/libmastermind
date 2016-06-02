@@ -15,7 +15,8 @@ Build-Depends: debhelper (>= 5),
  libcocaine-plugin-node-dev (>= 0.12.8.24), libcocaine-plugin-node-dev (<< 0.13),
  libmsgpack-dev,
  libkora-util-dev (= 1.1.0-rc1),
- blackhole-dev (>= 1.0)
+ blackhole-dev (>= 1.0),
+ blackhole-migration-dev (>= 1.0)
 Standards-Version: 3.9.5
 
 Package: libmastermind-cache9
