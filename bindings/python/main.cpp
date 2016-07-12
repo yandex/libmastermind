@@ -190,6 +190,8 @@ class python_logger_wrapper : public logger_t
 {
 	bp::object python_logger;
 	thread_manager_t scope_manager;
+	std::unique_ptr<formatter_t> formatter;
+	std::unique_ptr<formatter_t> formatter_no_attrs;
 
 	// Assuming logger configuration will not be changing at runtime,
 	// cache
@@ -210,6 +212,8 @@ class python_logger_wrapper : public logger_t
 public:
 	python_logger_wrapper(const gil_guard_t &)
 		: python_logger(bp::import("logging").attr("getLogger")("mastermind_cache"))
+		, formatter(std::move(builder<formatter::string_t>("{message}, attrs: [{...}]")).build())
+		, formatter_no_attrs(std::move(builder<formatter::string_t>("{message}")).build())
 		, effective_level(bp::extract<int>(python_logger.attr("getEffectiveLevel")()))
 		, disabled(bp::extract<bool>(python_logger.attr("disabled")))
 	{}
@@ -249,9 +253,9 @@ public:
 		record_t record(severity, instantiated, pack);
 		writer_t writer;
 		if (pack.empty()) {
-			formatter::string_t("{message}").format(record, writer);
+			formatter_no_attrs->format(record, writer);
 		} else {
-			formatter::string_t("{message}, attrs: [{...}]").format(record, writer);
+			formatter->format(record, writer);
 		}
 
 		auto formatted = writer.result().to_string();
