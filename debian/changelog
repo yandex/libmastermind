@@ -1,3 +1,11 @@
+mastermind-cache (9.0.2) trusty; urgency=medium
+
+  * Add missed dependency on blackhole-migration-dev
+  * Fix not closing app connection issue
+  * Restrict cocaine dependency to 12.8
+
+ -- Ivan Chelubeev <ijon@yandex-team.ru>  Fri, 22 Jul 2016 19:12:54 +0300
+
 mastermind-cache (9.0.1) unstable; urgency=medium
 
   * Fix reconnect delay issue
