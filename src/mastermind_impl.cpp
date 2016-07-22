@@ -582,11 +582,27 @@ void mastermind_t::data::serialize() {
 	cocaine::io::type_traits<kora::dynamic_t>::pack(packer, raw_cache);
 
 	{
-		std::ofstream output(m_cache_path.c_str());
-		std::copy(sbuffer.data(), sbuffer.data() + sbuffer.size(), std::ostreambuf_iterator<char>(output));
-	}
+		std::string tmpname = m_cache_path + ".tmp-XXXXXX";
+		int fd = ::mkstemp(&tmpname[0]);
+		if (fd < 0) {
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot save cache to '{}': mkstemp error: {}, {}", __func__, m_cache_path, errno, strerror(errno));
+			return;
+		}
+		if (::write(fd, sbuffer.data(), sbuffer.size()) == -1) {
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot save cache to '{}': write error: {}, {}", __func__, m_cache_path, errno, strerror(errno));
+			return;
+		}
+		if (::close(fd) == -1) {
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot save cache to '{}': close error: {}, {}", __func__, m_cache_path, errno, strerror(errno));
+			return;
+		}
+		if(::rename(tmpname.c_str(), m_cache_path.c_str()) == -1) {
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot save cache to '{}': rename error: {}, {}", __func__, m_cache_path, errno, strerror(errno));
+			return;
+		}
 
-	MM_LOG_INFO(m_logger, "libmastermind: {}: cache saved to '{}'", __func__, m_cache_path);
+		MM_LOG_INFO(m_logger, "libmastermind: {}: cache saved to '{}'", __func__, m_cache_path);
+	}
 }
 
 bool
