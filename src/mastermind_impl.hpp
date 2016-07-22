@@ -211,7 +211,7 @@ struct app_request {
 	typedef channel<io::app::enqueue>::sender_type sender_type;
 	typedef channel<io::app::enqueue>::receiver_type receiver_type;
 
-	typedef io::protocol<io::app::enqueue::dispatch_type>::scope::chunk chunk_verb;
+	typedef io::protocol<io::app::enqueue::dispatch_type>::scope protocol;
 
 	typedef task<channel<io::app::enqueue>>::future_move_type invoke_future_type;
 	typedef task<sender_type>::future_move_type send_future_type;
@@ -230,7 +230,7 @@ struct app_request {
 			auto channel = future.get();
 			auto tx = std::move(channel.tx);
 			auto rx = std::move(channel.rx);
-			return tx.send<chunk_verb>(data)
+			return tx.send<protocol::chunk>(data)
 				.then(trace_t::bind(&state::on_send, shared_from_this(), std::placeholders::_1, rx))
 				.then(trace_t::bind(&state::on_chunk, shared_from_this(), std::placeholders::_1, rx))
 				.then(trace_t::bind(&state::on_choke, std::placeholders::_1))
@@ -238,7 +238,8 @@ struct app_request {
 		}
 		result_future_type
 		on_send(send_future_type future, receiver_type rx) {
-			future.get();
+			auto tx = future.get();
+			tx.send<protocol::choke>();
 			return rx.recv();
 		}
 		result_future_type
