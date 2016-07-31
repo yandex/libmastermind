@@ -1,3 +1,10 @@
+mastermind-cache (9.0.3) trusty; urgency=medium
+
+  * Update to cocaine v12.9
+  * Make cache file save atomic
+
+ -- Andrey Vasilenkov <indigo@yandex-team.ru>  Sun, 31 Jul 2016 19:52:17 +0300
+
 mastermind-cache (9.0.2) trusty; urgency=medium
 
   * Add missed dependency on blackhole-migration-dev
