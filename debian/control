@@ -15,8 +15,8 @@ Build-Depends: debhelper (>= 5),
  libcocaine-plugin-node-dev (>= 0.12.9), libcocaine-plugin-node-dev (<< 0.12.10),
  libmsgpack-dev,
  libkora-util-dev (= 1.1.0-rc1),
- blackhole-dev (>= 1.0.0-0rc1),
- blackhole-migration-dev (>= 1.0.0-0rc1),
+ blackhole-dev (>= 1.0.0-1),
+ blackhole-migration-dev (>= 1.0.0-1),
 Standards-Version: 3.9.5
 
 Package: libmastermind-cache9
@@ -26,7 +26,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
  libcocaine-io-util3 (>= 0.12.9), libcocaine-io-util3 (<< 0.12.10),
  libmsgpack3,
  libkora-util1 (= 1.1.0-rc1),
- libblackhole1 (>= 1.0.0-0rc1),
+ libblackhole1 (>= 1.0.0-1),
 Description: Client cache for Mastermind data (C++) - Runtime Library
  In-process cache for Mastermind data for C++ clients.
 
@@ -35,7 +35,7 @@ Architecture: any
 Section: libdevel
 Depends: libmastermind-cache9 (= ${binary:Version}), ${misc:Depends},
  libkora-util-dev (= 1.1.0-rc1),
- blackhole-dev (>= 1.0.0-0rc1),
+ blackhole-dev (>= 1.0.0-1),
 Replaces: libmastermind-dev
 Provides: libmastermind-dev
 Conflicts: libmastermind-dev
