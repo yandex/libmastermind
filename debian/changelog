@@ -1,3 +1,9 @@
+mastermind-cache (9.0.4) trusty; urgency=medium
+
+  * Update blackhole dependencies
+
+ -- Andrey Vasilenkov <indigo@yandex-team.ru>  Mon, 01 Aug 2016 14:55:02 +0300
+
 mastermind-cache (9.0.3) trusty; urgency=medium
 
   * Update to cocaine v12.9
