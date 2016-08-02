@@ -596,6 +596,10 @@ void mastermind_t::data::serialize() {
 			MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot save cache to '{}': close error: {}, {}", __func__, m_cache_path, errno, strerror(errno));
 			return;
 		}
+		if (::chmod(tmpname.c_str(), S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH) == -1) {
+			MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot save cache to '{}': chmod error: {}, {}", __func__, m_cache_path, errno, strerror(errno));
+			return;
+		}
 		if(::rename(tmpname.c_str(), m_cache_path.c_str()) == -1) {
 			MM_LOG_ERROR(m_logger, "libmastermind: {}: cannot save cache to '{}': rename error: {}, {}", __func__, m_cache_path, errno, strerror(errno));
 			return;
