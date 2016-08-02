@@ -1,3 +1,9 @@
+mastermind-cache (9.0.5) trusty; urgency=medium
+
+  * Set cache file permissions to 0644
+
+ -- Andrey Vasilenkov <indigo@yandex-team.ru>  Tue, 02 Aug 2016 22:29:25 +0300
+
 mastermind-cache (9.0.4) trusty; urgency=medium
 
   * Update blackhole dependencies
