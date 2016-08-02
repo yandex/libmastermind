@@ -51,6 +51,9 @@ const std::error_category &libmastermind_category();
 std::error_code make_error_code(libmastermind_error::libmastermind_error_t e);
 std::error_condition make_error_condition(libmastermind_error::libmastermind_error_t e);
 
+//IMPORTANT: ensure that the following exception list is in sync with
+// the exception list in bindings/python/main.cpp:init_exception_translator()
+
 class couple_not_found_error
 	: public std::system_error
 {
@@ -92,6 +95,7 @@ enum class mastermind_errc {
 	, unknown_feedback
 	, namespace_state_not_found
 	, unknown_group
+	, unknown_groupset
 	, remotes_empty
 };
 
@@ -178,6 +182,19 @@ public:
 
 private:
 	int m_group;
+};
+
+class unknown_groupset_error : public mastermind_error
+{
+public:
+	unknown_groupset_error(std::string groupset_);
+	~unknown_groupset_error() noexcept {}
+
+	const std::string &
+	groupset() const;
+
+private:
+	std::string m_groupset;
 };
 
 class remotes_empty_error : public mastermind_error

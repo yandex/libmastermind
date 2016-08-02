@@ -1,3 +1,29 @@
+libmastermind (8.36.4) trusty; urgency=medium
+
+  * Add 'get_couple_groupset_ids' handle
+
+ -- Andrey Vasilenkov <indigo@yandex-team.ru>  Thu, 07 Apr 2016 19:38:24 +0300
+
+libmastermind (8.36.3) trusty; urgency=medium
+
+  * Version bump
+
+ -- Andrey Vasilenkov <indigo@yandex-team.ru>  Fri, 25 Mar 2016 12:32:27 +0300
+
+libmastermind (8.36.2) trusty; urgency=medium
+
+  * Fix libkora dependencies
+
+ -- Andrey Vasilenkov <indigo@yandex-team.ru>  Thu, 24 Mar 2016 21:08:51 +0300
+
+libmastermind (8.36.1) trusty; urgency=medium
+
+  * Add C++ API for groupsets
+  * Add groupset support in Python binding
+  * python: fix missed translation for exception
+
+ -- Andrey Vasilenkov <indigo@yandex-team.ru>  Thu, 24 Mar 2016 20:57:07 +0300
+
 libmastermind (8.35.1) trusty; urgency=medium
 
   * Reimplement enqueue method

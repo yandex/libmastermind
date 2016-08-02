@@ -107,8 +107,37 @@ public:
 		const namespace_state_t &namespace_state;
 	};
 
+	class couples_t;
+
+	class groupset_t {
+	public:
+		uint64_t free_effective_space() const;
+		uint64_t free_reserved_space() const;
+
+		std::string type() const;
+		std::string status() const;
+		std::string id() const;
+
+		const std::vector<int> &group_ids() const;
+		const kora::dynamic_t &hosts() const;
+		const kora::dynamic_t &settings() const;
+
+	private:
+		friend class couples_t;
+
+		struct data_t;
+		groupset_t(const data_t &data_);
+
+		const data_t &data;
+	};
+
 	class couples_t {
 	public:
+		std::vector<std::string> get_couple_read_preference(group_t group) const;
+		groupset_t get_couple_groupset(group_t group, const std::string &groupset_id) const;
+
+		std::vector<std::string> get_couple_groupset_ids(group_t group) const;
+
 		groups_t get_couple_groups(group_t group) const;
 		groups_t get_groups(group_t group) const;
 

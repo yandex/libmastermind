@@ -82,6 +82,8 @@ public:
 			return "namespace state not found";
 		case mastermind_errc::unknown_group:
 			return "unknown group";
+		case mastermind_errc::unknown_groupset:
+			return "unknown groupset";
 		case mastermind_errc::remotes_empty:
 			return "remotes list is empty";
 		default:
@@ -175,6 +177,16 @@ unknown_group_error::unknown_group_error(int group_)
 int
 unknown_group_error::group() const {
 	return m_group;
+}
+
+unknown_groupset_error::unknown_groupset_error(std::string groupset_)
+	: mastermind_error(std::make_error_code(mastermind::mastermind_errc::unknown_groupset))
+	, m_groupset(std::move(groupset_))
+{}
+
+const std::string &
+unknown_groupset_error::groupset() const {
+	return m_groupset;
 }
 
 remotes_empty_error::remotes_empty_error()
